@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../styles/theme'
 import { Spinner, EmptyState, Tag } from '../components/UI'
+
+const PAGE_SIZE = 48
 
 export default function BancoImagensPage({ onSelectImagem }) {
   const { profile } = useAuth()
@@ -13,11 +15,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
+  const [hoveredId, setHoveredId] = useState(null)
+  const [visiveis, setVisiveis] = useState(PAGE_SIZE)
 
-  useEffect(() => { loadImagens() }, [])
-
-  const loadImagens = async () => {
-    const { data } = await supabase
+  useEffect(() => {
+    supabase
       .from('catalogo_imagens')
       .select('id, titulo, categoria, img_url, sizes, ratio')
       .eq('tenant_id', profile.tenant_id)
@@ -25,11 +27,16 @@ export default function BancoImagensPage({ onSelectImagem }) {
       .order('categoria')
       .order('titulo')
       .range(0, 2999)
-    setImagens(data || [])
-    const cats = [...new Set((data || []).map(i => i.categoria).filter(Boolean))]
-    setCategorias(cats)
-    setLoading(false)
-  }
+      .then(({ data }) => {
+        setImagens(data || [])
+        const cats = [...new Set((data || []).map(i => i.categoria).filter(Boolean))]
+        setCategorias(cats)
+        setLoading(false)
+      })
+  }, [])
+
+  // Reset paginação ao mudar filtro ou busca
+  useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca])
 
   const filtradas = imagens.filter(img => {
     const matchCat = catAtiva === 'todas' || img.categoria === catAtiva
@@ -37,28 +44,31 @@ export default function BancoImagensPage({ onSelectImagem }) {
     return matchCat && matchBusca
   })
 
+  const exibidas = filtradas.slice(0, visiveis)
+  const temMais = visiveis < filtradas.length
+
   const S = {
     header: { marginBottom: 24 },
     title: { fontSize: 22, fontWeight: 800, color: colors.text, letterSpacing: -0.5, marginBottom: 4 },
     subtitle: { fontSize: 13, color: colors.textMuted },
-    toolbar: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 },
-    search: { flex: 1, minWidth: 200, background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '9px 14px', color: colors.text, fontSize: 13, outline: 'none' },
+    toolbar: { display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 20 },
+    search: { flex: 1, minWidth: 200, background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '9px 14px', color: colors.text, fontSize: 13, outline: 'none', fontFamily: 'inherit' },
+    tags: { display: 'flex', gap: 6, flexWrap: 'wrap' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 },
     card: (hovered) => ({ background: colors.surface, border: `1px solid ${hovered ? colors.accent : colors.border}`, borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s, transform 0.15s', transform: hovered ? 'translateY(-2px)' : 'none' }),
     img: { width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block', background: colors.surfaceAlt },
     cardBody: { padding: '10px 12px' },
     cardTitle: { fontSize: 12, fontWeight: 600, color: colors.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     cardCat: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+    maisBtn: { display: 'block', margin: '28px auto 0', background: 'transparent', border: `1.5px solid ${colors.border}`, borderRadius: 8, padding: '10px 28px', fontSize: 13, fontWeight: 600, color: colors.textMuted, cursor: 'pointer', fontFamily: 'inherit' },
     previewOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 },
     previewBox: { background: colors.surface, borderRadius: 16, overflow: 'hidden', maxWidth: 640, width: '100%', border: `1px solid ${colors.border}` },
     previewImg: { width: '100%', maxHeight: 420, objectFit: 'contain', background: colors.surfaceAlt, display: 'block' },
     previewBody: { padding: 20 },
     btnRow: { display: 'flex', gap: 10, marginTop: 16 },
-    btnPrimary: { flex: 1, background: colors.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
-    btnSecondary: { flex: 1, background: 'transparent', color: colors.textMuted, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+    btnPrimary: { flex: 1, background: colors.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' },
+    btnSecondary: { flex: 1, background: 'transparent', color: colors.textMuted, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   }
-
-  const [hoveredId, setHoveredId] = useState(null)
 
   if (loading) return <Spinner />
 
@@ -76,7 +86,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
           value={busca}
           onChange={e => setBusca(e.target.value)}
         />
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div style={S.tags}>
           <Tag label="Todas" active={catAtiva === 'todas'} onClick={() => setCatAtiva('todas')} />
           {categorias.map(c => (
             <Tag key={c} label={c} active={catAtiva === c} onClick={() => setCatAtiva(c)} />
@@ -87,23 +97,33 @@ export default function BancoImagensPage({ onSelectImagem }) {
       {filtradas.length === 0 ? (
         <EmptyState title="Nenhuma imagem encontrada" description="Tente outro filtro ou termo de busca." />
       ) : (
-        <div style={S.grid}>
-          {filtradas.map(img => (
-            <div
-              key={img.id}
-              style={S.card(hoveredId === img.id)}
-              onMouseEnter={() => setHoveredId(img.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              onClick={() => setPreview(img)}
-            >
-              <img src={img.img_url} alt={img.titulo} style={S.img} loading="lazy" />
-              <div style={S.cardBody}>
-                <div style={S.cardTitle}>{img.titulo}</div>
-                {img.categoria && <div style={S.cardCat}>{img.categoria}</div>}
+        <>
+          <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 14 }}>
+            Exibindo {exibidas.length} de {filtradas.length}
+          </div>
+          <div style={S.grid}>
+            {exibidas.map(img => (
+              <div
+                key={img.id}
+                style={S.card(hoveredId === img.id)}
+                onMouseEnter={() => setHoveredId(img.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                onClick={() => setPreview(img)}
+              >
+                <img src={img.img_url} alt={img.titulo} style={S.img} loading="lazy" />
+                <div style={S.cardBody}>
+                  <div style={S.cardTitle}>{img.titulo}</div>
+                  {img.categoria && <div style={S.cardCat}>{img.categoria}</div>}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {temMais && (
+            <button style={S.maisBtn} onClick={() => setVisiveis(v => v + PAGE_SIZE)}>
+              Carregar mais ({filtradas.length - visiveis} restantes)
+            </button>
+          )}
+        </>
       )}
 
       {preview && (

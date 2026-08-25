@@ -1,17 +1,19 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTheme, formatCurrency } from '../styles/theme'
+import { useAuth } from '../contexts/AuthContext'
 import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
 import BancoImagensPage from './BancoImagensPage'
 
-function calcPreco({ montagem, substrato, moldura, w, h, qty, materialsByCategory }) {
+function calcPreco({ montagem, substrato, moldura, w, h, qty, materialsByCategory, markupPct }) {
   if (!w || !h || w <= 0 || h <= 0) return null
   const areaM2 = (w * h) / 10000
+  const markup = 1 + (parseFloat(markupPct) || 0) / 100
   const lines = []
 
   if (substrato) {
-    const sell = parseFloat(substrato.sell_price) || 0
-    lines.push({ label: `Impressão ${substrato.name}`, valor: areaM2 * sell })
+    const base = areaM2 * (parseFloat(substrato.sell_price) || 0)
+    lines.push({ label: `Impressão ${substrato.name}`, valor: base * markup })
   }
 
   if (montagem?.items?.length) {
@@ -23,14 +25,16 @@ function calcPreco({ montagem, substrato, moldura, w, h, qty, materialsByCategor
       if (!matId) continue
       const mat = allMats.find(m => m.id === matId)
       if (!mat) continue
-      lines.push({ label: mat.name, valor: areaM2 * (parseFloat(mat.sell_price) || 0) })
+      const base = areaM2 * (parseFloat(mat.sell_price) || 0)
+      lines.push({ label: mat.name, valor: base * markup })
     }
   }
 
   if (moldura) {
     const fw = parseFloat(moldura.width_cm) || 0
     const perimeterM = 2 * (w + h + fw * 4) / 100
-    lines.push({ label: `Moldura ${moldura.name}`, valor: perimeterM * (parseFloat(moldura.sell_price) || 0) })
+    const base = perimeterM * (parseFloat(moldura.sell_price) || 0)
+    lines.push({ label: `Moldura ${moldura.name}`, valor: base * markup })
   }
 
   const totalPeca = lines.reduce((s, l) => s + l.valor, 0)
@@ -51,6 +55,7 @@ function injectFonts() {
 
 export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const { colors } = useTheme()
+  const { lojista } = useAuth()
 
   const [catalogoData, setCatalogoData] = useState(null)
   const [loadingData, setLoadingData] = useState(true)
@@ -91,9 +96,11 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const substrato = substrates.find(s => s.id === substratoId) ?? null
   const moldura = frames.find(f => f.id === molduraId) ?? null
 
+  const markupPct = lojista?.markup_pct ?? 0
+
   const preco = useMemo(() =>
-    calcPreco({ montagem, substrato, moldura, w: parseFloat(largura), h: parseFloat(altura), qty: quantidade, materialsByCategory }),
-    [montagem, substrato, moldura, largura, altura, quantidade, materialsByCategory]
+    calcPreco({ montagem, substrato, moldura, w: parseFloat(largura), h: parseFloat(altura), qty: quantidade, materialsByCategory, markupPct }),
+    [montagem, substrato, moldura, largura, altura, quantidade, materialsByCategory, markupPct]
   )
 
   const framesPorCat = frames.reduce((acc, f) => {
@@ -401,7 +408,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
                     </div>
                   </div>
 
-                  {discount > 0 && <div style={S.discountBadge}>{discount}% de desconto aplicado</div>}
+                  {markupPct > 0 && (
+                    <div style={S.discountBadge}>Markup de {markupPct}% aplicado</div>
+                  )}
                 </>
               )}
 
