@@ -7,7 +7,7 @@ import { Spinner } from './components/UI'
 function Router() {
   const { session, loading } = useAuth()
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#f5f5f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Spinner label="Verificando acesso..." />
     </div>
   )

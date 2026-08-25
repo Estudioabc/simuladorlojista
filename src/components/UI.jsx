@@ -27,11 +27,11 @@ export function Modal({ open, onClose, title, children, wide }) {
   )
 }
 
-export function EmptyState({ icon = '📭', title, description, action, onAction }) {
+export function EmptyState({ icon, title, description, action, onAction }) {
   const { colors } = useTheme()
   return (
     <div style={{ textAlign: 'center', padding: '60px 24px', color: colors.textMuted }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>
+      {icon && <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>}
       <div style={{ fontSize: 16, fontWeight: 600, color: colors.text, marginBottom: 6 }}>{title}</div>
       {description && <div style={{ fontSize: 13, marginBottom: 20 }}>{description}</div>}
       {action && <button onClick={onAction} style={{ background: colors.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{action}</button>}

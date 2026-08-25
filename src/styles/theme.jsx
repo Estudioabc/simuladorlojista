@@ -1,37 +1,8 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { createContext, useContext } from 'react'
 
 const ThemeContext = createContext()
 
-export function ThemeProvider({ children }) {
-  const [dark, setDark] = useState(true)
-  const colors = dark ? DARK : LIGHT
-  return (
-    <ThemeContext.Provider value={{ dark, setDark, colors }}>
-      {children}
-    </ThemeContext.Provider>
-  )
-}
-
-export function useTheme() {
-  return useContext(ThemeContext)
-}
-
-const DARK = {
-  bg:         '#0f1117',
-  surface:    '#1a1d27',
-  surfaceAlt: '#12141c',
-  border:     '#2a2d3a',
-  text:       '#f0f0f4',
-  textMuted:  '#8b8fa8',
-  accent:     '#c8a96e',
-  accentHover:'#d4b880',
-  danger:     '#e05c5c',
-  success:    '#4ade80',
-  warning:    '#f59e0b',
-  overlay:    'rgba(0,0,0,0.6)',
-}
-
-const LIGHT = {
+const COLORS = {
   bg:         '#f5f5f0',
   surface:    '#ffffff',
   surfaceAlt: '#f0ede8',
@@ -44,6 +15,18 @@ const LIGHT = {
   success:    '#16a34a',
   warning:    '#d97706',
   overlay:    'rgba(0,0,0,0.4)',
+}
+
+export function ThemeProvider({ children }) {
+  return (
+    <ThemeContext.Provider value={{ colors: COLORS }}>
+      {children}
+    </ThemeContext.Provider>
+  )
+}
+
+export function useTheme() {
+  return useContext(ThemeContext)
 }
 
 export function formatCurrency(v) {

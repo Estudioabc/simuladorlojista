@@ -34,7 +34,6 @@ export default function LoginPage() {
     <div style={S.page}>
       <div style={S.card}>
         <div style={S.logo}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🖼️</div>
           <div style={S.title}>Estúdio ABC</div>
           <div style={S.subtitle}>Portal do Lojista</div>
         </div>

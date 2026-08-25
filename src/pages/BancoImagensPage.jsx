@@ -24,6 +24,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       .eq('ativo', true)
       .order('categoria')
       .order('titulo')
+      .range(0, 2999)
     setImagens(data || [])
     const cats = [...new Set((data || []).map(i => i.categoria).filter(Boolean))]
     setCategorias(cats)
@@ -84,7 +85,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       </div>
 
       {filtradas.length === 0 ? (
-        <EmptyState icon="🖼️" title="Nenhuma imagem encontrada" description="Tente outro filtro ou termo de busca." />
+        <EmptyState title="Nenhuma imagem encontrada" description="Tente outro filtro ou termo de busca." />
       ) : (
         <div style={S.grid}>
           {filtradas.map(img => (

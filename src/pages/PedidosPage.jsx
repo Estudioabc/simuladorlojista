@@ -57,7 +57,7 @@ export default function PedidosPage() {
       {erro && <div style={{ color: colors.danger, fontSize: 13, marginBottom: 16 }}>{erro}</div>}
 
       {pedidos.length === 0 ? (
-        <EmptyState icon="📋" title="Nenhum pedido ainda" description="Seus pedidos enviados aparecerão aqui." />
+        <EmptyState title="Nenhum pedido ainda" description="Seus pedidos enviados aparecerão aqui." />
       ) : (
         pedidos.map(p => {
           const st = STATUS[p.status] ?? STATUS.novo

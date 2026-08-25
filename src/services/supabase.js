@@ -19,6 +19,9 @@ export async function callFunction(name, options = {}) {
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   })
   const json = await res.json()
-  if (!res.ok) throw new Error(json.error ?? 'Erro desconhecido')
+  if (!res.ok) {
+    const msg = typeof json.error === 'string' ? json.error : (json.error?.message ?? json.msg ?? 'Erro desconhecido')
+    throw new Error(msg)
+  }
   return json
 }

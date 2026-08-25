@@ -38,7 +38,7 @@ export function AuthProvider({ children }) {
 
     const { data: l } = await supabase
       .from('lojistas')
-      .select('id, store_name, discount_pct, allowed_mount_types, allowed_frames, allowed_substrates')
+      .select('id, store_name, discount_pct, markup_pct, allowed_mount_types, allowed_frames, allowed_substrates')
       .eq('user_id', userId)
       .eq('tenant_id', p.tenant_id)
       .maybeSingle()
@@ -52,12 +52,23 @@ export function AuthProvider({ children }) {
     return !error
   }
 
+  const reloadLojista = async () => {
+    if (!profile) return
+    const { data: l } = await supabase
+      .from('lojistas')
+      .select('id, store_name, discount_pct, markup_pct, allowed_mount_types, allowed_frames, allowed_substrates')
+      .eq('user_id', session.user.id)
+      .eq('tenant_id', profile.tenant_id)
+      .maybeSingle()
+    setLojista(l)
+  }
+
   const signOut = () => supabase.auth.signOut()
 
   const loading = session === undefined
 
   return (
-    <AuthContext.Provider value={{ session, profile, lojista, loading, error, setError, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, profile, lojista, loading, error, setError, signIn, signOut, reloadLojista }}>
       {children}
     </AuthContext.Provider>
   )

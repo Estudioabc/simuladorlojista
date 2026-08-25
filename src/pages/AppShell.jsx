@@ -4,16 +4,18 @@ import { useTheme } from '../styles/theme'
 import BancoImagensPage from './BancoImagensPage'
 import SimuladorPage from './SimuladorPage'
 import PedidosPage from './PedidosPage'
+import ConfigPage from './ConfigPage'
 
 const NAV = [
-  { id: 'banco',     label: 'Banco de Imagens', icon: '🖼️' },
-  { id: 'simulador', label: 'Novo Pedido',       icon: '✏️' },
-  { id: 'pedidos',   label: 'Meus Pedidos',      icon: '📋' },
+  { id: 'banco',     label: 'Banco de Imagens' },
+  { id: 'simulador', label: 'Novo Pedido' },
+  { id: 'pedidos',   label: 'Meus Pedidos' },
+  { id: 'config',    label: 'Configurações' },
 ]
 
 export default function AppShell() {
   const { profile, lojista, signOut } = useAuth()
-  const { colors, dark, setDark } = useTheme()
+  const { colors } = useTheme()
   const [tab, setTab] = useState('banco')
   const [menuOpen, setMenuOpen] = useState(false)
   const [imagemParaSimulador, setImagemParaSimulador] = useState(null)
@@ -48,7 +50,7 @@ export default function AppShell() {
       {/* Header desktop */}
       <header style={S.header}>
         <div>
-          <div style={S.logo}>Estúdio ABC</div>
+          <div style={S.logo}>{lojista?.store_name ?? 'Estúdio ABC'}</div>
           <div style={S.logoSub}>Portal do Lojista</div>
         </div>
 
@@ -56,16 +58,12 @@ export default function AppShell() {
         <nav style={S.nav}>
           {NAV.map(n => (
             <button key={n.id} style={S.navBtn(tab === n.id)} onClick={() => setTab(n.id)}>
-              <span>{n.icon}</span>
-              <span style={{ '@media(max-width:600px)': { display: 'none' } }}>{n.label}</span>
+              {n.label}
             </button>
           ))}
         </nav>
 
         <div style={S.userArea}>
-          <button onClick={() => setDark(!dark)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: colors.textMuted }} title={dark ? 'Modo claro' : 'Modo escuro'}>
-            {dark ? '☀️' : '🌙'}
-          </button>
           <div style={S.avatar}>{initials}</div>
           <div style={{ display: 'none' }}>
             <div style={S.userName}>{lojista?.store_name ?? profile?.name}</div>
@@ -80,17 +78,9 @@ export default function AppShell() {
         {tab === 'banco'     && <BancoImagensPage onSelectImagem={handleSelectImagem} />}
         {tab === 'simulador' && <SimuladorPage imagemInicial={imagemParaSimulador} onImagemClear={() => setImagemParaSimulador(null)} />}
         {tab === 'pedidos'   && <PedidosPage />}
+        {tab === 'config'    && <ConfigPage />}
       </main>
 
-      {/* Nav mobile */}
-      <nav style={{ ...S.mobileNav, '@media(min-width:768px)': { display: 'none' } }}>
-        {NAV.map(n => (
-          <button key={n.id} style={S.mobileBtn(tab === n.id)} onClick={() => setTab(n.id)}>
-            <span style={{ fontSize: 20 }}>{n.icon}</span>
-            {n.label}
-          </button>
-        ))}
-      </nav>
     </div>
   )
 }
