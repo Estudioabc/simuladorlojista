@@ -65,7 +65,7 @@ export function AuthProvider({ children }) {
 
   const signOut = () => supabase.auth.signOut()
 
-  const loading = session === undefined
+  const loading = session === undefined || (session !== null && profile === null && !error)
 
   return (
     <AuthContext.Provider value={{ session, profile, lojista, loading, error, setError, signIn, signOut, reloadLojista }}>

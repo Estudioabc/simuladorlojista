@@ -19,20 +19,30 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
 
   useEffect(() => {
-    supabase
-      .from('catalogo_imagens')
-      .select('id, titulo, categoria, img_url, sizes, ratio')
-      .eq('tenant_id', profile.tenant_id)
-      .eq('ativo', true)
-      .order('categoria')
-      .order('titulo')
-      .range(0, 2999)
-      .then(({ data }) => {
-        setImagens(data || [])
-        const cats = [...new Set((data || []).map(i => i.categoria).filter(Boolean))]
-        setCategorias(cats)
-        setLoading(false)
-      })
+    const fetchAll = async () => {
+      const PAGE = 1000
+      let all = []
+      let from = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('catalogo_imagens')
+          .select('id, titulo, categoria, img_url, sizes, ratio')
+          .eq('tenant_id', profile.tenant_id)
+          .eq('ativo', true)
+          .order('categoria')
+          .order('titulo')
+          .range(from, from + PAGE - 1)
+        if (error || !data?.length) break
+        all = all.concat(data)
+        if (data.length < PAGE) break
+        from += PAGE
+      }
+      setImagens(all)
+      const cats = [...new Set(all.map(i => i.categoria).filter(Boolean))]
+      setCategorias(cats)
+      setLoading(false)
+    }
+    fetchAll()
   }, [])
 
   // Reset paginação ao mudar filtro ou busca
