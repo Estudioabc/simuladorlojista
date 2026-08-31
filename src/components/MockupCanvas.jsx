@@ -27,8 +27,8 @@ function drawRoom(ctx, W, H, isLandscape) {
 
   // Piso
   const floorGrad = ctx.createLinearGradient(0, floorY, 0, H)
-  floorGrad.addColorStop(0, '#c8a87a')
-  floorGrad.addColorStop(1, '#a8885a')
+  floorGrad.addColorStop(0, '#d4c4a8')
+  floorGrad.addColorStop(1, '#bca888')
   ctx.fillStyle = floorGrad
   ctx.fillRect(0, floorY, W, H - floorY)
 
@@ -38,19 +38,19 @@ function drawRoom(ctx, W, H, isLandscape) {
 
   if (isLandscape) {
     // Sofá — encosto
-    const couchY = floorY - 88
-    ctx.fillStyle = '#9e9590'
-    roundRect(ctx, W * 0.08, couchY, W * 0.84, 34, [6, 6, 0, 0])
+    const couchY = floorY - 72
+    ctx.fillStyle = '#a09890'
+    roundRect(ctx, W * 0.14, couchY, W * 0.72, 28, [5, 5, 0, 0])
     ctx.fill()
     // Sofá — assento
-    ctx.fillStyle = '#b0a89e'
-    roundRect(ctx, W * 0.08, couchY + 34, W * 0.84, 52, [0, 0, 6, 6])
+    ctx.fillStyle = '#b8b0a6'
+    roundRect(ctx, W * 0.14, couchY + 28, W * 0.72, 42, [0, 0, 5, 5])
     ctx.fill()
     // Almofadas
-    ctx.fillStyle = '#ccc5bc'
-    roundRect(ctx, W * 0.16, couchY + 6, W * 0.14, 28, 5)
+    ctx.fillStyle = '#d0c8be'
+    roundRect(ctx, W * 0.20, couchY + 4, W * 0.12, 24, 4)
     ctx.fill()
-    roundRect(ctx, W * 0.70, couchY + 6, W * 0.14, 28, 5)
+    roundRect(ctx, W * 0.68, couchY + 4, W * 0.12, 24, 4)
     ctx.fill()
   } else {
     // Mesa lateral
@@ -79,7 +79,7 @@ function getFrameRect(W, H, ratio, isLandscape) {
     let fw = Math.round(W * 0.50)
     let fh = Math.round(fw / ratio)
     if (fh > floorY * 0.68) { fh = Math.round(floorY * 0.68); fw = Math.round(fh * ratio) }
-    return { fx: Math.round((W - fw) / 2), fy: Math.round((floorY - fh) * 0.38), fw, fh }
+    return { fx: Math.round((W - fw) / 2), fy: Math.round((floorY - fh) * 0.28), fw, fh }
   } else {
     let fh = Math.round(floorY * 0.62)
     let fw = Math.round(fh * ratio)
