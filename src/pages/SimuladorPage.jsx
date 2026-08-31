@@ -62,6 +62,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const [erroData, setErroData] = useState('')
 
   const [imagem, setImagem] = useState(imagemInicial ?? null)
+  const [ratio, setRatio] = useState(null)       // largura/altura natural da imagem
+  const [travarRatio, setTravarRatio] = useState(true)
   const [largura, setLargura] = useState('')
   const [altura, setAltura] = useState('')
   const [quantidade, setQuantidade] = useState('1')
@@ -84,7 +86,29 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
       .finally(() => setLoadingData(false))
   }, [])
 
-  useEffect(() => { if (imagemInicial) setImagem(imagemInicial) }, [imagemInicial])
+  useEffect(() => {
+    if (imagemInicial) {
+      setImagem(imagemInicial)
+      detectRatio(imagemInicial)
+    }
+  }, [imagemInicial])
+
+  const detectRatio = (img) => {
+    if (!img?.img_url) return
+    // Usa ratio salvo no banco se disponível
+    if (img.ratio && parseFloat(img.ratio) > 0) {
+      setRatio(parseFloat(img.ratio))
+      return
+    }
+    // Senão detecta carregando a imagem
+    const el = new Image()
+    el.onload = () => {
+      if (el.naturalWidth && el.naturalHeight) {
+        setRatio(el.naturalWidth / el.naturalHeight)
+      }
+    }
+    el.src = img.img_url
+  }
 
   const montagems = catalogoData?.simMontagems ?? []
   const substrates = catalogoData?.substrates ?? []
@@ -112,9 +136,23 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const catOrder = ['A', 'B', 'C', 'Outras']
   const catLabels = { A: 'Premium', B: 'Intermediária', C: 'Econômica', Outras: 'Outras' }
 
+  const handleLargura = (val) => {
+    setLargura(val)
+    if (travarRatio && ratio && val) {
+      setAltura((parseFloat(val) / ratio).toFixed(1))
+    }
+  }
+  const handleAltura = (val) => {
+    setAltura(val)
+    if (travarRatio && ratio && val) {
+      setLargura((parseFloat(val) * ratio).toFixed(1))
+    }
+  }
+
   const resetForm = () => {
     setImagem(null); setLargura(''); setAltura(''); setQuantidade('1')
     setMontagemId(''); setSubstratoId(''); setMolduraId(''); setObs('')
+    setRatio(null); setTravarRatio(true)
     if (onImagemClear) onImagemClear()
   }
 
@@ -212,7 +250,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
           <button style={S.btnBanco} onClick={() => setShowBanco(false)}>← Voltar ao Simulador</button>
           <span style={{ color: colors.textMuted, fontSize: 13 }}>Clique em uma imagem para selecioná-la</span>
         </div>
-        <BancoImagensPage onSelectImagem={(img) => { setImagem(img); setShowBanco(false) }} />
+        <BancoImagensPage onSelectImagem={(img) => { setImagem(img); detectRatio(img); setShowBanco(false) }} />
       </div>
     )
   }
@@ -256,7 +294,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
                   {imagem.categoria && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>{imagem.categoria}</div>}
                 </div>
                 <button onClick={() => setShowBanco(true)} style={{ ...S.btnBanco, padding: '6px 10px', fontSize: 11 }}>Trocar</button>
-                <button onClick={() => { setImagem(null); if (onImagemClear) onImagemClear() }} style={S.removeBtn}>×</button>
+                <button onClick={() => { setImagem(null); setRatio(null); if (onImagemClear) onImagemClear() }} style={S.removeBtn}>×</button>
               </div>
             ) : (
               <button style={S.btnBanco} onClick={() => setShowBanco(true)}>
@@ -268,15 +306,25 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
           {/* Tamanho */}
           <div style={S.step(hasDims)}>
             <div style={S.stepLabel}>Passo 2</div>
-            <div style={S.stepTitle}>Tamanho e Quantidade</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={S.stepTitle}>Tamanho e Quantidade</div>
+              {ratio && (
+                <button
+                  onClick={() => setTravarRatio(t => !t)}
+                  style={{ background: travarRatio ? colors.accent + '18' : 'transparent', border: `1px solid ${travarRatio ? colors.accent : colors.border}`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, color: travarRatio ? colors.accent : colors.textMuted, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', alignItems: 'center', gap: 4 }}
+                >
+                  {travarRatio ? '🔒' : '🔓'} Proporção {travarRatio ? 'travada' : 'livre'}
+                </button>
+              )}
+            </div>
             <div style={S.row3}>
               <div>
                 <label style={S.label}>Largura (cm)</label>
-                <input style={S.input} type="number" min="1" step="0.5" placeholder="60" value={largura} onChange={e => setLargura(e.target.value)} />
+                <input style={S.input} type="number" min="1" step="0.5" placeholder="60" value={largura} onChange={e => handleLargura(e.target.value)} />
               </div>
               <div>
                 <label style={S.label}>Altura (cm)</label>
-                <input style={S.input} type="number" min="1" step="0.5" placeholder="40" value={altura} onChange={e => setAltura(e.target.value)} />
+                <input style={S.input} type="number" min="1" step="0.5" placeholder="40" value={altura} onChange={e => handleAltura(e.target.value)} />
               </div>
               <div>
                 <label style={S.label}>Qtd.</label>
