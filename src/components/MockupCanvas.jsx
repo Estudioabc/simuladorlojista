@@ -1,98 +1,22 @@
 import { useEffect, useRef } from 'react'
 
-function roundRect(ctx, x, y, w, h, r = 0) {
-  const [tl, tr, br, bl] = Array.isArray(r) ? r : [r, r, r, r]
-  ctx.beginPath()
-  ctx.moveTo(x + tl, y)
-  ctx.lineTo(x + w - tr, y)
-  ctx.quadraticCurveTo(x + w, y, x + w, y + tr)
-  ctx.lineTo(x + w, y + h - br)
-  ctx.quadraticCurveTo(x + w, y + h, x + w - br, y + h)
-  ctx.lineTo(x + bl, y + h)
-  ctx.quadraticCurveTo(x, y + h, x, y + h - bl)
-  ctx.lineTo(x, y + tl)
-  ctx.quadraticCurveTo(x, y, x + tl, y)
-  ctx.closePath()
+// Foto: 5316x7000 — parede branca, sofá no terço inferior
+// Zona da parede onde o quadro vai: definida como % das dimensões da foto
+const FRAME_ZONE = { top: 0.08, bottom: 0.54, left: 0.14, right: 0.86 }
+const IMG_W = 5316
+const IMG_H = 7000
+
+const FRAME_STYLES = {
+  branco:  { fill: '#f8f6f3', stroke: '#dedad4', inner: 'rgba(0,0,0,0.05)' },
+  preto:   { fill: '#1a1a1a', stroke: '#000',    inner: 'rgba(255,255,255,0.06)' },
+  madeira: { fill: '#8B5E3C', stroke: '#6b4828', inner: 'rgba(255,255,255,0.08)' },
 }
 
-function drawRoom(ctx, W, H, isLandscape) {
-  const floorY = isLandscape ? H * 0.72 : H * 0.82
-
-  // Parede
-  const wallGrad = ctx.createLinearGradient(0, 0, 0, floorY)
-  wallGrad.addColorStop(0, '#f2ede6')
-  wallGrad.addColorStop(1, '#e6e0d8')
-  ctx.fillStyle = wallGrad
-  ctx.fillRect(0, 0, W, floorY)
-
-  // Piso
-  const floorGrad = ctx.createLinearGradient(0, floorY, 0, H)
-  floorGrad.addColorStop(0, '#d4c4a8')
-  floorGrad.addColorStop(1, '#bca888')
-  ctx.fillStyle = floorGrad
-  ctx.fillRect(0, floorY, W, H - floorY)
-
-  // Rodapé
-  ctx.fillStyle = '#d4cfc8'
-  ctx.fillRect(0, floorY - 4, W, 4)
-
-  if (isLandscape) {
-    // Sofá — encosto
-    const couchY = floorY - 72
-    ctx.fillStyle = '#a09890'
-    roundRect(ctx, W * 0.14, couchY, W * 0.72, 28, [5, 5, 0, 0])
-    ctx.fill()
-    // Sofá — assento
-    ctx.fillStyle = '#b8b0a6'
-    roundRect(ctx, W * 0.14, couchY + 28, W * 0.72, 42, [0, 0, 5, 5])
-    ctx.fill()
-    // Almofadas
-    ctx.fillStyle = '#d0c8be'
-    roundRect(ctx, W * 0.20, couchY + 4, W * 0.12, 24, 4)
-    ctx.fill()
-    roundRect(ctx, W * 0.68, couchY + 4, W * 0.12, 24, 4)
-    ctx.fill()
-  } else {
-    // Mesa lateral
-    const tableY = floorY - 62
-    ctx.fillStyle = '#8a6e48'
-    ctx.fillRect(W * 0.70, tableY, W * 0.22, 7)
-    ctx.fillRect(W * 0.74, tableY + 7, 7, 58)
-    ctx.fillRect(W * 0.83, tableY + 7, 7, 58)
-    // Vaso com planta
-    ctx.fillStyle = '#c8a07a'
-    ctx.fillRect(W * 0.775, tableY - 22, 14, 24)
-    ctx.fillStyle = '#6a9060'
-    ctx.beginPath()
-    ctx.ellipse(W * 0.782, tableY - 28, 12, 18, -0.2, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.ellipse(W * 0.785, tableY - 32, 10, 14, 0.3, 0, Math.PI * 2)
-    ctx.fill()
-  }
-}
-
-function getFrameRect(W, H, ratio, isLandscape) {
-  const floorY = isLandscape ? H * 0.72 : H * 0.82
-
-  if (isLandscape) {
-    let fw = Math.round(W * 0.50)
-    let fh = Math.round(fw / ratio)
-    if (fh > floorY * 0.68) { fh = Math.round(floorY * 0.68); fw = Math.round(fh * ratio) }
-    return { fx: Math.round((W - fw) / 2), fy: Math.round((floorY - fh) * 0.28), fw, fh }
-  } else {
-    let fh = Math.round(floorY * 0.62)
-    let fw = Math.round(fh * ratio)
-    if (fw > W * 0.52) { fw = Math.round(W * 0.52); fh = Math.round(fw / ratio) }
-    return { fx: Math.round((W - fw) / 2), fy: Math.round((floorY - fh) * 0.32), fw, fh }
-  }
-}
-
-export default function MockupCanvas({ imgUrl, ratio = 1, width = 600 }) {
+export default function MockupCanvas({ imgUrl, ratio = 1, frameColor = 'branco', width = 600 }) {
   const canvasRef = useRef()
-  const isLandscape = ratio >= 1
+
   const W = width
-  const H = isLandscape ? Math.round(W * 0.65) : Math.round(W * 1.38)
+  const H = Math.round(W * IMG_H / IMG_W)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -101,54 +25,75 @@ export default function MockupCanvas({ imgUrl, ratio = 1, width = 600 }) {
     canvas.width = W
     canvas.height = H
 
-    drawRoom(ctx, W, H, isLandscape)
+    const roomImg = new Image()
+    roomImg.onload = () => {
+      // Fundo: foto da sala
+      ctx.drawImage(roomImg, 0, 0, W, H)
 
-    const { fx, fy, fw, fh } = getFrameRect(W, H, ratio, isLandscape)
-    const pad = 8  // largura da moldura
+      // Zona disponível na parede (em pixels do canvas)
+      const zL = FRAME_ZONE.left * W
+      const zR = FRAME_ZONE.right * W
+      const zT = FRAME_ZONE.top * H
+      const zB = FRAME_ZONE.bottom * H
+      const zW = zR - zL
+      const zH = zB - zT
 
-    // Sombra do quadro
-    ctx.save()
-    ctx.shadowColor = 'rgba(0,0,0,0.28)'
-    ctx.shadowBlur = 22
-    ctx.shadowOffsetX = 3
-    ctx.shadowOffsetY = 8
-    ctx.fillStyle = '#fff'
-    ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
-    ctx.restore()
+      // Tamanho do quadro dentro da zona, preservando ratio da arte
+      const zoneRatio = zW / zH
+      let fw, fh
+      if (ratio >= zoneRatio) {
+        fw = zW * 0.82
+        fh = fw / ratio
+      } else {
+        fh = zH * 0.82
+        fw = fh * ratio
+      }
+      const fx = zL + (zW - fw) / 2
+      const fy = zT + (zH - fh) / 2
+      const pad = Math.max(6, Math.round(W * 0.013))
 
-    // Moldura branca
-    ctx.fillStyle = '#f8f6f2'
-    ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
+      // Sombra
+      ctx.save()
+      ctx.shadowColor = 'rgba(0,0,0,0.28)'
+      ctx.shadowBlur = W * 0.05
+      ctx.shadowOffsetX = W * 0.004
+      ctx.shadowOffsetY = W * 0.018
+      ctx.fillStyle = '#fff'
+      ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
+      ctx.restore()
 
-    // Borda da moldura
-    ctx.strokeStyle = '#d4cdc4'
-    ctx.lineWidth = 1.5
-    ctx.strokeRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
+      // Moldura
+      const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
+      ctx.fillStyle = fs.fill
+      ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
+      ctx.strokeStyle = fs.stroke
+      ctx.lineWidth = 1.5
+      ctx.strokeRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
 
-    // Arte
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      ctx.drawImage(img, fx, fy, fw, fh)
-      // Sutil linha interna separando moldura da arte
-      ctx.strokeStyle = 'rgba(0,0,0,0.08)'
-      ctx.lineWidth = 1
-      ctx.strokeRect(fx, fy, fw, fh)
+      // Arte
+      const artImg = new Image()
+      artImg.crossOrigin = 'anonymous'
+      artImg.onload = () => {
+        ctx.drawImage(artImg, fx, fy, fw, fh)
+        ctx.strokeStyle = fs.inner
+        ctx.lineWidth = 1
+        ctx.strokeRect(fx, fy, fw, fh)
+      }
+      artImg.onerror = () => {
+        ctx.fillStyle = '#e8e4de'
+        ctx.fillRect(fx, fy, fw, fh)
+      }
+      artImg.src = imgUrl
     }
-    img.onerror = () => {
-      // Fallback: placeholder cinza
-      ctx.fillStyle = '#ddd'
-      ctx.fillRect(fx, fy, fw, fh)
-    }
-    img.src = imgUrl
-  }, [imgUrl, ratio, W, H])
+    roomImg.src = '/mockup-sala.jpg'
+  }, [imgUrl, ratio, frameColor, W, H])
 
   return (
     <canvas
       ref={canvasRef}
       width={W}
       height={H}
-      style={{ width: '100%', height: 'auto', borderRadius: 8, display: 'block' }}
+      style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 160px)', width: 'auto', height: 'auto', borderRadius: 8, display: 'block', margin: '0 auto' }}
     />
   )
 }

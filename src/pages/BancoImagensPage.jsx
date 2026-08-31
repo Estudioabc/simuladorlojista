@@ -7,6 +7,21 @@ import MockupCanvas from '../components/MockupCanvas'
 
 const PAGE_SIZE = 48
 
+const FRAME_COLORS = [
+  { id: 'branco', label: 'Branco', swatch: '#f8f6f3', border: '#ccc' },
+  { id: 'preto', label: 'Preto', swatch: '#1a1a1a', border: '#000' },
+  { id: 'madeira', label: 'Madeira', swatch: '#8B5E3C', border: '#6b4828' },
+]
+
+function detectImageRatio(url) {
+  return new Promise(resolve => {
+    const img = new Image()
+    img.onload = () => resolve(img.naturalWidth / img.naturalHeight)
+    img.onerror = () => resolve(1)
+    img.src = url
+  })
+}
+
 export default function BancoImagensPage({ onSelectImagem }) {
   const { profile } = useAuth()
   const { colors } = useTheme()
@@ -16,7 +31,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
-  const [previewMode, setPreviewMode] = useState('arte') // 'arte' | 'ambiente'
+  const [previewMode, setPreviewMode] = useState('arte')
+  const [frameColor, setFrameColor] = useState('branco')
   const [hoveredId, setHoveredId] = useState(null)
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
 
@@ -47,7 +63,6 @@ export default function BancoImagensPage({ onSelectImagem }) {
     fetchAll()
   }, [])
 
-  // Reset paginação ao mudar filtro ou busca
   useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca])
 
   const filtradas = imagens.filter(img => {
@@ -58,6 +73,15 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
   const exibidas = filtradas.slice(0, visiveis)
   const temMais = visiveis < filtradas.length
+
+  async function openPreview(img) {
+    let ratio = parseFloat(img.ratio)
+    if (!ratio || ratio <= 0) {
+      ratio = await detectImageRatio(img.img_url)
+    }
+    setPreview({ ...img, ratio })
+    setPreviewMode('arte')
+  }
 
   const S = {
     header: { marginBottom: 24 },
@@ -74,8 +98,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
     cardCat: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
     maisBtn: { display: 'block', margin: '28px auto 0', background: 'transparent', border: `1.5px solid ${colors.border}`, borderRadius: 8, padding: '10px 28px', fontSize: 13, fontWeight: 600, color: colors.textMuted, cursor: 'pointer', fontFamily: 'inherit' },
     previewOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 24px' },
-    previewImg: { maxWidth: '100%', maxHeight: 'calc(100vh - 120px)', objectFit: 'contain', display: 'block', borderRadius: 6 },
-    previewCaption: { display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, width: '100%', maxWidth: 900 },
+    previewImg: { maxWidth: '100%', maxHeight: 'calc(100vh - 140px)', objectFit: 'contain', display: 'block', borderRadius: 6 },
+    previewCaption: { display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, width: '100%', maxWidth: 700 },
     previewTitle: { flex: 1, color: '#fff', fontSize: 14, fontWeight: 600 },
     previewCat: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
     btnRow: { display: 'flex', gap: 10 },
@@ -121,7 +145,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
                 style={S.card(hoveredId === img.id)}
                 onMouseEnter={() => setHoveredId(img.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                onClick={() => { setPreview(img); setPreviewMode('arte') }}
+                onClick={() => openPreview(img)}
               >
                 <img src={img.img_url} alt={img.titulo} style={S.img} loading="lazy" />
                 <div style={S.cardBody}>
@@ -142,18 +166,45 @@ export default function BancoImagensPage({ onSelectImagem }) {
       {preview && (
         <div style={S.previewOverlay} onClick={() => setPreview(null)}>
           <div style={{ width: '100%', maxWidth: previewMode === 'ambiente' ? 700 : 860, display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-            {/* Toggle arte / ambiente */}
-            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: 3, marginBottom: 14, gap: 2 }}>
-              {['arte', 'ambiente'].map(mode => (
-                <button key={mode} onClick={() => setPreviewMode(mode)} style={{ background: previewMode === mode ? 'rgba(255,255,255,0.9)' : 'transparent', color: previewMode === mode ? '#1a1a1a' : 'rgba(255,255,255,0.7)', border: 'none', borderRadius: 6, padding: '6px 18px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s', textTransform: 'capitalize' }}>
-                  {mode === 'arte' ? 'Arte' : 'Ambiente'}
-                </button>
-              ))}
+
+            {/* Barra de controles */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
+              {/* Toggle Arte / Ambiente */}
+              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: 3, gap: 2 }}>
+                {['arte', 'ambiente'].map(mode => (
+                  <button key={mode} onClick={() => setPreviewMode(mode)} style={{ background: previewMode === mode ? 'rgba(255,255,255,0.9)' : 'transparent', color: previewMode === mode ? '#1a1a1a' : 'rgba(255,255,255,0.7)', border: 'none', borderRadius: 6, padding: '6px 18px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}>
+                    {mode === 'arte' ? 'Arte' : 'Ambiente'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Seletor de moldura (só no modo ambiente) */}
+              {previewMode === 'ambiente' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: 0.5 }}>MOLDURA</span>
+                  {FRAME_COLORS.map(fc => (
+                    <button
+                      key={fc.id}
+                      title={fc.label}
+                      onClick={() => setFrameColor(fc.id)}
+                      style={{
+                        width: 24, height: 24, borderRadius: '50%',
+                        background: fc.swatch,
+                        border: frameColor === fc.id ? '2px solid #fff' : `2px solid ${fc.border}`,
+                        cursor: 'pointer',
+                        outline: frameColor === fc.id ? '2px solid rgba(255,255,255,0.5)' : 'none',
+                        outlineOffset: 2,
+                        transition: 'outline 0.15s',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {previewMode === 'arte'
               ? <img src={preview.img_url} alt={preview.titulo} style={S.previewImg} />
-              : <MockupCanvas imgUrl={preview.img_url} ratio={parseFloat(preview.ratio) || 1} width={700} />
+              : <MockupCanvas imgUrl={preview.img_url} ratio={preview.ratio || 1} frameColor={frameColor} width={700} />
             }
 
             <div style={S.previewCaption}>
