@@ -3,6 +3,7 @@ import { useTheme, formatCurrency } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
+import MockupCanvas from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
 
 function calcPreco({ montagem, substrato, moldura, w, h, qty, materialsByCategory, markupPct }) {
@@ -396,9 +397,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
         <div style={S.panel}>
           <div style={S.panelTitle}>Resumo do Pedido</div>
 
-          {/* Imagem */}
+          {/* Imagem / Mockup */}
           {imagem ? (
-            <img src={imagem.img_url} alt={imagem.titulo} style={S.panelImg} />
+            <MockupCanvas imgUrl={imagem.img_url} ratio={ratio || parseFloat(imagem.ratio) || 1} width={300} />
           ) : (
             <div style={S.panelImgEmpty}>sem imagem selecionada</div>
           )}

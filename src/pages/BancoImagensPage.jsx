@@ -3,6 +3,7 @@ import { supabase } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../styles/theme'
 import { Spinner, EmptyState, Tag } from '../components/UI'
+import MockupCanvas from '../components/MockupCanvas'
 
 const PAGE_SIZE = 48
 
@@ -15,6 +16,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
+  const [previewMode, setPreviewMode] = useState('arte') // 'arte' | 'ambiente'
   const [hoveredId, setHoveredId] = useState(null)
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
 
@@ -119,7 +121,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
                 style={S.card(hoveredId === img.id)}
                 onMouseEnter={() => setHoveredId(img.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                onClick={() => setPreview(img)}
+                onClick={() => { setPreview(img); setPreviewMode('arte') }}
               >
                 <img src={img.img_url} alt={img.titulo} style={S.img} loading="lazy" />
                 <div style={S.cardBody}>
@@ -139,19 +141,34 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
       {preview && (
         <div style={S.previewOverlay} onClick={() => setPreview(null)}>
-          <img src={preview.img_url} alt={preview.titulo} style={S.previewImg} onClick={e => e.stopPropagation()} />
-          <div style={S.previewCaption} onClick={e => e.stopPropagation()}>
-            <div>
-              <div style={S.previewTitle}>{preview.titulo}</div>
-              {preview.categoria && <div style={S.previewCat}>{preview.categoria}</div>}
-            </div>
-            <div style={S.btnRow}>
-              {onSelectImagem && (
-                <button style={S.btnPrimary} onClick={() => { onSelectImagem(preview); setPreview(null) }}>
-                  Usar no Simulador
+          <div style={{ width: '100%', maxWidth: previewMode === 'ambiente' ? 700 : 860, display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+            {/* Toggle arte / ambiente */}
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: 3, marginBottom: 14, gap: 2 }}>
+              {['arte', 'ambiente'].map(mode => (
+                <button key={mode} onClick={() => setPreviewMode(mode)} style={{ background: previewMode === mode ? 'rgba(255,255,255,0.9)' : 'transparent', color: previewMode === mode ? '#1a1a1a' : 'rgba(255,255,255,0.7)', border: 'none', borderRadius: 6, padding: '6px 18px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s', textTransform: 'capitalize' }}>
+                  {mode === 'arte' ? 'Arte' : 'Ambiente'}
                 </button>
-              )}
-              <button style={S.btnSecondary} onClick={() => setPreview(null)}>Fechar</button>
+              ))}
+            </div>
+
+            {previewMode === 'arte'
+              ? <img src={preview.img_url} alt={preview.titulo} style={S.previewImg} />
+              : <MockupCanvas imgUrl={preview.img_url} ratio={parseFloat(preview.ratio) || 1} width={700} />
+            }
+
+            <div style={S.previewCaption}>
+              <div>
+                <div style={S.previewTitle}>{preview.titulo}</div>
+                {preview.categoria && <div style={S.previewCat}>{preview.categoria}</div>}
+              </div>
+              <div style={S.btnRow}>
+                {onSelectImagem && (
+                  <button style={S.btnPrimary} onClick={() => { onSelectImagem(preview); setPreview(null) }}>
+                    Usar no Simulador
+                  </button>
+                )}
+                <button style={S.btnSecondary} onClick={() => setPreview(null)}>Fechar</button>
+              </div>
             </div>
           </div>
         </div>
