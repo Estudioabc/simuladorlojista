@@ -71,13 +71,14 @@ export default function BancoImagensPage({ onSelectImagem }) {
     cardTitle: { fontSize: 12, fontWeight: 600, color: colors.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     cardCat: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
     maisBtn: { display: 'block', margin: '28px auto 0', background: 'transparent', border: `1.5px solid ${colors.border}`, borderRadius: 8, padding: '10px 28px', fontSize: 13, fontWeight: 600, color: colors.textMuted, cursor: 'pointer', fontFamily: 'inherit' },
-    previewOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 },
-    previewBox: { background: colors.surface, borderRadius: 16, overflow: 'hidden', maxWidth: 640, width: '100%', border: `1px solid ${colors.border}` },
-    previewImg: { width: '100%', maxHeight: 420, objectFit: 'contain', background: colors.surfaceAlt, display: 'block' },
-    previewBody: { padding: 20 },
-    btnRow: { display: 'flex', gap: 10, marginTop: 16 },
-    btnPrimary: { flex: 1, background: colors.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' },
-    btnSecondary: { flex: 1, background: 'transparent', color: colors.textMuted, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+    previewOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 24px' },
+    previewImg: { maxWidth: '100%', maxHeight: 'calc(100vh - 120px)', objectFit: 'contain', display: 'block', borderRadius: 6 },
+    previewCaption: { display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, width: '100%', maxWidth: 900 },
+    previewTitle: { flex: 1, color: '#fff', fontSize: 14, fontWeight: 600 },
+    previewCat: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
+    btnRow: { display: 'flex', gap: 10 },
+    btnPrimary: { background: colors.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' },
+    btnSecondary: { background: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   }
 
   if (loading) return <Spinner />
@@ -138,24 +139,19 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
       {preview && (
         <div style={S.previewOverlay} onClick={() => setPreview(null)}>
-          <div style={S.previewBox} onClick={e => e.stopPropagation()}>
-            <img src={preview.img_url} alt={preview.titulo} style={S.previewImg} />
-            <div style={S.previewBody}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: colors.text }}>{preview.titulo}</div>
-              {preview.categoria && <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}>{preview.categoria}</div>}
-              {preview.sizes?.length > 0 && (
-                <div style={{ marginTop: 10, fontSize: 12, color: colors.textMuted }}>
-                  Tamanhos disponíveis: {preview.sizes.map(s => `${s.l}×${s.a}cm`).join(' · ')}
-                </div>
+          <img src={preview.img_url} alt={preview.titulo} style={S.previewImg} onClick={e => e.stopPropagation()} />
+          <div style={S.previewCaption} onClick={e => e.stopPropagation()}>
+            <div>
+              <div style={S.previewTitle}>{preview.titulo}</div>
+              {preview.categoria && <div style={S.previewCat}>{preview.categoria}</div>}
+            </div>
+            <div style={S.btnRow}>
+              {onSelectImagem && (
+                <button style={S.btnPrimary} onClick={() => { onSelectImagem(preview); setPreview(null) }}>
+                  Usar no Simulador
+                </button>
               )}
-              <div style={S.btnRow}>
-                {onSelectImagem && (
-                  <button style={S.btnPrimary} onClick={() => { onSelectImagem(preview); setPreview(null) }}>
-                    Usar no Simulador
-                  </button>
-                )}
-                <button style={S.btnSecondary} onClick={() => setPreview(null)}>Fechar</button>
-              </div>
+              <button style={S.btnSecondary} onClick={() => setPreview(null)}>Fechar</button>
             </div>
           </div>
         </div>

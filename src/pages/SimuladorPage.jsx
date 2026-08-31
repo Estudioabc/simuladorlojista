@@ -313,7 +313,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
                   onClick={() => setTravarRatio(t => !t)}
                   style={{ background: travarRatio ? colors.accent + '18' : 'transparent', border: `1px solid ${travarRatio ? colors.accent : colors.border}`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, color: travarRatio ? colors.accent : colors.textMuted, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', alignItems: 'center', gap: 4 }}
                 >
-                  {travarRatio ? '🔒' : '🔓'} Proporção {travarRatio ? 'travada' : 'livre'}
+                  Proporção {travarRatio ? 'travada' : 'livre'}
                 </button>
               )}
             </div>
