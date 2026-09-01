@@ -22,6 +22,26 @@ function detectImageRatio(url) {
   })
 }
 
+// Detecta kits: agrupa imagens com "Parte N" no título
+function buildKitMap(imagens) {
+  const groups = {}
+  imagens.forEach(img => {
+    const m = img.titulo.match(/^(.+?)\s+Parte\s+(\d+)$/i)
+    if (!m) return
+    const key = m[1].trim()
+    if (!groups[key]) groups[key] = []
+    groups[key].push({ ...img, _parteNum: parseInt(m[2]) })
+  })
+  // Só conta como kit se tiver 2+ partes
+  const kitOf = {}  // imageId → { kitName, parts (sorted), kitCount }
+  Object.entries(groups).forEach(([kitName, parts]) => {
+    if (parts.length < 2) return
+    const sorted = [...parts].sort((a, b) => a._parteNum - b._parteNum)
+    sorted.forEach(p => { kitOf[p.id] = { kitName, parts: sorted, kitCount: sorted.length } })
+  })
+  return kitOf
+}
+
 export default function BancoImagensPage({ onSelectImagem }) {
   const { profile } = useAuth()
   const { colors } = useTheme()
@@ -35,6 +55,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [frameColor, setFrameColor] = useState('branco')
   const [hoveredId, setHoveredId] = useState(null)
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
+  const [kitOf, setKitOf] = useState({})
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -56,6 +77,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
         from += PAGE
       }
       setImagens(all)
+      setKitOf(buildKitMap(all))
       const cats = [...new Set(all.map(i => i.categoria).filter(Boolean))]
       setCategorias(cats)
       setLoading(false)
@@ -79,7 +101,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
     if (!ratio || ratio <= 0) {
       ratio = await detectImageRatio(img.img_url)
     }
-    setPreview({ ...img, ratio })
+    const kit = kitOf[img.id]
+    setPreview({ ...img, ratio, kitParts: kit?.parts ?? null, kitCount: kit?.kitCount ?? 1 })
     setPreviewMode('arte')
   }
 
@@ -147,7 +170,14 @@ export default function BancoImagensPage({ onSelectImagem }) {
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={() => openPreview(img)}
               >
-                <img src={img.img_url} alt={img.titulo} style={S.img} loading="lazy" />
+                <div style={{ position: 'relative' }}>
+                  <img src={img.img_url} alt={img.titulo} style={S.img} loading="lazy" />
+                  {kitOf[img.id] && (
+                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', letterSpacing: 0.3 }}>
+                      Kit {kitOf[img.id].kitCount}x
+                    </span>
+                  )}
+                </div>
                 <div style={S.cardBody}>
                   <div style={S.cardTitle}>{img.titulo}</div>
                   {img.categoria && <div style={S.cardCat}>{img.categoria}</div>}
@@ -204,7 +234,13 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
             {previewMode === 'arte'
               ? <img src={preview.img_url} alt={preview.titulo} style={S.previewImg} />
-              : <MockupCanvas imgUrl={preview.img_url} ratio={preview.ratio || 1} frameColor={frameColor} width={700} />
+              : <MockupCanvas
+                  imgUrl={preview.kitParts ? null : preview.img_url}
+                  kitUrls={preview.kitParts ? preview.kitParts.map(p => p.img_url) : null}
+                  ratio={preview.ratio || 1}
+                  frameColor={frameColor}
+                  width={700}
+                />
             }
 
             <div style={S.previewCaption}>
@@ -214,8 +250,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
               </div>
               <div style={S.btnRow}>
                 {onSelectImagem && (
-                  <button style={S.btnPrimary} onClick={() => { onSelectImagem(preview); setPreview(null) }}>
-                    Usar no Simulador
+                  <button style={S.btnPrimary} onClick={() => {
+                    onSelectImagem({ ...preview, kitCount: preview.kitCount ?? 1 })
+                    setPreview(null)
+                  }}>
+                    Usar no Simulador{preview.kitCount > 1 ? ` (${preview.kitCount} quadros)` : ''}
                   </button>
                 )}
                 <button style={S.btnSecondary} onClick={() => setPreview(null)}>Fechar</button>

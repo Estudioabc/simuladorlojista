@@ -12,7 +12,34 @@ const FRAME_STYLES = {
   madeira: { fill: '#8B5E3C', stroke: '#6b4828', inner: 'rgba(255,255,255,0.08)' },
 }
 
-export default function MockupCanvas({ imgUrl, ratio = 1, frameColor = 'branco', width = 600 }) {
+function loadImg(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
+}
+
+function drawFrame(ctx, fx, fy, fw, fh, pad, fs) {
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.28)'
+  ctx.shadowBlur = 16
+  ctx.shadowOffsetX = 2
+  ctx.shadowOffsetY = 6
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
+  ctx.restore()
+  ctx.fillStyle = fs.fill
+  ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
+  ctx.strokeStyle = fs.stroke
+  ctx.lineWidth = 1.5
+  ctx.strokeRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
+}
+
+// kitUrls: array de URLs (modo kit) — se undefined, usa imgUrl (modo single)
+export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600 }) {
   const canvasRef = useRef()
 
   const W = width
@@ -20,17 +47,20 @@ export default function MockupCanvas({ imgUrl, ratio = 1, frameColor = 'branco',
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !imgUrl) return
+    if (!canvas) return
+    const urls = kitUrls?.length > 1 ? kitUrls : (imgUrl ? [imgUrl] : [])
+    if (!urls.length) return
+
     const ctx = canvas.getContext('2d')
     canvas.width = W
     canvas.height = H
 
-    const roomImg = new Image()
-    roomImg.onload = () => {
-      // Fundo: foto da sala
+    const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
+    const pad = Math.max(5, Math.round(W * 0.012))
+
+    loadImg('/mockup-sala.jpg').then(async roomImg => {
       ctx.drawImage(roomImg, 0, 0, W, H)
 
-      // Zona disponível na parede (em pixels do canvas)
       const zL = FRAME_ZONE.left * W
       const zR = FRAME_ZONE.right * W
       const zT = FRAME_ZONE.top * H
@@ -38,55 +68,48 @@ export default function MockupCanvas({ imgUrl, ratio = 1, frameColor = 'branco',
       const zW = zR - zL
       const zH = zB - zT
 
-      // Tamanho do quadro dentro da zona, preservando ratio da arte
-      const zoneRatio = zW / zH
+      const N = urls.length
+      const gap = N > 1 ? Math.round(W * 0.015) : 0
+      const colW = (zW - gap * (N - 1)) / N
+
+      // Calcula altura baseada no ratio (assumindo todos com mesmo ratio)
+      const zoneRatio = colW / zH
       let fw, fh
       if (ratio >= zoneRatio) {
-        fw = zW * 0.82
+        fw = colW * 0.88
         fh = fw / ratio
       } else {
-        fh = zH * 0.82
+        fh = zH * 0.88
         fw = fh * ratio
       }
-      const fx = zL + (zW - fw) / 2
+
+      // Carrega todas as artes em paralelo
+      const artImgs = await Promise.all(
+        urls.map(u => loadImg(u).catch(() => null))
+      )
+
+      // Posição vertical: centralizada na zona
       const fy = zT + (zH - fh) / 2
-      const pad = Math.max(6, Math.round(W * 0.013))
 
-      // Sombra
-      ctx.save()
-      ctx.shadowColor = 'rgba(0,0,0,0.28)'
-      ctx.shadowBlur = W * 0.05
-      ctx.shadowOffsetX = W * 0.004
-      ctx.shadowOffsetY = W * 0.018
-      ctx.fillStyle = '#fff'
-      ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
-      ctx.restore()
+      // Largura total do kit com gaps e frames
+      const totalKitW = fw * N + gap * (N - 1)
+      let startX = zL + (zW - totalKitW) / 2
 
-      // Moldura
-      const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
-      ctx.fillStyle = fs.fill
-      ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
-      ctx.strokeStyle = fs.stroke
-      ctx.lineWidth = 1.5
-      ctx.strokeRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
-
-      // Arte
-      const artImg = new Image()
-      artImg.crossOrigin = 'anonymous'
-      artImg.onload = () => {
-        ctx.drawImage(artImg, fx, fy, fw, fh)
-        ctx.strokeStyle = fs.inner
-        ctx.lineWidth = 1
-        ctx.strokeRect(fx, fy, fw, fh)
+      for (let i = 0; i < N; i++) {
+        const fx = startX + i * (fw + gap)
+        drawFrame(ctx, fx, fy, fw, fh, pad, fs)
+        if (artImgs[i]) {
+          ctx.drawImage(artImgs[i], fx, fy, fw, fh)
+          ctx.strokeStyle = fs.inner
+          ctx.lineWidth = 1
+          ctx.strokeRect(fx, fy, fw, fh)
+        } else {
+          ctx.fillStyle = '#e8e4de'
+          ctx.fillRect(fx, fy, fw, fh)
+        }
       }
-      artImg.onerror = () => {
-        ctx.fillStyle = '#e8e4de'
-        ctx.fillRect(fx, fy, fw, fh)
-      }
-      artImg.src = imgUrl
-    }
-    roomImg.src = '/mockup-sala.jpg'
-  }, [imgUrl, ratio, frameColor, W, H])
+    }).catch(() => {})
+  }, [imgUrl, kitUrls, ratio, frameColor, W, H])
 
   return (
     <canvas

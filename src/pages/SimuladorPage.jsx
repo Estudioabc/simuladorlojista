@@ -251,7 +251,12 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
           <button style={S.btnBanco} onClick={() => setShowBanco(false)}>← Voltar ao Simulador</button>
           <span style={{ color: colors.textMuted, fontSize: 13 }}>Clique em uma imagem para selecioná-la</span>
         </div>
-        <BancoImagensPage onSelectImagem={(img) => { setImagem(img); detectRatio(img); setShowBanco(false) }} />
+        <BancoImagensPage onSelectImagem={(img) => {
+          setImagem(img)
+          detectRatio(img)
+          if (img.kitCount > 1) setQuantidade(String(img.kitCount))
+          setShowBanco(false)
+        }} />
       </div>
     )
   }
@@ -292,7 +297,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
                 <img src={imagem.img_url} alt={imagem.titulo} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{imagem.titulo}</div>
-                  {imagem.categoria && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>{imagem.categoria}</div>}
+                  {imagem.categoria && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>{imagem.categoria}{imagem.kitCount > 1 ? ` · Kit ${imagem.kitCount} quadros` : ''}</div>}
                 </div>
                 <button onClick={() => setShowBanco(true)} style={{ ...S.btnBanco, padding: '6px 10px', fontSize: 11 }}>Trocar</button>
                 <button onClick={() => { setImagem(null); setRatio(null); if (onImagemClear) onImagemClear() }} style={S.removeBtn}>×</button>
