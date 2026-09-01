@@ -110,7 +110,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       ratio = await detectImageRatio(img.img_url)
     }
     const kit = kitOf[img.id]
-    setPreview({ ...img, ratio, kitParts: kit?.parts ?? null, kitCount: kit?.kitCount ?? 1 })
+    setPreview({ ...img, titulo: kit ? kit.kitName : img.titulo, ratio, kitParts: kit?.parts ?? null, kitCount: kit?.kitCount ?? 1 })
     setPreviewMode('arte')
   }
 
