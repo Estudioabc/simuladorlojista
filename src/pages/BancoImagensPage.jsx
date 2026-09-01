@@ -22,15 +22,23 @@ function detectImageRatio(url) {
   })
 }
 
-// Detecta kits: agrupa imagens com "Parte N" no título
+function extractKitInfo(titulo) {
+  let m = titulo.match(/^(.+?)\s+Parte\s+(\d+)$/i)
+  if (m) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
+  m = titulo.match(/^(.+?)\s*\((\d+)\)$/)
+  if (m) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
+  return null
+}
+
+// Detecta kits: agrupa imagens com "Parte N" ou "(N)" no título
 function buildKitMap(imagens) {
   const groups = {}
   imagens.forEach(img => {
-    const m = img.titulo.match(/^(.+?)\s+Parte\s+(\d+)$/i)
-    if (!m) return
-    const key = m[1].trim()
+    const info = extractKitInfo(img.titulo)
+    if (!info) return
+    const key = info.kitName
     if (!groups[key]) groups[key] = []
-    groups[key].push({ ...img, _parteNum: parseInt(m[2]) })
+    groups[key].push({ ...img, _parteNum: info.parte })
   })
   // Só conta como kit se tiver 2+ partes
   const kitOf = {}  // imageId → { kitName, parts (sorted), kitCount }
