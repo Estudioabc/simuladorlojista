@@ -237,59 +237,41 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const base = { fontFamily: 'Inter, system-ui, sans-serif' }
 
   const S = {
-    page: { ...base, maxWidth: 980, margin: '0 auto' },
-    heading: { fontSize: 22, fontWeight: 700, color: colors.text, letterSpacing: -0.4, marginBottom: 4 },
-    subheading: { fontSize: 13, color: colors.textMuted, marginBottom: 28 },
-
-    layout: { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 32, alignItems: 'start' },
-
-    // Steps (left)
-    step: (filled) => ({
-      borderLeft: `3px solid ${filled ? accent : colors.border}`,
-      paddingLeft: 18,
-      marginBottom: 28,
-      transition: 'border-color 0.2s',
-    }),
-    stepLabel: { fontSize: 10, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 },
-    stepTitle: { fontSize: 15, fontWeight: 600, color: colors.text, marginBottom: 12 },
-    input: { width: '100%', boxSizing: 'border-box', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 7, padding: '9px 12px', color: colors.text, fontSize: 14, fontFamily: 'Inter, system-ui, sans-serif', outline: 'none' },
-    select: { width: '100%', boxSizing: 'border-box', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 7, padding: '9px 12px', color: colors.text, fontSize: 14, fontFamily: 'Inter, system-ui, sans-serif', outline: 'none', cursor: 'pointer' },
-    row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 90px', gap: 10 },
+    page: { ...base, maxWidth: 900, margin: '0 auto' },
+    input: { width: '100%', boxSizing: 'border-box', background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 7, padding: '10px 12px', color: colors.text, fontSize: 14, fontFamily: 'Inter, system-ui, sans-serif', outline: 'none' },
+    select: { width: '100%', boxSizing: 'border-box', background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 7, padding: '10px 12px', color: colors.text, fontSize: 14, fontFamily: 'Inter, system-ui, sans-serif', outline: 'none', cursor: 'pointer' },
     label: { fontSize: 11, fontWeight: 600, color: colors.textMuted, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 },
-    btnBanco: { background: 'transparent', color: accent, border: `1.5px solid ${accent}`, borderRadius: 7, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' },
-    imgCard: { display: 'flex', gap: 12, alignItems: 'center', background: colors.surfaceAlt, borderRadius: 8, padding: '10px 12px' },
-    removeBtn: { background: 'none', border: 'none', color: colors.textMuted, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px', fontFamily: 'inherit' },
-
-    // Right panel
-    panel: { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 20, position: 'sticky', top: 24 },
-    panelTitle: { fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.1, marginBottom: 16, paddingBottom: 12, borderBottom: `1px solid ${colors.border}` },
-    panelImg: { width: '100%', aspectRatio: '3/2', objectFit: 'cover', borderRadius: 8, marginBottom: 16 },
-    panelImgEmpty: { width: '100%', aspectRatio: '3/2', background: colors.surfaceAlt, borderRadius: 8, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textMuted, fontSize: 12 },
-    optionRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: 12, color: colors.textMuted, marginBottom: 8, gap: 8 },
+    card: { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10, padding: '16px 18px', marginBottom: 12 },
+    cardTitle: { fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
+    toggleBtn: (on) => ({ flex: 1, padding: '11px 14px', borderRadius: 8, border: `2px solid ${on ? accent : colors.border}`, background: on ? accent + '15' : colors.surfaceAlt, color: on ? accent : colors.text, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s', textAlign: 'center' }),
+    glassBtn: (on) => ({ padding: '9px 14px', borderRadius: 7, border: `1.5px solid ${on ? accent : colors.border}`, background: on ? accent + '15' : colors.surfaceAlt, color: on ? accent : colors.text, fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }),
+    btnBanco: { background: 'transparent', color: accent, border: `1.5px solid ${accent}`, borderRadius: 7, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' },
+    removeBtn: { background: 'none', border: 'none', color: colors.textMuted, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 2px', fontFamily: 'inherit' },
+    panel: { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 18, position: 'sticky', top: 24 },
+    panelTitle: { fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.1, marginBottom: 14, paddingBottom: 10, borderBottom: `1px solid ${colors.border}` },
+    panelImgEmpty: { aspectRatio: '4/3', background: colors.surfaceAlt, borderRadius: 8, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textMuted, fontSize: 12 },
+    optionRow: { display: 'flex', justifyContent: 'space-between', fontSize: 12, color: colors.textMuted, marginBottom: 6, gap: 8 },
     optionVal: { color: colors.text, fontWeight: 500, textAlign: 'right', flexShrink: 0 },
-    divider: { borderTop: `1px solid ${colors.border}`, margin: '14px 0' },
-    priceLine: { display: 'flex', justifyContent: 'space-between', fontSize: 12, color: colors.textMuted, marginBottom: 7 },
+    divider: { borderTop: `1px solid ${colors.border}`, margin: '12px 0' },
+    priceLine: { display: 'flex', justifyContent: 'space-between', fontSize: 12, color: colors.textMuted, marginBottom: 6 },
     priceVal: { color: colors.text, fontWeight: 500, fontVariantNumeric: 'tabular-nums' },
-    priceTotal: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 14, paddingTop: 14, borderTop: `2px solid ${colors.border}` },
-    priceTotalLabel: { fontSize: 12, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
-    priceTotalVal: { fontFamily: 'Lora, Georgia, serif', fontSize: 26, fontWeight: 700, color: accent, fontVariantNumeric: 'tabular-nums' },
-    unitLabel: { fontSize: 11, color: colors.textMuted, marginTop: 3, textAlign: 'right' },
-    submitBtn: { width: '100%', background: accent, color: '#fff', border: 'none', borderRadius: 8, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 18, fontFamily: 'Inter, system-ui, sans-serif', transition: 'background 0.15s' },
-    emptyState: { textAlign: 'center', padding: '16px 0', color: colors.textMuted, fontSize: 12, lineHeight: 1.6 },
-    error: { background: colors.danger + '14', border: `1px solid ${colors.danger}30`, borderRadius: 7, padding: '10px 14px', fontSize: 13, color: colors.danger, marginBottom: 14 },
-    success: { background: colors.success + '14', border: `1px solid ${colors.success}30`, borderRadius: 10, padding: 20, fontSize: 14, color: colors.success, textAlign: 'center', marginBottom: 20 },
-    textarea: { width: '100%', boxSizing: 'border-box', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 7, padding: '9px 12px', color: colors.text, fontSize: 13, fontFamily: 'Inter, system-ui, sans-serif', outline: 'none', resize: 'vertical', minHeight: 72 },
-    discountBadge: { display: 'inline-block', background: accent + '18', color: accent, borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 600, marginTop: 10 },
+    priceTotal: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 12, paddingTop: 12, borderTop: `2px solid ${colors.border}` },
+    priceTotalVal: { fontFamily: 'Lora, Georgia, serif', fontSize: 24, fontWeight: 700, color: accent, fontVariantNumeric: 'tabular-nums' },
+    unitLabel: { fontSize: 11, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
+    submitBtn: { width: '100%', background: accent, color: '#fff', border: 'none', borderRadius: 8, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 16, fontFamily: 'Inter, system-ui, sans-serif' },
+    error: { background: colors.danger + '14', border: `1px solid ${colors.danger}30`, borderRadius: 7, padding: '10px 14px', fontSize: 13, color: colors.danger, marginBottom: 12 },
+    success: { background: colors.success + '14', border: `1px solid ${colors.success}30`, borderRadius: 10, padding: 20, fontSize: 14, color: colors.success, textAlign: 'center', marginBottom: 16 },
+    textarea: { width: '100%', boxSizing: 'border-box', background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 7, padding: '9px 12px', color: colors.text, fontSize: 13, fontFamily: 'Inter, system-ui, sans-serif', outline: 'none', resize: 'vertical', minHeight: 60 },
   }
 
-  if (loadingData) return <div style={{ padding: 48, textAlign: 'center' }}><Spinner label="Carregando simulador..." /></div>
+  if (loadingData) return <div style={{ padding: 48, textAlign: 'center' }}><Spinner label="Carregando..." /></div>
   if (erroData) return <div style={{ color: colors.danger, padding: 24 }}>{erroData}</div>
 
   if (showBanco) {
     return (
       <div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 20 }}>
-          <button style={S.btnBanco} onClick={() => setShowBanco(false)}>← Voltar ao Simulador</button>
+          <button style={S.btnBanco} onClick={() => setShowBanco(false)}>← Voltar</button>
           <span style={{ color: colors.textMuted, fontSize: 13 }}>Clique em uma imagem para selecioná-la</span>
         </div>
         <BancoImagensPage onSelectImagem={(img) => {
@@ -303,20 +285,16 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   }
 
   const hasDims = parseFloat(largura) > 0 && parseFloat(altura) > 0
-  const configEmpty = !imagem && !hasDims && !tipoMontagem && !substratoId && !molduraId
 
   return (
     <div style={S.page}>
-      <div style={S.heading}>Simulador de Pedido</div>
-      <div style={S.subheading}>Configure o quadro e veja o valor em tempo real</div>
-
       {sucesso && (
         <div style={S.success}>
           <strong style={{ display: 'block', marginBottom: 4 }}>Pedido enviado!</strong>
           O Estúdio ABC entrará em contato para confirmar.
-          <div style={{ marginTop: 12 }}>
-            <button style={{ ...S.submitBtn, width: 'auto', padding: '9px 20px', fontSize: 12, marginTop: 0 }} onClick={() => setSucesso(false)}>
-              Fazer outro pedido
+          <div style={{ marginTop: 10 }}>
+            <button style={{ ...S.submitBtn, width: 'auto', padding: '8px 20px', fontSize: 12, marginTop: 0 }} onClick={() => setSucesso(false)}>
+              Novo pedido
             </button>
           </div>
         </div>
@@ -324,47 +302,42 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
 
       {erro && <div style={S.error}>{erro}</div>}
 
-      <div style={S.layout} className="sim-layout">
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', gap: 20, alignItems: 'start' }} className="sim-layout">
 
-        {/* ── Coluna esquerda: passos ── */}
+        {/* ── Coluna esquerda ── */}
         <div>
 
           {/* Imagem */}
-          <div style={S.step(!!imagem)}>
-            <div style={S.stepLabel}>Passo 1</div>
-            <div style={S.stepTitle}>Imagem <span style={{ fontWeight: 400, fontSize: 12, color: colors.textMuted }}>— opcional</span></div>
-            {imagem ? (
-              <div style={S.imgCard}>
-                <img src={imagem.img_url} alt={imagem.titulo} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
+          <div style={S.card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={S.cardTitle}>Imagem <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— opcional</span></span>
+              {!imagem && <button style={S.btnBanco} onClick={() => setShowBanco(true)}>Escolher imagem</button>}
+            </div>
+            {imagem && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, background: colors.surfaceAlt, borderRadius: 7, padding: '8px 10px' }}>
+                <img src={imagem.img_url} alt={imagem.titulo} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{imagem.titulo}</div>
-                  {imagem.categoria && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>{imagem.categoria}{imagem.kitCount > 1 ? ` · Kit ${imagem.kitCount} quadros` : ''}</div>}
+                  {imagem.categoria && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 1 }}>{imagem.categoria}{imagem.kitCount > 1 ? ` · Kit ${imagem.kitCount}x` : ''}</div>}
                 </div>
-                <button onClick={() => setShowBanco(true)} style={{ ...S.btnBanco, padding: '6px 10px', fontSize: 11 }}>Trocar</button>
+                <button onClick={() => setShowBanco(true)} style={{ ...S.btnBanco, padding: '5px 10px', fontSize: 11 }}>Trocar</button>
                 <button onClick={() => { setImagem(null); setRatio(null); if (onImagemClear) onImagemClear() }} style={S.removeBtn}>×</button>
               </div>
-            ) : (
-              <button style={S.btnBanco} onClick={() => setShowBanco(true)}>
-                Escolher do banco de imagens
-              </button>
             )}
           </div>
 
           {/* Tamanho */}
-          <div style={S.step(hasDims)}>
-            <div style={S.stepLabel}>Passo 2</div>
+          <div style={S.card}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={S.stepTitle}>Tamanho e Quantidade</div>
+              <span style={S.cardTitle}>Tamanho</span>
               {ratio && (
-                <button
-                  onClick={() => setTravarRatio(t => !t)}
-                  style={{ background: travarRatio ? colors.accent + '18' : 'transparent', border: `1px solid ${travarRatio ? colors.accent : colors.border}`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, color: travarRatio ? colors.accent : colors.textMuted, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', alignItems: 'center', gap: 4 }}
-                >
-                  Proporção {travarRatio ? 'travada' : 'livre'}
+                <button onClick={() => setTravarRatio(t => !t)}
+                  style={{ background: travarRatio ? accent + '18' : 'transparent', border: `1px solid ${travarRatio ? accent : colors.border}`, borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: travarRatio ? accent : colors.textMuted, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
+                  {travarRatio ? '🔒 Proporção travada' : '🔓 Livre'}
                 </button>
               )}
             </div>
-            <div style={S.row3}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 10 }}>
               <div>
                 <label style={S.label}>Largura (cm)</label>
                 <input style={S.input} type="number" min="1" step="0.5" placeholder="60" value={largura} onChange={e => handleLargura(e.target.value)} />
@@ -380,41 +353,32 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
             </div>
             {hasDims && (
               <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 8 }}>
-                {parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm
-                &nbsp;·&nbsp; {((parseFloat(largura) * parseFloat(altura)) / 10000).toFixed(4)} m²
+                {parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm · {((parseFloat(largura) * parseFloat(altura)) / 10000).toFixed(4)} m²
               </div>
             )}
           </div>
 
-          {/* Tipo de Montagem */}
-          <div style={S.step(!!tipoMontagem)}>
-            <div style={S.stepLabel}>Passo 3</div>
-            <div style={S.stepTitle}>Tipo de Montagem</div>
+          {/* Montagem + Vidro (um card só) */}
+          <div style={S.card}>
+            <div style={S.cardTitle}>Montagem</div>
             {montagems.length === 0 ? (
-              <div style={{ color: colors.textMuted, fontSize: 13 }}>Nenhuma montagem disponível para sua conta.</div>
+              <div style={{ color: colors.textMuted, fontSize: 13 }}>Nenhuma montagem disponível.</div>
             ) : (
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {canvasMontagens.length > 0 && (
-                  <button
-                    onClick={() => handleTipoMontagem('canvas')}
-                    style={{ flex: 1, minWidth: 130, padding: '14px 18px', borderRadius: 8, border: `2px solid ${tipoMontagem === 'canvas' ? accent : colors.border}`, background: tipoMontagem === 'canvas' ? accent + '15' : colors.surface, color: tipoMontagem === 'canvas' ? accent : colors.text, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}
-                  >
-                    🖼 Canvas
+                  <button onClick={() => handleTipoMontagem('canvas')} style={S.toggleBtn(tipoMontagem === 'canvas')}>
+                    Canvas
                   </button>
                 )}
                 {convenMontagens.length > 0 && (
-                  <button
-                    onClick={() => handleTipoMontagem('convencional')}
-                    style={{ flex: 1, minWidth: 130, padding: '14px 18px', borderRadius: 8, border: `2px solid ${tipoMontagem === 'convencional' ? accent : colors.border}`, background: tipoMontagem === 'convencional' ? accent + '15' : colors.surface, color: tipoMontagem === 'convencional' ? accent : colors.text, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}
-                  >
-                    🖼 Quadro Convencional
+                  <button onClick={() => handleTipoMontagem('convencional')} style={S.toggleBtn(tipoMontagem === 'convencional')}>
+                    Quadro Convencional
                   </button>
                 )}
               </div>
             )}
-            {/* Sub-select se houver mais de 1 mount_type no tipo escolhido */}
             {tipoMontagem && montagensDoTipo.length > 1 && (
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 10 }}>
                 <label style={S.label}>Especificação</label>
                 <select style={S.select} value={montagemId} onChange={e => setMontagemId(e.target.value)}>
                   <option value="">Selecione...</option>
@@ -422,32 +386,25 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
                 </select>
               </div>
             )}
-          </div>
-
-          {/* Vidro — só para Quadro Convencional */}
-          {tipoMontagem === 'convencional' && glassOptions.length > 0 && (
-            <div style={S.step(!!tipoVidro)}>
-              <div style={S.stepLabel}>Passo 4</div>
-              <div style={S.stepTitle}>Tipo de Vidro</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {glassOptions.map(g => (
-                  <button
-                    key={g.id}
-                    onClick={() => setTipoVidro(g.id)}
-                    style={{ padding: '10px 16px', borderRadius: 8, border: `2px solid ${tipoVidro === g.id ? accent : colors.border}`, background: tipoVidro === g.id ? accent + '15' : colors.surface, color: tipoVidro === g.id ? accent : colors.text, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}
-                  >
-                    {g.label}
-                  </button>
-                ))}
+            {/* Vidro aparece inline no mesmo card */}
+            {tipoMontagem === 'convencional' && glassOptions.length > 0 && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${colors.border}` }}>
+                <label style={S.label}>Vidro</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {glassOptions.map(g => (
+                    <button key={g.id} onClick={() => setTipoVidro(g.id)} style={S.glassBtn(tipoVidro === g.id)}>
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Moldura */}
           {frames.length > 0 && (
-            <div style={S.step(!!molduraId)}>
-              <div style={S.stepLabel}>Passo {tipoMontagem === 'convencional' ? '5' : '4'}</div>
-              <div style={S.stepTitle}>Moldura <span style={{ fontWeight: 400, fontSize: 12, color: colors.textMuted }}>— opcional</span></div>
+            <div style={S.card}>
+              <div style={S.cardTitle}>Moldura <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— opcional</span></div>
               <select style={S.select} value={molduraId} onChange={e => setMolduraId(e.target.value)}>
                 <option value="">Sem moldura</option>
                 {catOrder.filter(c => framesPorCat[c]).map(cat => (
@@ -459,150 +416,121 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
             </div>
           )}
 
-          {/* Dados do cliente */}
-          <div style={S.step(!!(clienteNome || clienteContato || formaEntrega))}>
-            <div style={S.stepLabel}>Passo {tipoMontagem === 'convencional' ? (frames.length > 0 ? '6' : '5') : (frames.length > 0 ? '5' : '4')}</div>
-            <div style={S.stepTitle}>Dados do Cliente <span style={{ fontWeight: 400, fontSize: 12, color: colors.textMuted }}>— opcional</span></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+          {/* Cliente */}
+          <div style={S.card}>
+            <div style={S.cardTitle}>Cliente <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— opcional</span></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
-                <label style={S.label}>Nome do cliente</label>
-                <input style={S.input} placeholder="Ex: Maria Silva" value={clienteNome} onChange={e => setClienteNome(e.target.value)} />
+                <label style={S.label}>Nome</label>
+                <input style={S.input} placeholder="Nome do cliente" value={clienteNome} onChange={e => setClienteNome(e.target.value)} />
               </div>
               <div>
-                <label style={S.label}>Contato (tel / e-mail)</label>
-                <input style={S.input} placeholder="(11) 99999-9999" value={clienteContato} onChange={e => setClienteContato(e.target.value)} />
+                <label style={S.label}>Contato</label>
+                <input style={S.input} placeholder="Tel / e-mail" value={clienteContato} onChange={e => setClienteContato(e.target.value)} />
               </div>
             </div>
-            <div style={{ marginBottom: formaEntrega === 'entrega' ? 10 : 0 }}>
-              <label style={S.label}>Forma de entrega</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[{ id: 'retirada', label: 'Retirada na loja' }, { id: 'entrega', label: 'Entrega no cliente' }].map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => setFormaEntrega(f.id)}
-                    style={{ padding: '9px 16px', borderRadius: 7, border: `2px solid ${formaEntrega === f.id ? accent : colors.border}`, background: formaEntrega === f.id ? accent + '15' : colors.surface, color: formaEntrega === f.id ? accent : colors.text, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+            <label style={S.label}>Entrega</label>
+            <div style={{ display: 'flex', gap: 8, marginBottom: formaEntrega === 'entrega' ? 10 : 0 }}>
+              {[{ id: 'retirada', label: 'Retira na loja' }, { id: 'entrega', label: 'Entrega no cliente' }].map(f => (
+                <button key={f.id} onClick={() => setFormaEntrega(f.id)} style={S.glassBtn(formaEntrega === f.id)}>
+                  {f.label}
+                </button>
+              ))}
             </div>
             {formaEntrega === 'entrega' && (
-              <div style={{ marginTop: 10 }}>
-                <label style={S.label}>Endereço de entrega</label>
+              <div>
+                <label style={S.label}>Endereço</label>
                 <input style={S.input} placeholder="Rua, número, bairro, cidade..." value={enderecoEntrega} onChange={e => setEnderecoEntrega(e.target.value)} />
               </div>
             )}
           </div>
 
           {/* Observações */}
-          <div style={S.step(!!obs)}>
-            <div style={S.stepLabel}>Observações</div>
-            <div style={S.stepTitle}>Informações adicionais <span style={{ fontWeight: 400, fontSize: 12, color: colors.textMuted }}>— opcional</span></div>
-            <textarea style={S.textarea} placeholder="Prazo, preferências de acabamento, instruções especiais..." value={obs} onChange={e => setObs(e.target.value)} />
+          <div style={S.card}>
+            <label style={S.label}>Observações <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— opcional</span></label>
+            <textarea style={S.textarea} placeholder="Prazo, acabamento, instruções especiais..." value={obs} onChange={e => setObs(e.target.value)} />
           </div>
 
         </div>
 
         {/* ── Painel lateral: resumo + preço ── */}
         <div style={S.panel}>
-          <div style={S.panelTitle}>Resumo do Pedido</div>
+          <div style={S.panelTitle}>Resumo</div>
 
-          {/* Imagem / Mockup */}
           {imagem ? (
-            <MockupCanvas imgUrl={imagem.img_url} ratio={ratio || parseFloat(imagem.ratio) || 1} width={300} />
+            <MockupCanvas imgUrl={imagem.img_url} ratio={ratio || parseFloat(imagem.ratio) || 1} width={270} />
           ) : (
-            <div style={S.panelImgEmpty}>sem imagem selecionada</div>
+            <div style={S.panelImgEmpty}>sem imagem</div>
           )}
 
-          {/* Config summary */}
-          {configEmpty ? (
-            <div style={S.emptyState}>
-              Configure o pedido ao lado<br />para ver o resumo e o valor.
-            </div>
-          ) : (
-            <>
-              {hasDims && (
-                <div style={S.optionRow}>
-                  <span>Tamanho</span>
-                  <span style={S.optionVal}>{parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm{parseInt(quantidade) > 1 ? ` × ${quantidade} un.` : ''}</span>
-                </div>
-              )}
-              {tipoMontagem && (
-                <div style={S.optionRow}>
-                  <span>Montagem</span>
-                  <span style={S.optionVal}>{tipoMontagem === 'canvas' ? 'Canvas' : 'Quadro Convencional'}{montagem ? ` — ${montagem.nome}` : ''}</span>
-                </div>
-              )}
-              {tipoVidro && (
-                <div style={S.optionRow}>
-                  <span>Vidro</span>
-                  <span style={S.optionVal}>{GLASS_TYPES.find(g => g.id === tipoVidro)?.label ?? tipoVidro}</span>
-                </div>
-              )}
-              {substrato && (
-                <div style={S.optionRow}>
-                  <span>Substrato</span>
-                  <span style={S.optionVal}>{substrato.name}</span>
-                </div>
-              )}
-              {moldura && (
-                <div style={S.optionRow}>
-                  <span>Moldura</span>
-                  <span style={S.optionVal}>{moldura.name}</span>
-                </div>
-              )}
+          <div style={{ marginTop: 12 }}>
+            {hasDims && (
+              <div style={S.optionRow}>
+                <span>Tamanho</span>
+                <span style={S.optionVal}>{parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm{parseInt(quantidade) > 1 ? ` × ${quantidade}` : ''}</span>
+              </div>
+            )}
+            {tipoMontagem && (
+              <div style={S.optionRow}>
+                <span>Montagem</span>
+                <span style={S.optionVal}>{tipoMontagem === 'canvas' ? 'Canvas' : 'Convencional'}{montagem ? ` · ${montagem.nome}` : ''}</span>
+              </div>
+            )}
+            {tipoVidro && (
+              <div style={S.optionRow}>
+                <span>Vidro</span>
+                <span style={S.optionVal}>{GLASS_TYPES.find(g => g.id === tipoVidro)?.label}</span>
+              </div>
+            )}
+            {moldura && (
+              <div style={S.optionRow}>
+                <span>Moldura</span>
+                <span style={S.optionVal}>{moldura.name}</span>
+              </div>
+            )}
+            {clienteNome && (
+              <div style={S.optionRow}>
+                <span>Cliente</span>
+                <span style={S.optionVal}>{clienteNome}</span>
+              </div>
+            )}
+            {formaEntrega && (
+              <div style={S.optionRow}>
+                <span>Entrega</span>
+                <span style={S.optionVal}>{formaEntrega === 'retirada' ? 'Retira' : 'Entrega'}</span>
+              </div>
+            )}
 
-              {/* Preço */}
-              {preco && preco.lines.length > 0 && (
-                <>
-                  <div style={S.divider} />
-                  {preco.lines.map((l, i) => (
-                    <div key={i} style={S.priceLine}>
-                      <span style={{ flex: 1, paddingRight: 8 }}>{l.label}</span>
-                      <span style={S.priceVal}>{formatCurrency(l.valor)}</span>
-                    </div>
-                  ))}
-
-                  <div style={S.priceTotal}>
-                    <div style={S.priceTotalLabel}>Total</div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={S.priceTotalVal}>{formatCurrency(preco.totalGeral)}</div>
-                      {preco.qty > 1 && (
-                        <div style={S.unitLabel}>{formatCurrency(preco.totalPeca)} / unidade</div>
-                      )}
-                    </div>
+            {preco && preco.lines.length > 0 && (
+              <>
+                <div style={S.divider} />
+                {preco.lines.map((l, i) => (
+                  <div key={i} style={S.priceLine}>
+                    <span style={{ flex: 1, paddingRight: 8 }}>{l.label}</span>
+                    <span style={S.priceVal}>{formatCurrency(l.valor)}</span>
                   </div>
-
-                  {markupPct > 0 && (
-                    <div style={S.discountBadge}>Markup de {markupPct}% aplicado</div>
-                  )}
-                </>
-              )}
-
-              {preco && preco.lines.length === 0 && hasDims && (
-                <>
-                  <div style={S.divider} />
-                  <div style={{ ...S.emptyState, padding: '8px 0' }}>
-                    Selecione montagem e/ou substrato<br />para calcular o valor.
+                ))}
+                <div style={S.priceTotal}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Total</span>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={S.priceTotalVal}>{formatCurrency(preco.totalGeral)}</div>
+                    {preco.qty > 1 && <div style={S.unitLabel}>{formatCurrency(preco.totalPeca)} / un.</div>}
                   </div>
-                </>
-              )}
-            </>
-          )}
+                </div>
+                {markupPct > 0 && (
+                  <div style={{ fontSize: 11, color: accent, marginTop: 8 }}>Markup {markupPct}% aplicado</div>
+                )}
+              </>
+            )}
+          </div>
 
-          <button
-            style={{ ...S.submitBtn, opacity: enviando ? 0.6 : 1 }}
-            disabled={enviando}
-            onClick={handleEnviar}
-          >
+          <button style={{ ...S.submitBtn, opacity: enviando ? 0.6 : 1 }} disabled={enviando} onClick={handleEnviar}>
             {enviando ? 'Enviando...' : 'Enviar Pedido'}
           </button>
         </div>
 
       </div>
 
-      {/* Mobile: responsivo */}
       <style>{`
         @media (max-width: 640px) {
           .sim-layout { grid-template-columns: 1fr !important; }
