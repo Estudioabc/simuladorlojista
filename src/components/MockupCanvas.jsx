@@ -22,7 +22,7 @@ function loadImg(src) {
   })
 }
 
-function drawFrame(ctx, fx, fy, fw, fh, pad, fs) {
+function drawFrameOnly(ctx, fx, fy, fw, fh, pad, fs) {
   ctx.save()
   ctx.shadowColor = 'rgba(0,0,0,0.28)'
   ctx.shadowBlur = 16
@@ -69,35 +69,47 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
       const zH = zB - zT
 
       const N = urls.length
-      const gap = N > 1 ? Math.round(W * 0.015) : 0
-      const colW = (zW - gap * (N - 1)) / N
-
-      // Calcula altura baseada no ratio (assumindo todos com mesmo ratio)
-      const zoneRatio = colW / zH
-      let fw, fh
-      if (ratio >= zoneRatio) {
-        fw = colW * 0.88
-        fh = fw / ratio
-      } else {
-        fh = zH * 0.88
-        fw = fh * ratio
-      }
+      const gap = N > 1 ? Math.round(W * 0.018) : 0
 
       // Carrega todas as artes em paralelo
       const artImgs = await Promise.all(
         urls.map(u => loadImg(u).catch(() => null))
       )
 
-      // Posição vertical: centralizada na zona
+      // Usa o ratio real de cada imagem carregada; fallback para prop ratio (modo single)
+      const ratios = artImgs.map(a =>
+        a ? (a.naturalWidth / a.naturalHeight) : ratio
+      )
+
+      // Altura comum para todos os quadros: começa com 88% da zona
+      let fh = zH * 0.88
+      // Larguras individuais baseadas no ratio real de cada parte
+      let fws = ratios.map(r => fh * r)
+      const totalW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
+      // Se não couber na zona, escala para caber em 95% da zona
+      if (totalW > zW * 0.95) {
+        const scale = (zW * 0.95) / totalW
+        fh = fh * scale
+        fws = fws.map(w => w * scale)
+      }
+
+      const totalKitW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
+      let startX = zL + (zW - totalKitW) / 2
       const fy = zT + (zH - fh) / 2
 
-      // Largura total do kit com gaps e frames
-      const totalKitW = fw * N + gap * (N - 1)
-      let startX = zL + (zW - totalKitW) / 2
-
+      // Calcula posição x de cada quadro
+      const frames = []
+      let cx = startX
       for (let i = 0; i < N; i++) {
-        const fx = startX + i * (fw + gap)
-        drawFrame(ctx, fx, fy, fw, fh, pad, fs)
+        frames.push({ fx: cx, fy, fw: fws[i], fh })
+        cx += fws[i] + gap
+      }
+
+      // 1ª passada: desenha todos os frames (sombra não vaza sobre a arte vizinha)
+      frames.forEach(({ fx, fy, fw, fh }) => drawFrameOnly(ctx, fx, fy, fw, fh, pad, fs))
+
+      // 2ª passada: desenha as artes por cima
+      frames.forEach(({ fx, fy, fw, fh }, i) => {
         if (artImgs[i]) {
           ctx.drawImage(artImgs[i], fx, fy, fw, fh)
           ctx.strokeStyle = fs.inner
@@ -107,7 +119,7 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
           ctx.fillStyle = '#e8e4de'
           ctx.fillRect(fx, fy, fw, fh)
         }
-      }
+      })
     }).catch(() => {})
   }, [imgUrl, kitUrls, ratio, frameColor, W, H])
 
