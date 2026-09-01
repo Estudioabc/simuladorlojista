@@ -63,14 +63,20 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const [erroData, setErroData] = useState('')
 
   const [imagem, setImagem] = useState(imagemInicial ?? null)
-  const [ratio, setRatio] = useState(null)       // largura/altura natural da imagem
+  const [ratio, setRatio] = useState(null)
   const [travarRatio, setTravarRatio] = useState(true)
   const [largura, setLargura] = useState('')
   const [altura, setAltura] = useState('')
   const [quantidade, setQuantidade] = useState('1')
+  const [tipoMontagem, setTipoMontagem] = useState('') // 'canvas' | 'convencional'
   const [montagemId, setMontagemId] = useState('')
+  const [tipoVidro, setTipoVidro] = useState('')
   const [substratoId, setSubstratoId] = useState('')
   const [molduraId, setMolduraId] = useState('')
+  const [clienteNome, setClienteNome] = useState('')
+  const [clienteContato, setClienteContato] = useState('')
+  const [formaEntrega, setFormaEntrega] = useState('') // 'retirada' | 'entrega'
+  const [enderecoEntrega, setEnderecoEntrega] = useState('')
   const [obs, setObs] = useState('')
 
   const [showBanco, setShowBanco] = useState(false)
@@ -150,24 +156,55 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
     }
   }
 
+  const GLASS_TYPES = [
+    { id: 'sem_vidro', label: 'Sem Vidro' },
+    { id: 'vidro_comum', label: 'Vidro Comum' },
+    { id: 'antirreflexo', label: 'Antirreflexo' },
+  ]
+
+  const isCanvasMontagem = (nome) => nome?.toLowerCase().includes('canvas')
+
+  const canvasMontagens = montagems.filter(m => isCanvasMontagem(m.nome))
+  const convenMontagens = montagems.filter(m => !isCanvasMontagem(m.nome))
+
+  // mount_types disponíveis para o tipo selecionado
+  const montagensDoTipo = tipoMontagem === 'canvas' ? canvasMontagens : tipoMontagem === 'convencional' ? convenMontagens : []
+
+  // glass types permitidos para este lojista
+  const allowedGlassTypes = lojista?.allowed_glass_types ?? ['sem_vidro', 'vidro_comum', 'antirreflexo']
+  const glassOptions = GLASS_TYPES.filter(g => allowedGlassTypes.includes(g.id))
+
+  const handleTipoMontagem = (tipo) => {
+    setTipoMontagem(tipo)
+    setTipoVidro('')
+    // Auto-seleciona o único mount_type do tipo, se houver só 1
+    const lista = tipo === 'canvas' ? canvasMontagens : convenMontagens
+    setMontagemId(lista.length === 1 ? lista[0].id : '')
+  }
+
   const resetForm = () => {
     setImagem(null); setLargura(''); setAltura(''); setQuantidade('1')
-    setMontagemId(''); setSubstratoId(''); setMolduraId(''); setObs('')
+    setTipoMontagem(''); setMontagemId(''); setTipoVidro('')
+    setSubstratoId(''); setMolduraId(''); setObs('')
+    setClienteNome(''); setClienteContato(''); setFormaEntrega(''); setEnderecoEntrega('')
     setRatio(null); setTravarRatio(true)
     if (onImagemClear) onImagemClear()
   }
 
   const handleEnviar = async () => {
     if (!largura || !altura) { setErro('Informe o tamanho do quadro.'); return }
-    if (!montagemId) { setErro('Selecione um tipo de montagem.'); return }
+    if (!tipoMontagem) { setErro('Selecione o tipo de montagem (Canvas ou Quadro Convencional).'); return }
+    if (tipoMontagem === 'convencional' && !tipoVidro) { setErro('Selecione o tipo de vidro.'); return }
     setErro('')
     setEnviando(true)
     try {
       await callFunction('sim-pedido', {
         method: 'POST',
         body: {
-          montagem_id: montagemId,
+          montagem_id: montagemId || null,
           montagem_nome: montagem?.nome ?? '',
+          tipo_montagem: tipoMontagem,
+          tipo_vidro: tipoVidro || null,
           substrato_id: substratoId || null,
           substrato_nome: substrato?.name ?? null,
           moldura_id: molduraId || null,
@@ -176,6 +213,10 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
           altura_cm: parseFloat(altura),
           quantidade: parseInt(quantidade) || 1,
           obs,
+          cliente_nome: clienteNome || null,
+          cliente_contato: clienteContato || null,
+          forma_entrega: formaEntrega || null,
+          endereco_entrega: formaEntrega === 'entrega' ? (enderecoEntrega || null) : null,
           imagem_id: imagem?.id ?? null,
           imagem_titulo: imagem?.titulo ?? null,
           imagem_url: imagem?.img_url ?? null,
@@ -262,7 +303,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   }
 
   const hasDims = parseFloat(largura) > 0 && parseFloat(altura) > 0
-  const configEmpty = !imagem && !hasDims && !montagemId && !substratoId && !molduraId
+  const configEmpty = !imagem && !hasDims && !tipoMontagem && !substratoId && !molduraId
 
   return (
     <div style={S.page}>
@@ -345,38 +386,67 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
             )}
           </div>
 
-          {/* Montagem */}
-          <div style={S.step(!!montagemId)}>
+          {/* Tipo de Montagem */}
+          <div style={S.step(!!tipoMontagem)}>
             <div style={S.stepLabel}>Passo 3</div>
             <div style={S.stepTitle}>Tipo de Montagem</div>
             {montagems.length === 0 ? (
               <div style={{ color: colors.textMuted, fontSize: 13 }}>Nenhuma montagem disponível para sua conta.</div>
             ) : (
-              <select style={S.select} value={montagemId} onChange={e => setMontagemId(e.target.value)}>
-                <option value="">Selecione...</option>
-                {montagems.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-              </select>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {canvasMontagens.length > 0 && (
+                  <button
+                    onClick={() => handleTipoMontagem('canvas')}
+                    style={{ flex: 1, minWidth: 130, padding: '14px 18px', borderRadius: 8, border: `2px solid ${tipoMontagem === 'canvas' ? accent : colors.border}`, background: tipoMontagem === 'canvas' ? accent + '15' : colors.surface, color: tipoMontagem === 'canvas' ? accent : colors.text, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}
+                  >
+                    🖼 Canvas
+                  </button>
+                )}
+                {convenMontagens.length > 0 && (
+                  <button
+                    onClick={() => handleTipoMontagem('convencional')}
+                    style={{ flex: 1, minWidth: 130, padding: '14px 18px', borderRadius: 8, border: `2px solid ${tipoMontagem === 'convencional' ? accent : colors.border}`, background: tipoMontagem === 'convencional' ? accent + '15' : colors.surface, color: tipoMontagem === 'convencional' ? accent : colors.text, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}
+                  >
+                    🖼 Quadro Convencional
+                  </button>
+                )}
+              </div>
+            )}
+            {/* Sub-select se houver mais de 1 mount_type no tipo escolhido */}
+            {tipoMontagem && montagensDoTipo.length > 1 && (
+              <div style={{ marginTop: 12 }}>
+                <label style={S.label}>Especificação</label>
+                <select style={S.select} value={montagemId} onChange={e => setMontagemId(e.target.value)}>
+                  <option value="">Selecione...</option>
+                  {montagensDoTipo.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                </select>
+              </div>
             )}
           </div>
 
-          {/* Substrato */}
-          {substrates.length > 0 && (
-            <div style={S.step(!!substratoId)}>
+          {/* Vidro — só para Quadro Convencional */}
+          {tipoMontagem === 'convencional' && glassOptions.length > 0 && (
+            <div style={S.step(!!tipoVidro)}>
               <div style={S.stepLabel}>Passo 4</div>
-              <div style={S.stepTitle}>Substrato</div>
-              <select style={S.select} value={substratoId} onChange={e => setSubstratoId(e.target.value)}>
-                <option value="">Sem preferência</option>
-                {substrates.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}{s.substrate_type ? ` (${s.substrate_type})` : ''}</option>
+              <div style={S.stepTitle}>Tipo de Vidro</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {glassOptions.map(g => (
+                  <button
+                    key={g.id}
+                    onClick={() => setTipoVidro(g.id)}
+                    style={{ padding: '10px 16px', borderRadius: 8, border: `2px solid ${tipoVidro === g.id ? accent : colors.border}`, background: tipoVidro === g.id ? accent + '15' : colors.surface, color: tipoVidro === g.id ? accent : colors.text, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}
+                  >
+                    {g.label}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           )}
 
           {/* Moldura */}
           {frames.length > 0 && (
             <div style={S.step(!!molduraId)}>
-              <div style={S.stepLabel}>Passo {substrates.length > 0 ? '5' : '4'}</div>
+              <div style={S.stepLabel}>Passo {tipoMontagem === 'convencional' ? '5' : '4'}</div>
               <div style={S.stepTitle}>Moldura <span style={{ fontWeight: 400, fontSize: 12, color: colors.textMuted }}>— opcional</span></div>
               <select style={S.select} value={molduraId} onChange={e => setMolduraId(e.target.value)}>
                 <option value="">Sem moldura</option>
@@ -388,6 +458,42 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
               </select>
             </div>
           )}
+
+          {/* Dados do cliente */}
+          <div style={S.step(!!(clienteNome || clienteContato || formaEntrega))}>
+            <div style={S.stepLabel}>Passo {tipoMontagem === 'convencional' ? (frames.length > 0 ? '6' : '5') : (frames.length > 0 ? '5' : '4')}</div>
+            <div style={S.stepTitle}>Dados do Cliente <span style={{ fontWeight: 400, fontSize: 12, color: colors.textMuted }}>— opcional</span></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              <div>
+                <label style={S.label}>Nome do cliente</label>
+                <input style={S.input} placeholder="Ex: Maria Silva" value={clienteNome} onChange={e => setClienteNome(e.target.value)} />
+              </div>
+              <div>
+                <label style={S.label}>Contato (tel / e-mail)</label>
+                <input style={S.input} placeholder="(11) 99999-9999" value={clienteContato} onChange={e => setClienteContato(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginBottom: formaEntrega === 'entrega' ? 10 : 0 }}>
+              <label style={S.label}>Forma de entrega</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[{ id: 'retirada', label: 'Retirada na loja' }, { id: 'entrega', label: 'Entrega no cliente' }].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setFormaEntrega(f.id)}
+                    style={{ padding: '9px 16px', borderRadius: 7, border: `2px solid ${formaEntrega === f.id ? accent : colors.border}`, background: formaEntrega === f.id ? accent + '15' : colors.surface, color: formaEntrega === f.id ? accent : colors.text, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {formaEntrega === 'entrega' && (
+              <div style={{ marginTop: 10 }}>
+                <label style={S.label}>Endereço de entrega</label>
+                <input style={S.input} placeholder="Rua, número, bairro, cidade..." value={enderecoEntrega} onChange={e => setEnderecoEntrega(e.target.value)} />
+              </div>
+            )}
+          </div>
 
           {/* Observações */}
           <div style={S.step(!!obs)}>
@@ -422,10 +528,16 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
                   <span style={S.optionVal}>{parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm{parseInt(quantidade) > 1 ? ` × ${quantidade} un.` : ''}</span>
                 </div>
               )}
-              {montagem && (
+              {tipoMontagem && (
                 <div style={S.optionRow}>
                   <span>Montagem</span>
-                  <span style={S.optionVal}>{montagem.nome}</span>
+                  <span style={S.optionVal}>{tipoMontagem === 'canvas' ? 'Canvas' : 'Quadro Convencional'}{montagem ? ` — ${montagem.nome}` : ''}</span>
+                </div>
+              )}
+              {tipoVidro && (
+                <div style={S.optionRow}>
+                  <span>Vidro</span>
+                  <span style={S.optionVal}>{GLASS_TYPES.find(g => g.id === tipoVidro)?.label ?? tipoVidro}</span>
                 </div>
               )}
               {substrato && (
