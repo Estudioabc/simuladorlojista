@@ -3,7 +3,7 @@ import { supabase } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../styles/theme'
 import { Spinner, EmptyState, Tag } from '../components/UI'
-import MockupCanvas from '../components/MockupCanvas'
+import MockupCanvas, { KitThumb } from '../components/MockupCanvas'
 
 const PAGE_SIZE = 48
 
@@ -206,7 +206,6 @@ export default function BancoImagensPage({ onSelectImagem }) {
                 const { img, isKit, kit } = entry
                 const cardKey = isKit ? `kit-${kit.kitName}` : img.id
                 const title = isKit ? kit.kitName : img.titulo
-                const thumbUrl = isKit && kit.cover ? kit.cover.img_url : img.img_url
                 return (
                   <div
                     key={cardKey}
@@ -216,7 +215,10 @@ export default function BancoImagensPage({ onSelectImagem }) {
                     onClick={() => openPreview(img)}
                   >
                     <div style={{ position: 'relative' }}>
-                      <img src={thumbUrl} alt={title} style={S.img} loading="lazy" />
+                      {isKit
+                        ? <KitThumb kitUrls={kit.parts.map(p => p.img_url)} frameColor="branco" cardWidth={200} />
+                        : <img src={img.img_url} alt={title} style={S.img} loading="lazy" />
+                      }
                       {isKit && (
                         <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', letterSpacing: 0.3 }}>
                           Kit {kit.kitCount}x
