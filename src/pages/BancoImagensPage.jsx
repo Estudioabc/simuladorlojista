@@ -24,9 +24,9 @@ function detectImageRatio(url) {
 
 function extractKitInfo(titulo) {
   let m = titulo.match(/^(.+?)\s+Parte\s+(\d+)$/i)
-  if (m) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
+  if (m && parseInt(m[2]) >= 1) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
   m = titulo.match(/^(.+?)\s*\((\d+)\)$/)
-  if (m) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
+  if (m && parseInt(m[2]) >= 1) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
   return null
 }
 
@@ -170,28 +170,49 @@ export default function BancoImagensPage({ onSelectImagem }) {
             Exibindo {exibidas.length} de {filtradas.length}
           </div>
           <div style={S.grid}>
-            {exibidas.map(img => (
-              <div
-                key={img.id}
-                style={S.card(hoveredId === img.id)}
-                onMouseEnter={() => setHoveredId(img.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                onClick={() => openPreview(img)}
-              >
-                <div style={{ position: 'relative' }}>
-                  <img src={img.img_url} alt={img.titulo} style={S.img} loading="lazy" />
-                  {kitOf[img.id] && (
-                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', letterSpacing: 0.3 }}>
-                      Kit {kitOf[img.id].kitCount}x
-                    </span>
-                  )}
-                </div>
-                <div style={S.cardBody}>
-                  <div style={S.cardTitle}>{img.titulo}</div>
-                  {img.categoria && <div style={S.cardCat}>{img.categoria}</div>}
-                </div>
-              </div>
-            ))}
+            {(() => {
+              // Colapsa kits em um único card por kit
+              const seen = new Set()
+              const display = []
+              exibidas.forEach(img => {
+                const kit = kitOf[img.id]
+                if (kit) {
+                  const key = kit.kitName
+                  if (seen.has(key)) return
+                  seen.add(key)
+                  display.push({ isKit: true, kit, img: kit.parts[0] })
+                } else {
+                  display.push({ isKit: false, img })
+                }
+              })
+              return display.map(entry => {
+                const { img, isKit, kit } = entry
+                const cardKey = isKit ? `kit-${kit.kitName}` : img.id
+                const title = isKit ? kit.kitName : img.titulo
+                return (
+                  <div
+                    key={cardKey}
+                    style={S.card(hoveredId === cardKey)}
+                    onMouseEnter={() => setHoveredId(cardKey)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    onClick={() => openPreview(img)}
+                  >
+                    <div style={{ position: 'relative' }}>
+                      <img src={img.img_url} alt={title} style={S.img} loading="lazy" />
+                      {isKit && (
+                        <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', letterSpacing: 0.3 }}>
+                          Kit {kit.kitCount}x
+                        </span>
+                      )}
+                    </div>
+                    <div style={S.cardBody}>
+                      <div style={S.cardTitle}>{title}</div>
+                      {img.categoria && <div style={S.cardCat}>{img.categoria}</div>}
+                    </div>
+                  </div>
+                )
+              })
+            })()}
           </div>
           {temMais && (
             <button style={S.maisBtn} onClick={() => setVisiveis(v => v + PAGE_SIZE)}>
