@@ -22,32 +22,37 @@ function detectImageRatio(url) {
   })
 }
 
-function extractKitInfo(titulo) {
+function extractKitParte(titulo) {
+  // Retorna { kitName, parte } para qualquer parte >= 0
   let m = titulo.match(/^(.+?)\s+Parte\s+(\d+)$/i)
-  if (m && parseInt(m[2]) >= 1) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
+  if (m) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
   m = titulo.match(/^(.+?)\s*\((\d+)\)$/)
-  if (m && parseInt(m[2]) >= 1) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
+  if (m) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
   return null
 }
 
 // Detecta kits: agrupa imagens com "Parte N" ou "(N)" no título
+// (0) = capa do kit; (1+) = partes reais
+// Retorna { kitOf, coverOf }
 function buildKitMap(imagens) {
-  const groups = {}
+  const groups = {}  // kitName → { cover: img|null, parts: [] }
   imagens.forEach(img => {
-    const info = extractKitInfo(img.titulo)
+    const info = extractKitParte(img.titulo)
     if (!info) return
-    const key = info.kitName
-    if (!groups[key]) groups[key] = []
-    groups[key].push({ ...img, _parteNum: info.parte })
+    if (!groups[info.kitName]) groups[info.kitName] = { cover: null, parts: [] }
+    if (info.parte === 0) groups[info.kitName].cover = img
+    else groups[info.kitName].parts.push({ ...img, _parteNum: info.parte })
   })
-  // Só conta como kit se tiver 2+ partes
-  const kitOf = {}  // imageId → { kitName, parts (sorted), kitCount }
-  Object.entries(groups).forEach(([kitName, parts]) => {
+  const kitOf = {}   // imageId (parte>=1) → { kitName, parts, kitCount, cover }
+  const coverOf = {} // imageId (parte=0)  → kitName (para ocultar do grid)
+  Object.entries(groups).forEach(([kitName, { cover, parts }]) => {
     if (parts.length < 2) return
     const sorted = [...parts].sort((a, b) => a._parteNum - b._parteNum)
-    sorted.forEach(p => { kitOf[p.id] = { kitName, parts: sorted, kitCount: sorted.length } })
+    const kitInfo = { kitName, parts: sorted, kitCount: sorted.length, cover: cover ?? null }
+    sorted.forEach(p => { kitOf[p.id] = kitInfo })
+    if (cover) coverOf[cover.id] = kitName
   })
-  return kitOf
+  return { kitOf, coverOf }
 }
 
 export default function BancoImagensPage({ onSelectImagem }) {
@@ -64,6 +69,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [hoveredId, setHoveredId] = useState(null)
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
   const [kitOf, setKitOf] = useState({})
+  const [coverOf, setCoverOf] = useState({})
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -85,7 +91,9 @@ export default function BancoImagensPage({ onSelectImagem }) {
         from += PAGE
       }
       setImagens(all)
-      setKitOf(buildKitMap(all))
+      const { kitOf: ko, coverOf: co } = buildKitMap(all)
+      setKitOf(ko)
+      setCoverOf(co)
       const cats = [...new Set(all.map(i => i.categoria).filter(Boolean))]
       setCategorias(cats)
       setLoading(false)
@@ -110,7 +118,15 @@ export default function BancoImagensPage({ onSelectImagem }) {
       ratio = await detectImageRatio(img.img_url)
     }
     const kit = kitOf[img.id]
-    setPreview({ ...img, titulo: kit ? kit.kitName : img.titulo, ratio, kitParts: kit?.parts ?? null, kitCount: kit?.kitCount ?? 1 })
+    const coverImg = kit?.cover ?? null
+    setPreview({
+      ...img,
+      titulo: kit ? kit.kitName : img.titulo,
+      img_url: coverImg ? coverImg.img_url : img.img_url,
+      ratio: coverImg ? (parseFloat(coverImg.ratio) || ratio) : ratio,
+      kitParts: kit?.parts ?? null,
+      kitCount: kit?.kitCount ?? 1,
+    })
     setPreviewMode('arte')
   }
 
@@ -171,10 +187,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
           </div>
           <div style={S.grid}>
             {(() => {
-              // Colapsa kits em um único card por kit
+              // Colapsa kits em um único card; oculta capas (0) do grid
               const seen = new Set()
               const display = []
               exibidas.forEach(img => {
+                if (coverOf[img.id]) return  // capa de kit: oculta do grid
                 const kit = kitOf[img.id]
                 if (kit) {
                   const key = kit.kitName
@@ -189,6 +206,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
                 const { img, isKit, kit } = entry
                 const cardKey = isKit ? `kit-${kit.kitName}` : img.id
                 const title = isKit ? kit.kitName : img.titulo
+                const thumbUrl = isKit && kit.cover ? kit.cover.img_url : img.img_url
                 return (
                   <div
                     key={cardKey}
@@ -198,7 +216,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
                     onClick={() => openPreview(img)}
                   >
                     <div style={{ position: 'relative' }}>
-                      <img src={img.img_url} alt={title} style={S.img} loading="lazy" />
+                      <img src={thumbUrl} alt={title} style={S.img} loading="lazy" />
                       {isKit && (
                         <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', letterSpacing: 0.3 }}>
                           Kit {kit.kitCount}x
