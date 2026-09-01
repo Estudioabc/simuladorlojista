@@ -43,7 +43,7 @@ function calcPreco({ montagem, substrato, moldura, w, h, qty, materialsByCategor
   return { lines, totalPeca, totalGeral: totalPeca * q, qty: q }
 }
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap'
+const FONTS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap'
 
 function injectFonts() {
   if (document.querySelector('[data-sim-fonts]')) return
@@ -236,32 +236,62 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const accent = colors.accent
   const base = { fontFamily: 'Inter, system-ui, sans-serif' }
 
-  const S = {
-    page: { ...base, maxWidth: 900, margin: '0 auto' },
-    input: { width: '100%', boxSizing: 'border-box', background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 7, padding: '10px 12px', color: colors.text, fontSize: 14, fontFamily: 'Inter, system-ui, sans-serif', outline: 'none' },
-    select: { width: '100%', boxSizing: 'border-box', background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 7, padding: '10px 12px', color: colors.text, fontSize: 14, fontFamily: 'Inter, system-ui, sans-serif', outline: 'none', cursor: 'pointer' },
-    label: { fontSize: 11, fontWeight: 600, color: colors.textMuted, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 },
-    card: { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10, padding: '16px 18px', marginBottom: 12 },
-    cardTitle: { fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
-    toggleBtn: (on) => ({ flex: 1, padding: '11px 14px', borderRadius: 8, border: `2px solid ${on ? accent : colors.border}`, background: on ? accent + '15' : colors.surfaceAlt, color: on ? accent : colors.text, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s', textAlign: 'center' }),
-    glassBtn: (on) => ({ padding: '9px 14px', borderRadius: 7, border: `1.5px solid ${on ? accent : colors.border}`, background: on ? accent + '15' : colors.surfaceAlt, color: on ? accent : colors.text, fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }),
-    btnBanco: { background: 'transparent', color: accent, border: `1.5px solid ${accent}`, borderRadius: 7, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' },
-    removeBtn: { background: 'none', border: 'none', color: colors.textMuted, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 2px', fontFamily: 'inherit' },
-    panel: { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 18, position: 'sticky', top: 24 },
-    panelTitle: { fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.1, marginBottom: 14, paddingBottom: 10, borderBottom: `1px solid ${colors.border}` },
-    panelImgEmpty: { aspectRatio: '4/3', background: colors.surfaceAlt, borderRadius: 8, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textMuted, fontSize: 12 },
-    optionRow: { display: 'flex', justifyContent: 'space-between', fontSize: 12, color: colors.textMuted, marginBottom: 6, gap: 8 },
-    optionVal: { color: colors.text, fontWeight: 500, textAlign: 'right', flexShrink: 0 },
-    divider: { borderTop: `1px solid ${colors.border}`, margin: '12px 0' },
-    priceLine: { display: 'flex', justifyContent: 'space-between', fontSize: 12, color: colors.textMuted, marginBottom: 6 },
-    priceVal: { color: colors.text, fontWeight: 500, fontVariantNumeric: 'tabular-nums' },
-    priceTotal: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 12, paddingTop: 12, borderTop: `2px solid ${colors.border}` },
-    priceTotalVal: { fontFamily: 'Lora, Georgia, serif', fontSize: 24, fontWeight: 700, color: accent, fontVariantNumeric: 'tabular-nums' },
-    unitLabel: { fontSize: 11, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
-    submitBtn: { width: '100%', background: accent, color: '#fff', border: 'none', borderRadius: 8, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 16, fontFamily: 'Inter, system-ui, sans-serif' },
-    error: { background: colors.danger + '14', border: `1px solid ${colors.danger}30`, borderRadius: 7, padding: '10px 14px', fontSize: 13, color: colors.danger, marginBottom: 12 },
-    success: { background: colors.success + '14', border: `1px solid ${colors.success}30`, borderRadius: 10, padding: 20, fontSize: 14, color: colors.success, textAlign: 'center', marginBottom: 16 },
-    textarea: { width: '100%', boxSizing: 'border-box', background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 7, padding: '9px 12px', color: colors.text, fontSize: 13, fontFamily: 'Inter, system-ui, sans-serif', outline: 'none', resize: 'vertical', minHeight: 60 },
+  // ── Design tokens locais (estendem o tema) ──────────────────────────────
+  const gold = accent  // #b08a4e
+  const goldLight = accent + '20'
+  const goldBorder = accent + '60'
+
+  const inp = {
+    width: '100%', boxSizing: 'border-box',
+    background: colors.surface,
+    border: `1px solid ${colors.border}`,
+    borderRadius: 6,
+    padding: '10px 12px',
+    color: colors.text,
+    fontSize: 14,
+    fontFamily: 'Inter, system-ui, sans-serif',
+    outline: 'none',
+    transition: 'border-color 0.15s',
+  }
+
+  const lbl = {
+    fontSize: 10, fontWeight: 700, color: colors.textMuted,
+    display: 'block', marginBottom: 6,
+    textTransform: 'uppercase', letterSpacing: 1.2,
+  }
+
+  // Botão tipo toggle: canvas / convencional
+  const typeBtn = (on) => ({
+    flex: 1, minWidth: 120,
+    padding: '14px 12px',
+    borderRadius: 6,
+    border: `1.5px solid ${on ? gold : colors.border}`,
+    background: on ? goldLight : colors.surfaceAlt,
+    color: on ? gold : colors.text,
+    fontWeight: 600, fontSize: 13,
+    fontFamily: 'Inter, system-ui, sans-serif',
+    cursor: 'pointer', transition: 'all 0.15s',
+    textAlign: 'center', lineHeight: 1.3,
+  })
+
+  // Botão pequeno: vidro / entrega
+  const chipBtn = (on) => ({
+    padding: '8px 14px',
+    borderRadius: 20,
+    border: `1.5px solid ${on ? gold : colors.border}`,
+    background: on ? goldLight : 'transparent',
+    color: on ? gold : colors.textMuted,
+    fontWeight: 600, fontSize: 12,
+    fontFamily: 'Inter, system-ui, sans-serif',
+    cursor: 'pointer', transition: 'all 0.15s',
+    whiteSpace: 'nowrap',
+  })
+
+  const sectionLine = {
+    fontSize: 10, fontWeight: 700, color: colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 1.4,
+    paddingBottom: 10, marginBottom: 16,
+    borderBottom: `1px solid ${colors.border}`,
   }
 
   if (loadingData) return <div style={{ padding: 48, textAlign: 'center' }}><Spinner label="Carregando..." /></div>
@@ -271,8 +301,11 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
     return (
       <div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 20 }}>
-          <button style={S.btnBanco} onClick={() => setShowBanco(false)}>← Voltar</button>
-          <span style={{ color: colors.textMuted, fontSize: 13 }}>Clique em uma imagem para selecioná-la</span>
+          <button
+            onClick={() => setShowBanco(false)}
+            style={{ background: 'none', border: 'none', color: gold, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', alignItems: 'center', gap: 6 }}>
+            ← Voltar ao simulador
+          </button>
         </div>
         <BancoImagensPage onSelectImagem={(img) => {
           setImagem(img)
@@ -287,112 +320,145 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const hasDims = parseFloat(largura) > 0 && parseFloat(altura) > 0
 
   return (
-    <div style={S.page}>
+    <div style={{ maxWidth: 920, margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif' }}>
+
+      {/* Cabeçalho */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: colors.text, margin: 0, letterSpacing: -0.5 }}>
+          Novo Pedido
+        </h1>
+        <p style={{ fontSize: 13, color: colors.textMuted, margin: '4px 0 0' }}>
+          {lojista?.store_name ?? 'Simulador'}
+        </p>
+      </div>
+
       {sucesso && (
-        <div style={S.success}>
-          <strong style={{ display: 'block', marginBottom: 4 }}>Pedido enviado!</strong>
-          O Estúdio ABC entrará em contato para confirmar.
-          <div style={{ marginTop: 10 }}>
-            <button style={{ ...S.submitBtn, width: 'auto', padding: '8px 20px', fontSize: 12, marginTop: 0 }} onClick={() => setSucesso(false)}>
-              Novo pedido
-            </button>
+        <div style={{ background: colors.success + '12', border: `1px solid ${colors.success}40`, borderRadius: 8, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <div style={{ fontWeight: 700, color: colors.success, fontSize: 14, marginBottom: 2 }}>Pedido enviado com sucesso</div>
+            <div style={{ fontSize: 12, color: colors.textMuted }}>O Estúdio ABC entrará em contato para confirmar.</div>
           </div>
+          <button onClick={() => setSucesso(false)}
+            style={{ background: colors.success, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', whiteSpace: 'nowrap' }}>
+            Novo pedido
+          </button>
         </div>
       )}
 
-      {erro && <div style={S.error}>{erro}</div>}
+      {erro && (
+        <div style={{ background: colors.danger + '12', border: `1px solid ${colors.danger}40`, borderRadius: 6, padding: '10px 14px', fontSize: 13, color: colors.danger, marginBottom: 16 }}>
+          {erro}
+        </div>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', gap: 20, alignItems: 'start' }} className="sim-layout">
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 290px', gap: 24, alignItems: 'start' }} className="sim-layout">
 
-        {/* ── Coluna esquerda ── */}
-        <div>
+        {/* ─── Coluna esquerda: formulário ─── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
           {/* Imagem */}
-          <div style={S.card}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={S.cardTitle}>Imagem <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— opcional</span></span>
-              {!imagem && <button style={S.btnBanco} onClick={() => setShowBanco(true)}>Escolher imagem</button>}
+          <div style={{ paddingBottom: 20, marginBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: imagem ? 12 : 0 }}>
+              <span style={lbl}>Imagem — opcional</span>
+              {!imagem && (
+                <button onClick={() => setShowBanco(true)}
+                  style={{ background: 'none', border: `1.5px solid ${gold}`, color: gold, borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
+                  Escolher imagem
+                </button>
+              )}
             </div>
             {imagem && (
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, background: colors.surfaceAlt, borderRadius: 7, padding: '8px 10px' }}>
-                <img src={imagem.img_url} alt={imagem.titulo} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: colors.surfaceAlt, borderRadius: 8, padding: '10px 12px' }}>
+                <img src={imagem.img_url} alt={imagem.titulo}
+                  style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 5, flexShrink: 0, border: `1px solid ${colors.border}` }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{imagem.titulo}</div>
-                  {imagem.categoria && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 1 }}>{imagem.categoria}{imagem.kitCount > 1 ? ` · Kit ${imagem.kitCount}x` : ''}</div>}
+                  {imagem.kitCount > 1 && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>Kit {imagem.kitCount} quadros</div>}
                 </div>
-                <button onClick={() => setShowBanco(true)} style={{ ...S.btnBanco, padding: '5px 10px', fontSize: 11 }}>Trocar</button>
-                <button onClick={() => { setImagem(null); setRatio(null); if (onImagemClear) onImagemClear() }} style={S.removeBtn}>×</button>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button onClick={() => setShowBanco(true)}
+                    style={{ background: 'none', border: `1px solid ${colors.border}`, color: colors.textMuted, borderRadius: 5, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
+                    Trocar
+                  </button>
+                  <button onClick={() => { setImagem(null); setRatio(null); if (onImagemClear) onImagemClear() }}
+                    style={{ background: 'none', border: 'none', color: colors.textMuted, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '4px 6px' }}>
+                    ×
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
           {/* Tamanho */}
-          <div style={S.card}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={S.cardTitle}>Tamanho</span>
+          <div style={{ paddingBottom: 20, marginBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={lbl}>Tamanho</span>
               {ratio && (
                 <button onClick={() => setTravarRatio(t => !t)}
-                  style={{ background: travarRatio ? accent + '18' : 'transparent', border: `1px solid ${travarRatio ? accent : colors.border}`, borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: travarRatio ? accent : colors.textMuted, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}>
-                  {travarRatio ? '🔒 Proporção travada' : '🔓 Livre'}
+                  style={{ background: 'none', border: `1px solid ${travarRatio ? gold : colors.border}`, color: travarRatio ? gold : colors.textMuted, borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}>
+                  {travarRatio ? 'Proporção travada' : 'Proporção livre'}
                 </button>
               )}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 10 }}>
               <div>
-                <label style={S.label}>Largura (cm)</label>
-                <input style={S.input} type="number" min="1" step="0.5" placeholder="60" value={largura} onChange={e => handleLargura(e.target.value)} />
+                <label style={lbl}>Largura (cm)</label>
+                <input style={inp} type="number" min="1" step="0.5" placeholder="60" value={largura} onChange={e => handleLargura(e.target.value)} />
               </div>
               <div>
-                <label style={S.label}>Altura (cm)</label>
-                <input style={S.input} type="number" min="1" step="0.5" placeholder="40" value={altura} onChange={e => handleAltura(e.target.value)} />
+                <label style={lbl}>Altura (cm)</label>
+                <input style={inp} type="number" min="1" step="0.5" placeholder="40" value={altura} onChange={e => handleAltura(e.target.value)} />
               </div>
               <div>
-                <label style={S.label}>Qtd.</label>
-                <input style={S.input} type="number" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+                <label style={lbl}>Qtd.</label>
+                <input style={inp} type="number" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
               </div>
             </div>
             {hasDims && (
-              <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 8 }}>
-                {parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm · {((parseFloat(largura) * parseFloat(altura)) / 10000).toFixed(4)} m²
+              <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 8, letterSpacing: 0.2 }}>
+                {parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm &nbsp;·&nbsp; {((parseFloat(largura) * parseFloat(altura)) / 10000).toFixed(4)} m²
               </div>
             )}
           </div>
 
-          {/* Montagem + Vidro (um card só) */}
-          <div style={S.card}>
-            <div style={S.cardTitle}>Montagem</div>
+          {/* Montagem + Vidro */}
+          <div style={{ paddingBottom: 20, marginBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
+            <div style={lbl}>Montagem</div>
             {montagems.length === 0 ? (
-              <div style={{ color: colors.textMuted, fontSize: 13 }}>Nenhuma montagem disponível.</div>
+              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>Nenhuma montagem disponível.</p>
             ) : (
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {canvasMontagens.length > 0 && (
-                  <button onClick={() => handleTipoMontagem('canvas')} style={S.toggleBtn(tipoMontagem === 'canvas')}>
-                    Canvas
+                  <button onClick={() => handleTipoMontagem('canvas')} style={typeBtn(tipoMontagem === 'canvas')}>
+                    <span style={{ display: 'block', fontSize: 15, marginBottom: 2 }}>Canvas</span>
+                    <span style={{ display: 'block', fontSize: 10, fontWeight: 400, color: tipoMontagem === 'canvas' ? gold : colors.textMuted, letterSpacing: 0 }}>impressão em tela</span>
                   </button>
                 )}
                 {convenMontagens.length > 0 && (
-                  <button onClick={() => handleTipoMontagem('convencional')} style={S.toggleBtn(tipoMontagem === 'convencional')}>
-                    Quadro Convencional
+                  <button onClick={() => handleTipoMontagem('convencional')} style={typeBtn(tipoMontagem === 'convencional')}>
+                    <span style={{ display: 'block', fontSize: 15, marginBottom: 2 }}>Quadro</span>
+                    <span style={{ display: 'block', fontSize: 10, fontWeight: 400, color: tipoMontagem === 'convencional' ? gold : colors.textMuted, letterSpacing: 0 }}>com vidro e moldura</span>
                   </button>
                 )}
               </div>
             )}
+
             {tipoMontagem && montagensDoTipo.length > 1 && (
-              <div style={{ marginTop: 10 }}>
-                <label style={S.label}>Especificação</label>
-                <select style={S.select} value={montagemId} onChange={e => setMontagemId(e.target.value)}>
+              <div style={{ marginTop: 12 }}>
+                <label style={lbl}>Especificação</label>
+                <select style={inp} value={montagemId} onChange={e => setMontagemId(e.target.value)}>
                   <option value="">Selecione...</option>
                   {montagensDoTipo.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
               </div>
             )}
-            {/* Vidro aparece inline no mesmo card */}
+
             {tipoMontagem === 'convencional' && glassOptions.length > 0 && (
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${colors.border}` }}>
-                <label style={S.label}>Vidro</label>
+              <div style={{ marginTop: 16 }}>
+                <label style={lbl}>Vidro</label>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {glassOptions.map(g => (
-                    <button key={g.id} onClick={() => setTipoVidro(g.id)} style={S.glassBtn(tipoVidro === g.id)}>
+                    <button key={g.id} onClick={() => setTipoVidro(g.id)} style={chipBtn(tipoVidro === g.id)}>
                       {g.label}
                     </button>
                   ))}
@@ -403,9 +469,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
 
           {/* Moldura */}
           {frames.length > 0 && (
-            <div style={S.card}>
-              <div style={S.cardTitle}>Moldura <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— opcional</span></div>
-              <select style={S.select} value={molduraId} onChange={e => setMolduraId(e.target.value)}>
+            <div style={{ paddingBottom: 20, marginBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
+              <label style={lbl}>Moldura — opcional</label>
+              <select style={inp} value={molduraId} onChange={e => setMolduraId(e.target.value)}>
                 <option value="">Sem moldura</option>
                 {catOrder.filter(c => framesPorCat[c]).map(cat => (
                   <optgroup key={cat} label={catLabels[cat]}>
@@ -417,124 +483,168 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
           )}
 
           {/* Cliente */}
-          <div style={S.card}>
-            <div style={S.cardTitle}>Cliente <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>— opcional</span></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div style={{ paddingBottom: 20, marginBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
+            <div style={lbl}>Dados do cliente — opcional</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
               <div>
-                <label style={S.label}>Nome</label>
-                <input style={S.input} placeholder="Nome do cliente" value={clienteNome} onChange={e => setClienteNome(e.target.value)} />
+                <label style={lbl}>Nome</label>
+                <input style={inp} placeholder="Nome do cliente" value={clienteNome} onChange={e => setClienteNome(e.target.value)} />
               </div>
               <div>
-                <label style={S.label}>Contato</label>
-                <input style={S.input} placeholder="Tel / e-mail" value={clienteContato} onChange={e => setClienteContato(e.target.value)} />
+                <label style={lbl}>Contato</label>
+                <input style={inp} placeholder="(11) 99999-9999" value={clienteContato} onChange={e => setClienteContato(e.target.value)} />
               </div>
             </div>
-            <label style={S.label}>Entrega</label>
-            <div style={{ display: 'flex', gap: 8, marginBottom: formaEntrega === 'entrega' ? 10 : 0 }}>
-              {[{ id: 'retirada', label: 'Retira na loja' }, { id: 'entrega', label: 'Entrega no cliente' }].map(f => (
-                <button key={f.id} onClick={() => setFormaEntrega(f.id)} style={S.glassBtn(formaEntrega === f.id)}>
+            <label style={lbl}>Forma de entrega</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: formaEntrega === 'entrega' ? 12 : 0 }}>
+              {[{ id: 'retirada', label: 'Retira na loja' }, { id: 'entrega', label: 'Entrega no endereço' }].map(f => (
+                <button key={f.id} onClick={() => setFormaEntrega(f.id)} style={chipBtn(formaEntrega === f.id)}>
                   {f.label}
                 </button>
               ))}
             </div>
             {formaEntrega === 'entrega' && (
               <div>
-                <label style={S.label}>Endereço</label>
-                <input style={S.input} placeholder="Rua, número, bairro, cidade..." value={enderecoEntrega} onChange={e => setEnderecoEntrega(e.target.value)} />
+                <label style={lbl}>Endereço de entrega</label>
+                <input style={inp} placeholder="Rua, número, bairro, cidade..." value={enderecoEntrega} onChange={e => setEnderecoEntrega(e.target.value)} />
               </div>
             )}
           </div>
 
           {/* Observações */}
-          <div style={S.card}>
-            <label style={S.label}>Observações <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— opcional</span></label>
-            <textarea style={S.textarea} placeholder="Prazo, acabamento, instruções especiais..." value={obs} onChange={e => setObs(e.target.value)} />
+          <div>
+            <label style={lbl}>Observações — opcional</label>
+            <textarea
+              style={{ ...inp, resize: 'vertical', minHeight: 64 }}
+              placeholder="Prazo, acabamento especial, instruções de produção..."
+              value={obs}
+              onChange={e => setObs(e.target.value)}
+            />
           </div>
 
         </div>
 
-        {/* ── Painel lateral: resumo + preço ── */}
-        <div style={S.panel}>
-          <div style={S.panelTitle}>Resumo</div>
+        {/* ─── Painel direito: resumo ─── */}
+        <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10, padding: 20, position: 'sticky', top: 24 }}>
 
+          <div style={sectionLine}>Resumo do pedido</div>
+
+          {/* Mockup */}
           {imagem ? (
-            <MockupCanvas imgUrl={imagem.img_url} ratio={ratio || parseFloat(imagem.ratio) || 1} width={270} />
+            <div style={{ marginBottom: 16 }}>
+              <MockupCanvas imgUrl={imagem.img_url} ratio={ratio || parseFloat(imagem.ratio) || 1} width={250} />
+            </div>
           ) : (
-            <div style={S.panelImgEmpty}>sem imagem</div>
+            <div style={{ aspectRatio: '4/3', background: colors.surfaceAlt, borderRadius: 6, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 12, color: colors.textMuted }}>sem imagem</span>
+            </div>
           )}
 
-          <div style={{ marginTop: 12 }}>
+          {/* Itens do resumo */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
             {hasDims && (
-              <div style={S.optionRow}>
-                <span>Tamanho</span>
-                <span style={S.optionVal}>{parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm{parseInt(quantidade) > 1 ? ` × ${quantidade}` : ''}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Tamanho</span>
+                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>
+                  {parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm{parseInt(quantidade) > 1 ? ` · ${quantidade} un.` : ''}
+                </span>
               </div>
             )}
             {tipoMontagem && (
-              <div style={S.optionRow}>
-                <span>Montagem</span>
-                <span style={S.optionVal}>{tipoMontagem === 'canvas' ? 'Canvas' : 'Convencional'}{montagem ? ` · ${montagem.nome}` : ''}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Montagem</span>
+                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>
+                  {tipoMontagem === 'canvas' ? 'Canvas' : 'Quadro'}{montagem ? ` · ${montagem.nome}` : ''}
+                </span>
               </div>
             )}
             {tipoVidro && (
-              <div style={S.optionRow}>
-                <span>Vidro</span>
-                <span style={S.optionVal}>{GLASS_TYPES.find(g => g.id === tipoVidro)?.label}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Vidro</span>
+                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right' }}>
+                  {GLASS_TYPES.find(g => g.id === tipoVidro)?.label}
+                </span>
               </div>
             )}
             {moldura && (
-              <div style={S.optionRow}>
-                <span>Moldura</span>
-                <span style={S.optionVal}>{moldura.name}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Moldura</span>
+                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>
+                  {moldura.name}
+                </span>
               </div>
             )}
             {clienteNome && (
-              <div style={S.optionRow}>
-                <span>Cliente</span>
-                <span style={S.optionVal}>{clienteNome}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Cliente</span>
+                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>{clienteNome}</span>
               </div>
             )}
             {formaEntrega && (
-              <div style={S.optionRow}>
-                <span>Entrega</span>
-                <span style={S.optionVal}>{formaEntrega === 'retirada' ? 'Retira' : 'Entrega'}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Entrega</span>
+                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right' }}>{formaEntrega === 'retirada' ? 'Retira na loja' : 'Entrega'}</span>
               </div>
-            )}
-
-            {preco && preco.lines.length > 0 && (
-              <>
-                <div style={S.divider} />
-                {preco.lines.map((l, i) => (
-                  <div key={i} style={S.priceLine}>
-                    <span style={{ flex: 1, paddingRight: 8 }}>{l.label}</span>
-                    <span style={S.priceVal}>{formatCurrency(l.valor)}</span>
-                  </div>
-                ))}
-                <div style={S.priceTotal}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Total</span>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={S.priceTotalVal}>{formatCurrency(preco.totalGeral)}</div>
-                    {preco.qty > 1 && <div style={S.unitLabel}>{formatCurrency(preco.totalPeca)} / un.</div>}
-                  </div>
-                </div>
-                {markupPct > 0 && (
-                  <div style={{ fontSize: 11, color: accent, marginTop: 8 }}>Markup {markupPct}% aplicado</div>
-                )}
-              </>
             )}
           </div>
 
-          <button style={{ ...S.submitBtn, opacity: enviando ? 0.6 : 1 }} disabled={enviando} onClick={handleEnviar}>
-            {enviando ? 'Enviando...' : 'Enviar Pedido'}
+          {/* Composição do preço */}
+          {preco && preco.lines.length > 0 && (
+            <>
+              <div style={{ borderTop: `1px solid ${colors.border}`, margin: '14px 0 12px' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {preco.lines.map((l, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, gap: 8 }}>
+                    <span style={{ color: colors.textMuted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.label}</span>
+                    <span style={{ color: colors.text, fontWeight: 500, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{formatCurrency(l.valor)}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ borderTop: `2px solid ${colors.border}`, marginTop: 14, paddingTop: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2 }}>Total</span>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 28, fontWeight: 600, color: gold, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                      {formatCurrency(preco.totalGeral)}
+                    </div>
+                    {preco.qty > 1 && (
+                      <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>
+                        {formatCurrency(preco.totalPeca)} / unidade
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {markupPct > 0 && (
+                  <div style={{ fontSize: 11, color: gold, marginTop: 8, opacity: 0.8 }}>Markup de {markupPct}% aplicado</div>
+                )}
+              </div>
+            </>
+          )}
+
+          <button
+            onClick={handleEnviar}
+            disabled={enviando}
+            style={{
+              width: '100%', marginTop: 18,
+              background: enviando ? colors.textMuted : gold,
+              color: '#fff', border: 'none', borderRadius: 6,
+              padding: '13px', fontSize: 14, fontWeight: 600,
+              cursor: enviando ? 'default' : 'pointer',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              letterSpacing: 0.3, transition: 'background 0.15s',
+            }}>
+            {enviando ? 'Enviando…' : 'Enviar Pedido'}
           </button>
         </div>
 
       </div>
 
       <style>{`
-        @media (max-width: 640px) {
+        @media (max-width: 660px) {
           .sim-layout { grid-template-columns: 1fr !important; }
         }
+        input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+        select option { background: #fff; color: #1a1814; }
       `}</style>
     </div>
   )
