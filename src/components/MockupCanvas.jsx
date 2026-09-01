@@ -69,7 +69,7 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
       const zH = zB - zT
 
       const N = urls.length
-      const gap = N > 1 ? Math.round(W * 0.018) : 0
+      const gap = N > 1 ? Math.round(W * 0.035) : 0
 
       // Carrega todas as artes em paralelo
       const artImgs = await Promise.all(
