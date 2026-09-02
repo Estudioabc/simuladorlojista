@@ -475,22 +475,10 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
               </div>
             )}
 
-            {tipoMontagem === 'convencional' && glassOptions.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <label style={lbl}>Vidro</label>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {glassOptions.map(g => (
-                    <button key={g.id} onClick={() => setTipoVidro(g.id)} style={chipBtn(tipoVidro === g.id)}>
-                      {g.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Moldura */}
-          {frames.length > 0 && (
+          {/* Moldura — antes do vidro */}
+          {frames.length > 0 && tipoMontagem && (
             <div style={{ paddingBottom: 20, marginBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
               <label style={lbl}>Moldura *</label>
               <select style={inp} value={molduraId} onChange={e => setMolduraId(e.target.value)}>
@@ -501,6 +489,20 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
                   </optgroup>
                 ))}
               </select>
+            </div>
+          )}
+
+          {/* Vidro — após moldura */}
+          {tipoMontagem === 'convencional' && molduraId && glassOptions.length > 0 && (
+            <div style={{ paddingBottom: 20, marginBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
+              <label style={lbl}>Vidro</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {glassOptions.map(g => (
+                  <button key={g.id} onClick={() => setTipoVidro(g.id)} style={chipBtn(tipoVidro === g.id)}>
+                    {g.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -610,8 +612,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
             )}
           </div>
 
-          {/* Total */}
-          {preco && preco.totalGeral > 0 && (
+          {/* Total — só aparece com moldura selecionada */}
+          {preco && preco.totalGeral > 0 && molduraId && (
             <>
               <div style={{ borderTop: `2px solid ${colors.border}`, marginTop: 14, paddingTop: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
