@@ -6,36 +6,59 @@ import { Spinner } from '../components/UI'
 import MockupCanvas from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
 
-function calcPreco({ montagem, substrato, moldura, w, h, qty, materialsByCategory, markupPct }) {
+function calcPreco({ montagem, substrato, moldura, w, h, qty, materials, tipoVidro, markupPct }) {
   if (!w || !h || w <= 0 || h <= 0) return null
   const areaM2 = (w * h) / 10000
   const markup = 1 + (parseFloat(markupPct) || 0) / 100
+  const molduraW = parseFloat(moldura?.width_cm) || 0
+  const perimM = 2 * (w + h) / 100
+  const perimComMolduraM = 2 * (w + h + molduraW * 4) / 100
   const lines = []
 
   if (substrato) {
     const base = areaM2 * (parseFloat(substrato.sell_price) || 0)
-    lines.push({ label: `Impressão ${substrato.name}`, valor: base * markup })
+    if (base > 0) lines.push({ label: `Impressão ${substrato.name}`, valor: base * markup })
   }
 
-  if (montagem?.items?.length) {
-    const allMats = Object.values(materialsByCategory).flat()
-    for (const item of montagem.items) {
-      const iN = typeof item === 'string' ? item : item.name
-      if (iN === 'moldura' || iN === 'reforco' || iN === 'reforço') continue
-      const matId = typeof item === 'object' ? item.default_material_id : null
-      if (!matId) continue
-      const mat = allMats.find(m => m.id === matId)
-      if (!mat) continue
-      const base = areaM2 * (parseFloat(mat.sell_price) || 0)
-      lines.push({ label: mat.name, valor: base * markup })
+  if (montagem?.itens?.length) {
+    for (const item of montagem.itens) {
+      const role = item.role
+
+      if (role === 'vidro_selecionavel') {
+        if (!tipoVidro || tipoVidro === 'sem_vidro') continue
+        // vidro_cristal_id → vidro_comum, vidro_museu_id → antirreflexo
+        const matId = tipoVidro === 'vidro_comum' ? item.vidro_cristal_id : tipoVidro === 'antirreflexo' ? item.vidro_museu_id : null
+        if (!matId) continue
+        const mat = materials?.find(m => m.id === matId)
+        if (!mat) continue
+        const base = areaM2 * (parseFloat(mat.sell_price) || 0)
+        if (base > 0) lines.push({ label: mat.name, valor: base * markup })
+
+      } else if (role === 'verniz_opcional' || role === 'acabamento_fixo') {
+        // ignorado no simulador lojista (sem config de valor fixo)
+        continue
+
+      } else {
+        const matId = item.material_id
+        if (!matId) continue
+        const mat = materials?.find(m => m.id === matId)
+        if (!mat) continue
+
+        let qty_item = 1
+        if (role === 'area') qty_item = areaM2
+        else if (role === 'area_outer') qty_item = areaM2 * 1.1
+        else if (role === 'moldura_perimetro') qty_item = perimComMolduraM
+        else if (role === 'chassi_canvas' || role === 'moldura_canvas' || role === 'reforco_perimetro') qty_item = perimM
+
+        const base = qty_item * (parseFloat(mat.sell_price) || 0)
+        if (base > 0) lines.push({ label: mat.name, valor: base * markup })
+      }
     }
   }
 
   if (moldura) {
-    const fw = parseFloat(moldura.width_cm) || 0
-    const perimeterM = 2 * (w + h + fw * 4) / 100
-    const base = perimeterM * (parseFloat(moldura.sell_price) || 0)
-    lines.push({ label: `Moldura ${moldura.name}`, valor: base * markup })
+    const base = perimComMolduraM * (parseFloat(moldura.sell_price) || 0)
+    if (base > 0) lines.push({ label: `Moldura ${moldura.name}`, valor: base * markup })
   }
 
   const totalPeca = lines.reduce((s, l) => s + l.valor, 0)
@@ -120,7 +143,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const montagems = catalogoData?.simMontagems ?? []
   const substrates = catalogoData?.substrates ?? []
   const frames = catalogoData?.frames ?? []
-  const materialsByCategory = catalogoData?.materialsByCategory ?? {}
+  const materials = catalogoData?.materials ?? []
   const discount = catalogoData?.discount_pct ?? 0
 
   const montagem = montagems.find(m => m.id === montagemId) ?? null
@@ -130,8 +153,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const markupPct = lojista?.markup_pct ?? 0
 
   const preco = useMemo(() =>
-    calcPreco({ montagem, substrato, moldura, w: parseFloat(largura), h: parseFloat(altura), qty: quantidade, materialsByCategory, markupPct }),
-    [montagem, substrato, moldura, largura, altura, quantidade, materialsByCategory, markupPct]
+    calcPreco({ montagem, substrato, moldura, w: parseFloat(largura), h: parseFloat(altura), qty: quantidade, materials, tipoVidro, markupPct }),
+    [montagem, substrato, moldura, largura, altura, quantidade, materials, tipoVidro, markupPct]
   )
 
   const framesPorCat = frames.reduce((acc, f) => {
@@ -162,10 +185,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
     { id: 'antirreflexo', label: 'Antirreflexo' },
   ]
 
-  const isCanvasMontagem = (nome) => nome?.toLowerCase().includes('canvas')
-
-  const canvasMontagens = montagems.filter(m => isCanvasMontagem(m.nome))
-  const convenMontagens = montagems.filter(m => !isCanvasMontagem(m.nome))
+  const canvasMontagens = montagems.filter(m => m.is_canvas)
+  const convenMontagens = montagems.filter(m => !m.is_canvas)
 
   // mount_types disponíveis para o tipo selecionado
   const montagensDoTipo = tipoMontagem === 'canvas' ? canvasMontagens : tipoMontagem === 'convencional' ? convenMontagens : []
