@@ -27,7 +27,7 @@ function calcPreco({ montagem, substrato, moldura, w, h, qty, materials, tipoVid
       if (role === 'vidro_selecionavel') {
         if (!tipoVidro || tipoVidro === 'sem_vidro') continue
         // vidro_cristal_id → vidro_comum, vidro_museu_id → antirreflexo
-        const matId = tipoVidro === 'vidro_comum' ? item.vidro_cristal_id : tipoVidro === 'antirreflexo' ? item.vidro_museu_id : null
+        const matId = tipoVidro === 'vidro_comum' ? item.vidro_cristal_id : tipoVidro === 'antirreflexo' ? item.vidro_fosco_id : null
         if (!matId) continue
         const mat = materials?.find(m => m.id === matId)
         if (!mat) continue
@@ -216,6 +216,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
     if (!largura || !altura) { setErro('Informe o tamanho do quadro.'); return }
     if (!tipoMontagem) { setErro('Selecione o tipo de montagem (Canvas ou Quadro Convencional).'); return }
     if (tipoMontagem === 'convencional' && !tipoVidro) { setErro('Selecione o tipo de vidro.'); return }
+    if (frames.length > 0 && !molduraId) { setErro('Selecione uma moldura.'); return }
     setErro('')
     setEnviando(true)
     try {
@@ -491,9 +492,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
           {/* Moldura */}
           {frames.length > 0 && (
             <div style={{ paddingBottom: 20, marginBottom: 20, borderBottom: `1px solid ${colors.border}` }}>
-              <label style={lbl}>Moldura — opcional</label>
+              <label style={lbl}>Moldura *</label>
               <select style={inp} value={molduraId} onChange={e => setMolduraId(e.target.value)}>
-                <option value="">Sem moldura</option>
+                <option value="">— selecione a moldura —</option>
                 {catOrder.filter(c => framesPorCat[c]).map(cat => (
                   <optgroup key={cat} label={catLabels[cat]}>
                     {framesPorCat[cat].map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -609,18 +610,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
             )}
           </div>
 
-          {/* Composição do preço */}
-          {preco && preco.lines.length > 0 && (
+          {/* Total */}
+          {preco && preco.totalGeral > 0 && (
             <>
-              <div style={{ borderTop: `1px solid ${colors.border}`, margin: '14px 0 12px' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {preco.lines.map((l, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, gap: 8 }}>
-                    <span style={{ color: colors.textMuted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.label}</span>
-                    <span style={{ color: colors.text, fontWeight: 500, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{formatCurrency(l.valor)}</span>
-                  </div>
-                ))}
-              </div>
               <div style={{ borderTop: `2px solid ${colors.border}`, marginTop: 14, paddingTop: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2 }}>Total</span>
