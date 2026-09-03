@@ -252,6 +252,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
           imagem_url: imagem?.img_url ?? null,
           preco_unitario: preco?.totalPeca ?? null,
           preco_total: preco?.totalGeral ?? null,
+          linhas: preco?.lines?.map(l => ({ item: l.label, detail: '', cost: 0, sell: parseFloat((l.valor || 0).toFixed(2)) })) ?? [],
         },
       })
       setSucesso(true)
