@@ -228,8 +228,15 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
           montagem_nome: montagem?.nome ?? '',
           tipo_montagem: tipoMontagem,
           tipo_vidro: tipoVidro || null,
-          substrato_id: substratoId || null,
-          substrato_nome: substrato?.name ?? null,
+          substrato_id: montagem?.itens?.find(i => i.role === 'substrato')?.substrato_id ?? null,
+          substrato_nome: substrates?.find(s => s.id === montagem?.itens?.find(i => i.role === 'substrato')?.substrato_id)?.name ?? null,
+          vidro_material_id: (() => {
+            const vi = montagem?.itens?.find(i => i.role === 'vidro_selecionavel')
+            if (!vi) return null
+            if (tipoVidro === 'vidro_comum') return vi.vidro_cristal_id || null
+            if (tipoVidro === 'antirreflexo') return vi.vidro_fosco_id || null
+            return null
+          })(),
           moldura_id: molduraId || null,
           moldura_nome: moldura?.name ?? null,
           largura_cm: parseFloat(largura),
