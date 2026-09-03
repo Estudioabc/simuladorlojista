@@ -6,7 +6,7 @@ import { Spinner } from '../components/UI'
 import MockupCanvas from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
 
-function calcPreco({ montagem, substrato, moldura, w, h, qty, materials, tipoVidro, markupPct }) {
+function calcPreco({ montagem, moldura, w, h, qty, materials, substrates, tipoVidro, markupPct }) {
   if (!w || !h || w <= 0 || h <= 0) return null
   const areaM2 = (w * h) / 10000
   const markup = 1 + (parseFloat(markupPct) || 0) / 100
@@ -15,16 +15,17 @@ function calcPreco({ montagem, substrato, moldura, w, h, qty, materials, tipoVid
   const perimComMolduraM = 2 * (w + h + molduraW * 4) / 100
   const lines = []
 
-  if (substrato) {
-    const base = areaM2 * (parseFloat(substrato.sell_price) || 0)
-    if (base > 0) lines.push({ label: `Impressão ${substrato.name}`, valor: base * markup })
-  }
-
   if (montagem?.itens?.length) {
     for (const item of montagem.itens) {
       const role = item.role
 
-      if (role === 'vidro_selecionavel') {
+      if (role === 'substrato') {
+        const sub = substrates?.find(s => s.id === item.substrato_id)
+        if (!sub) continue
+        const base = areaM2 * (parseFloat(sub.sell_price) || 0)
+        if (base > 0) lines.push({ label: `Impressão ${sub.name}`, valor: base * markup })
+
+      } else if (role === 'vidro_selecionavel') {
         if (!tipoVidro || tipoVidro === 'sem_vidro') continue
         // vidro_cristal_id → vidro_comum, vidro_museu_id → antirreflexo
         const matId = tipoVidro === 'vidro_comum' ? item.vidro_cristal_id : tipoVidro === 'antirreflexo' ? item.vidro_fosco_id : null
@@ -153,8 +154,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const markupPct = lojista?.markup_pct ?? 0
 
   const preco = useMemo(() =>
-    calcPreco({ montagem, substrato, moldura, w: parseFloat(largura), h: parseFloat(altura), qty: quantidade, materials, tipoVidro, markupPct }),
-    [montagem, substrato, moldura, largura, altura, quantidade, materials, tipoVidro, markupPct]
+    calcPreco({ montagem, moldura, w: parseFloat(largura), h: parseFloat(altura), qty: quantidade, materials, substrates, tipoVidro, markupPct }),
+    [montagem, moldura, largura, altura, quantidade, materials, substrates, tipoVidro, markupPct]
   )
 
   const framesPorCat = frames.reduce((acc, f) => {
