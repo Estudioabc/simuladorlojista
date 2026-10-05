@@ -6,6 +6,7 @@ import { Spinner } from '../components/UI'
 import MockupCanvas from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
 
+// Espelhado em sim-pedido (PrintFramePro), que recalcula no servidor — manter os dois iguais
 function calcPreco({ montagem, moldura, w, h, qty, materials, substrates, tipoVidro, markupPct }) {
   if (!w || !h || w <= 0 || h <= 0) return null
   const areaM2 = (w * h) / 10000
@@ -261,6 +262,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
       resetForm()
     } catch (e) {
       setErro(e.message)
+      if (e.message.startsWith('O preço foi atualizado')) {
+        callFunction('sim-lojista-data').then(d => setCatalogoData(d)).catch(() => {})
+      }
     } finally {
       setEnviando(null)
     }
