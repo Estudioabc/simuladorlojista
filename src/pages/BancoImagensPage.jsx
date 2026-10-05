@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { useTheme } from '../styles/theme'
-import { Spinner, EmptyState, Tag } from '../components/UI'
+import { useTheme, useIsMobile } from '../styles/theme'
+import { Spinner, EmptyState } from '../components/UI'
 import MockupCanvas, { KitThumb, FramedArtThumb, ROOMS } from '../components/MockupCanvas'
 
 const PAGE_SIZE = 48
@@ -76,17 +76,16 @@ function buildKitMap(imagens) {
 
 export default function BancoImagensPage({ onSelectImagem }) {
   const { profile } = useAuth()
-  const { colors } = useTheme()
+  const { colors, fonts } = useTheme()
+  const isMobile = useIsMobile()
   const [imagens, setImagens] = useState([])
   const [categorias, setCategorias] = useState([])
-  const [catThumb, setCatThumb] = useState({}) // categoria → url de imagem aleatória
   const [catAtiva, setCatAtiva] = useState('todas')
-  const [catSelecionada, setCatSelecionada] = useState(null) // null = tela de categorias
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
   const [previewMode, setPreviewMode] = useState('arte')
-  const [frameColor, setFrameColor] = useState('branco')
+  const [frameColor, setFrameColor] = useState('preto')
   const [selectedRoom, setSelectedRoom] = useState(ROOMS[0])
   const [hoveredId, setHoveredId] = useState(null)
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
@@ -129,15 +128,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       const { kitOf: ko, coverOf: co } = buildKitMap(all)
       setKitOf(ko)
       setCoverOf(co)
-      const cats = [...new Set(all.map(i => i.categoria).filter(Boolean))]
-      setCategorias(cats)
-      // thumbnail aleatório por categoria
-      const thumbs = {}
-      cats.forEach(cat => {
-        const pool = all.filter(i => i.categoria === cat && i.img_url)
-        if (pool.length) thumbs[cat] = pool[Math.floor(Math.random() * pool.length)].img_url
-      })
-      setCatThumb(thumbs)
+      setCategorias([...new Set(all.map(i => i.categoria).filter(Boolean))])
       setLoading(false)
     }
     fetchAll()
@@ -145,9 +136,17 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
   useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca, formato, soFavoritos])
 
+  useEffect(() => {
+    if (!preview) return
+    const onKey = (e) => { if (e.key === 'Escape') setPreview(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [preview])
+
   const cardKeyOf = (img) => kitOf[img.id] ? `kit-${kitOf[img.id].kitName}` : img.id
 
   const filtradas = imagens.filter(img => {
+    if (coverOf[img.id]) return false
     const matchCat = catAtiva === 'todas' || img.categoria === catAtiva
     const matchBusca = !busca || img.titulo.toLowerCase().includes(busca.toLowerCase())
     const matchFormato = !formato || formatoDe(img.ratio) === formato
@@ -155,8 +154,26 @@ export default function BancoImagensPage({ onSelectImagem }) {
     return matchCat && matchBusca && matchFormato && matchFav
   })
 
-  const exibidas = filtradas.slice(0, visiveis)
-  const temMais = visiveis < filtradas.length
+  // Colapsa kits em um único card
+  const cards = useMemo(() => {
+    const seen = new Set()
+    const out = []
+    filtradas.forEach(img => {
+      const kit = kitOf[img.id]
+      if (kit) {
+        if (seen.has(kit.kitName)) return
+        seen.add(kit.kitName)
+        out.push({ key: `kit-${kit.kitName}`, isKit: true, kit, img: kit.parts[0] })
+      } else {
+        out.push({ key: img.id, isKit: false, img })
+      }
+    })
+    return out
+  }, [filtradas, kitOf])
+
+  const exibidos = cards.slice(0, visiveis)
+  const temMais = visiveis < cards.length
+  const contaCat = (cat) => imagens.filter(i => !coverOf[i.id] && i.categoria === cat).length
 
   async function montarSelecao(img) {
     let ratio = parseFloat(img.ratio)
@@ -184,229 +201,178 @@ export default function BancoImagensPage({ onSelectImagem }) {
     onSelectImagem(await montarSelecao(img))
   }
 
+  const limparFiltros = () => { setBusca(''); setFormato(''); setSoFavoritos(false); setCatAtiva('todas') }
+  const temFiltro = busca || formato || soFavoritos || catAtiva !== 'todas'
+
   const S = {
-    header: { marginBottom: 24 },
-    title: { fontSize: 22, fontWeight: 800, color: colors.text, letterSpacing: -0.5, marginBottom: 4 },
-    subtitle: { fontSize: 13, color: colors.textMuted },
-    toolbar: { display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 20 },
-    search: { flex: 1, minWidth: 200, background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '9px 14px', color: colors.text, fontSize: 13, outline: 'none', fontFamily: 'inherit' },
-    tags: { display: 'flex', gap: 6, flexWrap: 'wrap' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, max(240px, calc((100% - 32px) / 3))), 1fr))', gap: 16 },
-    card: (hovered) => ({ background: colors.surface, border: `1px solid ${hovered ? colors.accent : colors.border}`, borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s, transform 0.15s, box-shadow 0.15s', transform: hovered ? 'translateY(-2px)' : 'none', boxShadow: hovered ? `0 6px 20px rgba(0,0,0,0.18)` : 'none' }),
-    cardBody: { padding: '10px 12px' },
-    chip: (active) => ({ background: active ? colors.accent : 'transparent', color: active ? '#fff' : colors.textMuted, border: `1px solid ${active ? colors.accent : colors.border}`, borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }),
-    favBtn: (on) => ({ position: 'absolute', top: 8, right: 8, width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.92)', color: on ? '#d64545' : '#555', fontSize: 18, lineHeight: 1, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }),
-    usarBtn: { marginTop: 8, width: '100%', background: 'transparent', color: colors.accent, border: `1px solid ${colors.accent}`, borderRadius: 6, padding: '6px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
-    cardTitle: { fontSize: 12, fontWeight: 600, color: colors.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-    cardCat: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
-    maisBtn: { display: 'block', margin: '28px auto 0', background: 'transparent', border: `1.5px solid ${colors.border}`, borderRadius: 8, padding: '10px 28px', fontSize: 13, fontWeight: 600, color: colors.textMuted, cursor: 'pointer', fontFamily: 'inherit' },
-    previewOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 24px' },
-    previewImg: { maxWidth: '100%', maxHeight: 'calc(100vh - 140px)', objectFit: 'contain', display: 'block', borderRadius: 6 },
-    previewCaption: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginTop: 16, width: '100%', maxWidth: 700 },
-    previewTitle: { flex: 1, color: '#fff', fontSize: 14, fontWeight: 600 },
-    previewCat: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
-    btnRow: { display: 'flex', gap: 10, flexWrap: 'wrap' },
-    btnPrimary: { background: colors.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' },
-    btnSecondary: { background: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+    eyebrow: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
+    title: { fontFamily: fonts.display, fontSize: 'clamp(36px, 5vw, 52px)', fontWeight: 500, lineHeight: 1.02, letterSpacing: -0.5, margin: '6px 0 10px', textWrap: 'balance' },
+    lead: { fontSize: 15, color: colors.textMuted, maxWidth: 560, lineHeight: 1.55 },
+    toolbar: { position: isMobile ? 'static' : 'sticky', top: 72, zIndex: 20, background: colors.bg, padding: '14px 0 0', margin: '28px 0 8px', borderBottom: `1px solid ${colors.border}` },
+    toolRow: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 },
+    search: { flex: '1 1 240px', minWidth: 0, background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 999, padding: '11px 18px', fontSize: 14, outline: 'none' },
+    seg: { display: 'inline-flex', border: `1px solid ${colors.border}`, borderRadius: 999, background: colors.surface, padding: 3 },
+    segBtn: (on) => ({ background: on ? colors.text : 'transparent', color: on ? colors.bg : colors.textMuted, border: 'none', borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s, color 0.15s' }),
+    favToggle: (on) => ({ background: on ? colors.text : colors.surface, color: on ? colors.bg : colors.text, border: `1px solid ${on ? colors.text : colors.border}`, borderRadius: 999, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }),
+    cats: { display: 'flex', gap: 24, overflowX: 'auto', scrollbarWidth: 'none' },
+    catBtn: (on) => ({ flexShrink: 0, background: 'none', border: 'none', borderBottom: `2px solid ${on ? colors.text : 'transparent'}`, color: on ? colors.text : colors.textMuted, padding: '8px 0 10px', fontSize: 14, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', marginBottom: -1 }),
+    catCount: { fontSize: 11, color: colors.textMuted, marginLeft: 5, fontVariantNumeric: 'tabular-nums' },
+    meta: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontSize: 13, color: colors.textMuted, margin: '18px 0 22px' },
+    linkBtn: { background: 'none', border: 'none', color: colors.text, fontSize: 13, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer', padding: 0 },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, max(240px, calc((100% - 64px) / 3))), 1fr))', gap: '40px 32px' },
+    card: { cursor: 'pointer', position: 'relative' },
+    wall: (hovered) => ({ position: 'relative', background: '#F7F5F2', transition: 'box-shadow 0.25s', boxShadow: hovered ? '0 18px 40px -24px rgba(23,21,15,0.35)' : 'none' }),
+    cardTitle: { fontFamily: fonts.display, fontSize: 21, fontWeight: 600, lineHeight: 1.15, marginTop: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    cardMeta: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 },
+    cardCat: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2 },
+    usar: { background: 'none', border: 'none', color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 0', whiteSpace: 'nowrap' },
+    fav: (on, show) => ({ position: 'absolute', top: 10, right: 10, width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.94)', color: on ? '#B4312A' : colors.text, fontSize: 17, lineHeight: 1, cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.12)', opacity: on || show ? 1 : 0, transition: 'opacity 0.2s' }),
+    kitTag: { position: 'absolute', top: 12, left: 12, background: colors.text, color: colors.bg, fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', padding: '4px 8px' },
+    mais: { display: 'block', margin: '48px auto 0', background: 'transparent', border: `1px solid ${colors.text}`, borderRadius: 999, padding: '12px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+    // preview — "sala de exibição"
+    overlay: { position: 'fixed', inset: 0, background: 'rgba(14,13,10,0.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 16px', overflowY: 'auto' },
+    pTabs: { display: 'flex', gap: 24, borderBottom: '1px solid rgba(255,255,255,0.15)' },
+    pTab: (on) => ({ background: 'none', border: 'none', borderBottom: `2px solid ${on ? '#fff' : 'transparent'}`, color: on ? '#fff' : 'rgba(255,255,255,0.55)', padding: '8px 2px 10px', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: -1 }),
+    pLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase' },
+    previewImg: { maxWidth: '100%', maxHeight: 'calc(100vh - 220px)', objectFit: 'contain', display: 'block', boxShadow: '0 30px 60px -20px rgba(0,0,0,0.6)' },
+    caption: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginTop: 20, width: '100%', maxWidth: 900 },
+    pTitle: { fontFamily: fonts.display, color: '#fff', fontSize: 30, fontWeight: 500, lineHeight: 1.1 },
+    pCat: { color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: 600, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 },
+    btnPrimary: { background: '#fff', color: colors.text, border: 'none', borderRadius: 999, padding: '12px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
+    btnGhost: { background: 'transparent', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 999, padding: '12px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   }
 
-  if (loading) return <Spinner />
+  if (loading) return <Spinner label="Abrindo o acervo..." />
 
-  // ── Tela inicial: grade de categorias ──────────────────────────────────────
-  if (!catSelecionada) {
-    return (
-      <div>
-        <div style={S.header}>
-          <div style={S.title}>Banco de Imagens</div>
-          <div style={S.subtitle}>{categorias.length} categorias · {imagens.length} imagens</div>
-        </div>
-        {favoritos.size > 0 && (
-          <button
-            onClick={() => { setSoFavoritos(true); setCatAtiva('todas'); setCatSelecionada('Meus favoritos') }}
-            style={{ ...S.chip(false), marginBottom: 16 }}
-          >
-            ♥ Meus favoritos ({favoritos.size})
-          </button>
-        )}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 16 }}>
-          {categorias.map(cat => (
-            <div
-              key={cat}
-              onClick={() => { setCatSelecionada(cat); setCatAtiva(cat) }}
-              onMouseEnter={() => setHoveredId(cat)}
-              onMouseLeave={() => setHoveredId(null)}
-              style={{ borderRadius: 12, overflow: 'hidden', cursor: 'pointer', border: `1px solid ${hoveredId === cat ? colors.accent : colors.border}`, transform: hoveredId === cat ? 'translateY(-2px)' : 'none', transition: 'all 0.15s', background: colors.surface }}
-            >
-              <div style={{ position: 'relative', aspectRatio: '4/3', background: colors.surfaceAlt }}>
-                {catThumb[cat]
-                  ? <img src={catThumb[cat]} alt={cat} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🖼</div>
-                }
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)' }} />
-                <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12 }}>
-                  <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>{cat}</div>
-                  <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 2 }}>
-                    {imagens.filter(i => i.categoria === cat).length} imagens
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  // ── Tela de imagens da categoria ───────────────────────────────────────────
   return (
     <div>
-      <div style={S.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-          <button onClick={() => { setCatSelecionada(null); setCatAtiva('todas'); setSoFavoritos(false) }} style={{ background: 'none', border: 'none', color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>← Categorias</button>
-          <span style={{ color: colors.textMuted, fontSize: 13 }}>/</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: colors.text }}>{catSelecionada}</span>
-        </div>
-        <div style={S.subtitle}>{filtradas.length} imagens</div>
-      </div>
+      <div style={S.eyebrow}>Acervo</div>
+      <h1 style={S.title}>Obras para a parede do seu cliente</h1>
+      <p style={S.lead}>Busque por tema, formato ou nome. Abra uma obra para vê-la num ambiente, ou leve direto para um novo pedido.</p>
 
       <div style={S.toolbar}>
-        <input
-          style={S.search}
-          placeholder="Buscar por título..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-        />
-        <div style={S.tags}>
-          <Tag label="Todas as categorias" active={!soFavoritos && catAtiva === 'todas'} onClick={() => { setCatSelecionada('Todas as categorias'); setCatAtiva('todas'); setSoFavoritos(false) }} />
-          {categorias.map(c => (
-            <Tag key={c} label={c} active={!soFavoritos && catAtiva === c} onClick={() => { setSoFavoritos(false); setCatAtiva(c); setCatSelecionada(c) }} />
-          ))}
+        <div style={S.toolRow}>
+          <input
+            style={S.search}
+            type="search"
+            placeholder="Buscar obra pelo nome"
+            aria-label="Buscar obra pelo nome"
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+          />
+          <div style={S.seg} role="group" aria-label="Formato">
+            {FORMATOS.map(f => (
+              <button key={f.id} onClick={() => setFormato(f.id)} style={S.segBtn(formato === f.id)} aria-pressed={formato === f.id}>{f.label}</button>
+            ))}
+          </div>
+          <button onClick={() => setSoFavoritos(v => !v)} style={S.favToggle(soFavoritos)} aria-pressed={soFavoritos}>
+            ♥ Favoritos{favoritos.size > 0 ? ` (${favoritos.size})` : ''}
+          </button>
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%' }}>
-          {FORMATOS.map(f => (
-            <button key={f.id} onClick={() => setFormato(f.id)} style={S.chip(formato === f.id)}>{f.label}</button>
+        <div style={S.cats} role="tablist" aria-label="Temas">
+          <button role="tab" aria-selected={catAtiva === 'todas'} style={S.catBtn(catAtiva === 'todas')} onClick={() => setCatAtiva('todas')}>
+            Todas
+          </button>
+          {categorias.map(c => (
+            <button key={c} role="tab" aria-selected={catAtiva === c} style={S.catBtn(catAtiva === c)} onClick={() => setCatAtiva(c)}>
+              {c}<span style={S.catCount}>{contaCat(c)}</span>
+            </button>
           ))}
-          <button onClick={() => setSoFavoritos(v => !v)} style={S.chip(soFavoritos)}>♥ Favoritos</button>
         </div>
       </div>
 
-      {filtradas.length === 0 ? (
-        <EmptyState title="Nenhuma imagem encontrada" description="Tente outro filtro ou termo de busca." />
+      <div style={S.meta}>
+        <span>{cards.length} {cards.length === 1 ? 'obra' : 'obras'}{catAtiva !== 'todas' ? ` em ${catAtiva}` : ''}</span>
+        {temFiltro && <button style={S.linkBtn} onClick={limparFiltros}>Limpar filtros</button>}
+      </div>
+
+      {cards.length === 0 ? (
+        <EmptyState
+          title={soFavoritos && favoritos.size === 0 ? 'Você ainda não favoritou nenhuma obra' : 'Nenhuma obra encontrada'}
+          description={soFavoritos && favoritos.size === 0 ? 'Toque no coração de uma obra para guardá-la aqui.' : 'Tente outro nome, formato ou tema.'}
+          action="Limpar filtros"
+          onAction={limparFiltros}
+        />
       ) : (
         <>
-          <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 14 }}>
-            Exibindo {exibidas.length} de {filtradas.length}
-          </div>
           <div style={S.grid}>
-            {(() => {
-              // Colapsa kits em um único card; oculta capas (0) do grid
-              const seen = new Set()
-              const display = []
-              exibidas.forEach(img => {
-                if (coverOf[img.id]) return  // capa de kit: oculta do grid
-                const kit = kitOf[img.id]
-                if (kit) {
-                  const key = kit.kitName
-                  if (seen.has(key)) return
-                  seen.add(key)
-                  display.push({ isKit: true, kit, img: kit.parts[0] })
-                } else {
-                  display.push({ isKit: false, img })
-                }
-              })
-              return display.map(entry => {
-                const { img, isKit, kit } = entry
-                const cardKey = isKit ? `kit-${kit.kitName}` : img.id
-                const title = isKit ? kit.kitName : img.titulo
-                return (
-                  <div
-                    key={cardKey}
-                    style={S.card(hoveredId === cardKey)}
-                    onMouseEnter={() => setHoveredId(cardKey)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    onClick={() => openPreview(img)}
-                  >
-                    <div style={{ position: 'relative' }}>
-                      {isKit
-                        ? <KitThumb kitUrls={kit.parts.map(p => p.img_url)} frameColor="branco" cardWidth={320} />
-                        : <FramedArtThumb src={img.img_url} alt={title} />
-                      }
-                      <button
-                        onClick={e => { e.stopPropagation(); toggleFavorito(cardKey) }}
-                        title={favoritos.has(cardKey) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-                        aria-pressed={favoritos.has(cardKey)}
-                        style={S.favBtn(favoritos.has(cardKey))}
-                      >
-                        {favoritos.has(cardKey) ? '♥' : '♡'}
-                      </button>
-                      {isKit && (
-                        <span style={{ position: 'absolute', top: 6, left: 6, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', letterSpacing: 0.3 }}>
-                          Kit {kit.kitCount}x
-                        </span>
-                      )}
-                    </div>
-                    <div style={S.cardBody}>
-                      <div style={S.cardTitle}>{title}</div>
-                      {img.categoria && <div style={S.cardCat}>{img.categoria}</div>}
-                      {onSelectImagem && (
-                        <button style={S.usarBtn} onClick={e => { e.stopPropagation(); usarNoSimulador(img) }}>
-                          Usar no simulador
-                        </button>
-                      )}
-                    </div>
+            {exibidos.map(({ key, img, isKit, kit }) => {
+              const title = isKit ? kit.kitName : img.titulo
+              const hovered = hoveredId === key
+              const fav = favoritos.has(key)
+              return (
+                <article
+                  key={key}
+                  style={S.card}
+                  onMouseEnter={() => setHoveredId(key)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onClick={() => openPreview(img)}
+                >
+                  <div style={S.wall(hovered)}>
+                    {isKit
+                      ? <KitThumb kitUrls={kit.parts.map(p => p.img_url)} frameColor="preto" cardWidth={360} />
+                      : <FramedArtThumb src={img.img_url} alt={title} />
+                    }
+                    <button
+                      onClick={e => { e.stopPropagation(); toggleFavorito(key) }}
+                      aria-label={fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                      aria-pressed={fav}
+                      style={S.fav(fav, hovered)}
+                    >
+                      {fav ? '♥' : '♡'}
+                    </button>
+                    {isKit && <span style={S.kitTag}>Kit · {kit.kitCount} peças</span>}
                   </div>
-                )
-              })
-            })()}
+                  <div style={S.cardTitle} title={title}>{title}</div>
+                  <div style={S.cardMeta}>
+                    <span style={S.cardCat}>{img.categoria}</span>
+                    {onSelectImagem && (
+                      <button style={S.usar} onClick={e => { e.stopPropagation(); usarNoSimulador(img) }}>
+                        Usar no pedido →
+                      </button>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
           </div>
           {temMais && (
-            <button style={S.maisBtn} onClick={() => setVisiveis(v => v + PAGE_SIZE)}>
-              Carregar mais ({filtradas.length - visiveis} restantes)
+            <button style={S.mais} onClick={() => setVisiveis(v => v + PAGE_SIZE)}>
+              Ver mais obras ({cards.length - visiveis})
             </button>
           )}
         </>
       )}
 
       {preview && (
-        <div style={S.previewOverlay} onClick={() => setPreview(null)}>
+        <div style={S.overlay} onClick={() => setPreview(null)} role="dialog" aria-modal="true" aria-label={preview.titulo}>
           <div style={{ width: '100%', maxWidth: previewMode === 'ambiente' ? 1100 : 960, display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
 
-            {/* Barra de controles */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
-              {/* Toggle Arte / Ambiente */}
-              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: 3, gap: 2 }}>
-                {['arte', 'ambiente'].map(mode => (
-                  <button key={mode} onClick={() => setPreviewMode(mode)} style={{ background: previewMode === mode ? 'rgba(255,255,255,0.9)' : 'transparent', color: previewMode === mode ? '#1a1a1a' : 'rgba(255,255,255,0.7)', border: 'none', borderRadius: 6, padding: '6px 18px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s' }}>
-                    {mode === 'arte' ? 'Arte' : 'Ambiente'}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, width: '100%', marginBottom: 18 }}>
+              <div style={S.pTabs} role="tablist">
+                {[{ id: 'arte', label: 'Obra' }, { id: 'ambiente', label: 'No ambiente' }].map(m => (
+                  <button key={m.id} role="tab" aria-selected={previewMode === m.id} onClick={() => setPreviewMode(m.id)} style={S.pTab(previewMode === m.id)}>
+                    {m.label}
                   </button>
                 ))}
               </div>
-
-              {/* Seletor de moldura (só no modo ambiente) */}
               {previewMode === 'ambiente' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: 0.5 }}>MOLDURA</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={S.pLabel}>Moldura</span>
                   {FRAME_COLORS.map(fc => (
                     <button
                       key={fc.id}
                       title={fc.label}
+                      aria-label={`Moldura ${fc.label}`}
+                      aria-pressed={frameColor === fc.id}
                       onClick={() => setFrameColor(fc.id)}
-                      style={{
-                        width: 24, height: 24, borderRadius: '50%',
-                        background: fc.swatch,
-                        border: frameColor === fc.id ? '2px solid #fff' : `2px solid ${fc.border}`,
-                        cursor: 'pointer',
-                        outline: frameColor === fc.id ? '2px solid rgba(255,255,255,0.5)' : 'none',
-                        outlineOffset: 2,
-                        transition: 'outline 0.15s',
-                      }}
+                      style={{ width: 26, height: 26, borderRadius: '50%', background: fc.swatch, border: `2px solid ${fc.border}`, cursor: 'pointer', outline: frameColor === fc.id ? '2px solid #fff' : 'none', outlineOffset: 2 }}
                     />
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Seletor de ambiente — thumbnails horizontais */}
             {previewMode === 'ambiente' && (
               <div style={{ display: 'flex', gap: 8, marginBottom: 12, overflowX: 'auto', width: '100%', paddingBottom: 4 }}>
                 {ROOMS.map(room => (
@@ -414,25 +380,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
                     key={room.id}
                     onClick={() => setSelectedRoom(room)}
                     title={room.label}
-                    style={{
-                      flexShrink: 0,
-                      width: 80, height: 50,
-                      borderRadius: 6,
-                      overflow: 'hidden',
-                      border: selectedRoom.id === room.id ? '2px solid #fff' : '2px solid rgba(255,255,255,0.2)',
-                      cursor: 'pointer',
-                      padding: 0,
-                      background: '#000',
-                      outline: selectedRoom.id === room.id ? '2px solid rgba(255,255,255,0.4)' : 'none',
-                      outlineOffset: 2,
-                      transition: 'border 0.15s, outline 0.15s',
-                    }}
+                    aria-label={`Ambiente ${room.label}`}
+                    aria-pressed={selectedRoom.id === room.id}
+                    style={{ flexShrink: 0, width: 84, height: 54, overflow: 'hidden', border: 'none', outline: selectedRoom.id === room.id ? '2px solid #fff' : '1px solid rgba(255,255,255,0.15)', outlineOffset: selectedRoom.id === room.id ? 2 : 0, opacity: selectedRoom.id === room.id ? 1 : 0.6, cursor: 'pointer', padding: 0, background: '#000', transition: 'opacity 0.15s' }}
                   >
-                    <img
-                      src={room.src}
-                      alt={room.label}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    />
+                    <img src={room.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   </button>
                 ))}
               </div>
@@ -440,32 +392,35 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
             {previewMode === 'arte'
               ? <img src={preview.img_url} alt={preview.titulo} style={S.previewImg} />
-              : <MockupCanvas
-                  imgUrl={preview.kitParts ? null : preview.img_url}
-                  kitUrls={preview.kitParts ? preview.kitParts.map(p => p.img_url) : [preview.img_url]}
-                  ratio={preview.ratio || 1}
-                  frameColor={frameColor}
-                  width={1100}
-                  room={selectedRoom}
-                  interactive
-                />
+              : <>
+                  <MockupCanvas
+                    imgUrl={preview.kitParts ? null : preview.img_url}
+                    kitUrls={preview.kitParts ? preview.kitParts.map(p => p.img_url) : [preview.img_url]}
+                    ratio={preview.ratio || 1}
+                    frameColor={frameColor}
+                    width={1100}
+                    room={selectedRoom}
+                    interactive
+                  />
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 10 }}>Arraste o quadro para posicionar · puxe um canto para redimensionar</div>
+                </>
             }
 
-            <div style={S.previewCaption}>
+            <div style={S.caption}>
               <div>
-                <div style={S.previewTitle}>{preview.titulo}</div>
-                {preview.categoria && <div style={S.previewCat}>{preview.categoria}</div>}
+                <div style={S.pTitle}>{preview.titulo}</div>
+                <div style={S.pCat}>{preview.categoria}{preview.kitCount > 1 ? ` · Kit com ${preview.kitCount} peças` : ''}</div>
               </div>
-              <div style={S.btnRow}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button style={S.btnGhost} onClick={() => setPreview(null)}>Fechar</button>
                 {onSelectImagem && (
                   <button style={S.btnPrimary} onClick={() => {
                     onSelectImagem({ ...preview, kitCount: preview.kitCount ?? 1 })
                     setPreview(null)
                   }}>
-                    Usar no Simulador{preview.kitCount > 1 ? ` (${preview.kitCount} quadros)` : ''}
+                    Usar no pedido{preview.kitCount > 1 ? ` (${preview.kitCount} quadros)` : ''}
                   </button>
                 )}
-                <button style={S.btnSecondary} onClick={() => setPreview(null)}>Fechar</button>
               </div>
             </div>
           </div>

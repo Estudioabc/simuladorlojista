@@ -4,7 +4,7 @@ import { useTheme } from '../styles/theme'
 import { supabase } from '../services/supabase'
 
 export default function ConfigPage() {
-  const { colors } = useTheme()
+  const { colors, fonts } = useTheme()
   const { lojista, profile, reloadLojista } = useAuth()
 
   const [storeName, setStoreName] = useState('')
@@ -45,27 +45,27 @@ export default function ConfigPage() {
     }
   }
 
-  const base = { fontFamily: 'Inter, system-ui, sans-serif' }
   const S = {
-    page: { ...base, maxWidth: 520 },
-    heading: { fontSize: 22, fontWeight: 700, color: colors.text, letterSpacing: -0.4, marginBottom: 4 },
-    sub: { fontSize: 13, color: colors.textMuted, marginBottom: 36 },
-    section: { marginBottom: 32 },
-    sectionTitle: { fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${colors.border}` },
-    field: { marginBottom: 20 },
-    label: { fontSize: 12, fontWeight: 600, color: colors.textMuted, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
-    hint: { fontSize: 11, color: colors.textMuted, marginTop: 5, lineHeight: 1.5 },
-    inputWrap: { display: 'flex', alignItems: 'center', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 7, overflow: 'hidden' },
-    input: { flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '10px 12px', color: colors.text, fontSize: 14, fontFamily: 'Inter, system-ui, sans-serif' },
-    inputSuffix: { padding: '0 12px', color: colors.textMuted, fontSize: 13, fontWeight: 500, borderLeft: `1px solid ${colors.border}`, height: '100%', display: 'flex', alignItems: 'center', background: colors.surfaceAlt },
-    previewBox: { background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '14px 16px', marginTop: 8 },
-    previewLabel: { fontSize: 10, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
-    previewVal: { fontSize: 15, fontWeight: 700, color: colors.text },
-    infoRow: { display: 'flex', justifyContent: 'space-between', fontSize: 13, color: colors.textMuted, marginBottom: 6 },
+    page: { fontFamily: fonts.body, maxWidth: 640 },
+    eyebrow: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
+    heading: { fontFamily: fonts.display, fontSize: 'clamp(34px, 5vw, 48px)', fontWeight: 500, lineHeight: 1.05, letterSpacing: -0.4, margin: '6px 0 8px' },
+    sub: { fontSize: 15, color: colors.textMuted, marginBottom: 40 },
+    section: { marginBottom: 40 },
+    sectionTitle: { fontFamily: fonts.display, fontSize: 26, fontWeight: 600, marginBottom: 18, paddingBottom: 10, borderBottom: `1px solid ${colors.text}` },
+    field: { marginBottom: 22 },
+    label: { fontSize: 13, fontWeight: 600, color: colors.text, display: 'block', marginBottom: 6 },
+    hint: { fontSize: 13, color: colors.textMuted, marginTop: 6, lineHeight: 1.5 },
+    inputWrap: { display: 'flex', alignItems: 'stretch', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 4, overflow: 'hidden' },
+    input: { flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', padding: '12px 14px', color: colors.text, fontSize: 15 },
+    inputSuffix: { padding: '0 14px', color: colors.textMuted, fontSize: 14, fontWeight: 600, borderLeft: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', background: colors.surfaceAlt },
+    previewBox: { background: colors.surface, border: `1px solid ${colors.border}`, padding: '16px 18px', marginTop: 10 },
+    previewLabel: { fontSize: 12, fontWeight: 600, color: colors.textMuted, marginBottom: 6 },
+    previewVal: { fontFamily: fonts.display, fontSize: 24, fontWeight: 600, color: colors.text, lineHeight: 1.1 },
+    infoRow: { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14, color: colors.textMuted, marginBottom: 8, fontVariantNumeric: 'tabular-nums' },
     infoVal: { color: colors.text, fontWeight: 500 },
-    btn: { background: colors.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' },
-    ok: { background: colors.success + '14', border: `1px solid ${colors.success}30`, borderRadius: 7, padding: '10px 14px', fontSize: 13, color: colors.success, marginBottom: 16 },
-    err: { background: colors.danger + '14', border: `1px solid ${colors.danger}30`, borderRadius: 7, padding: '10px 14px', fontSize: 13, color: colors.danger, marginBottom: 16 },
+    btn: { background: colors.text, color: colors.bg, border: 'none', borderRadius: 999, padding: '14px 30px', fontSize: 15, fontWeight: 700, cursor: 'pointer' },
+    ok: { background: colors.success + '10', borderLeft: `3px solid ${colors.success}`, padding: '10px 14px', fontSize: 14, color: colors.success, marginBottom: 20 },
+    err: { background: colors.danger + '10', borderLeft: `3px solid ${colors.danger}`, padding: '10px 14px', fontSize: 14, color: colors.danger, marginBottom: 20 },
   }
 
   const exampleCost = 250
@@ -74,26 +74,27 @@ export default function ConfigPage() {
 
   return (
     <div style={S.page}>
-      <div style={S.heading}>Configurações</div>
-      <div style={S.sub}>Personalize como sua loja aparece e como os preços são calculados</div>
+      <div style={S.eyebrow}>Ajustes</div>
+      <h1 style={S.heading}>Sua loja no portal</h1>
+      <div style={S.sub}>Defina o nome que aparece para você e nos orçamentos, e a sua margem de revenda.</div>
 
-      {msg && <div style={msg.type === 'ok' ? S.ok : S.err}>{msg.text}</div>}
+      {msg && <div role="status" style={msg.type === 'ok' ? S.ok : S.err}>{msg.text}</div>}
 
       {/* Identidade */}
       <div style={S.section}>
-        <div style={S.sectionTitle}>Identidade da Loja</div>
+        <div style={S.sectionTitle}>Identidade</div>
 
         <div style={S.field}>
-          <label style={S.label}>Nome da empresa</label>
+          <label style={S.label}>Nome da loja</label>
           <div style={S.inputWrap}>
             <input style={S.input} value={storeName} onChange={e => setStoreName(e.target.value)} placeholder="Nome que aparece no portal" maxLength={80} />
           </div>
-          <div style={S.hint}>Substitui "Estúdio ABC" no cabeçalho do seu portal.</div>
+          <div style={S.hint}>Aparece no topo do portal e no orçamento em PDF que você manda ao cliente.</div>
           {storeName.trim() && (
             <div style={S.previewBox}>
-              <div style={S.previewLabel}>Aparência no portal</div>
+              <div style={S.previewLabel}>Como fica no topo do portal</div>
               <div style={S.previewVal}>{storeName.trim()}</div>
-              <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>Portal do Lojista</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: colors.textMuted, marginTop: 5, letterSpacing: 1.6, textTransform: 'uppercase' }}>Portal do lojista · Estúdio ABC</div>
             </div>
           )}
         </div>
@@ -101,10 +102,10 @@ export default function ConfigPage() {
 
       {/* Precificação */}
       <div style={S.section}>
-        <div style={S.sectionTitle}>Precificação</div>
+        <div style={S.sectionTitle}>Preço de revenda</div>
 
         <div style={S.field}>
-          <label style={S.label}>Markup sobre o custo</label>
+          <label style={S.label}>Seu markup sobre o preço do estúdio</label>
           <div style={S.inputWrap}>
             <input
               style={S.input}
@@ -119,7 +120,7 @@ export default function ConfigPage() {
             <div style={S.inputSuffix}>%</div>
           </div>
           <div style={S.hint}>
-            Aplicado sobre o valor base do Estúdio ABC para definir seu preço de venda ao cliente final.
+            É somado ao preço do Estúdio ABC para chegar no preço que o seu cliente paga. Vale para os próximos pedidos.
           </div>
           {markup > 0 && (
             <div style={S.previewBox}>
@@ -134,16 +135,16 @@ export default function ConfigPage() {
               </div>
               <div style={{ ...S.infoRow, fontWeight: 700, color: colors.text, borderTop: `1px solid ${colors.border}`, paddingTop: 8, marginTop: 4, marginBottom: 0 }}>
                 <span>Seu preço de venda</span>
-                <span style={{ color: colors.accent }}>R$ {exampleSell.toFixed(2).replace('.', ',')}</span>
+                <span style={{ color: colors.text }}>R$ {exampleSell.toFixed(2).replace('.', ',')}</span>
               </div>
             </div>
           )}
         </div>
 
-        <div style={{ ...S.field, background: colors.surfaceAlt, borderRadius: 8, padding: '12px 14px' }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted, marginBottom: 6 }}>Desconto concedido pelo Estúdio ABC</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: colors.text }}>{lojista?.discount_pct ?? 0}%</div>
-          <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 3 }}>Configurado pelo Estúdio ABC. Não pode ser alterado aqui.</div>
+        <div style={{ ...S.field, ...S.previewBox }}>
+          <div style={S.previewLabel}>Seu desconto no Estúdio ABC</div>
+          <div style={S.previewVal}>{lojista?.discount_pct ?? 0}%</div>
+          <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 4 }}>Definido pelo Estúdio ABC. Para mudar, fale com eles.</div>
         </div>
       </div>
 
@@ -155,7 +156,7 @@ export default function ConfigPage() {
       </div>
 
       <button style={S.btn} onClick={handleSalvar} disabled={salvando}>
-        {salvando ? 'Salvando...' : 'Salvar configurações'}
+        {salvando ? 'Salvando…' : 'Salvar ajustes'}
       </button>
     </div>
   )

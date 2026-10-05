@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { callFunction } from '../services/supabase'
 import { useTheme } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
-import { Spinner, EmptyState, Badge } from '../components/UI'
+import { Spinner, EmptyState } from '../components/UI'
 
 const fmt = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -29,17 +29,18 @@ function abrirOrcamentoCliente(p, lojaNome) {
     </div>`).join('')
   w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Figtree:wght@400;600&display=swap">
 <title>Orçamento ${esc(p.numero ?? '')} — ${esc(lojaNome)}</title>
 <style>
-  body{font-family:Inter,system-ui,sans-serif;color:#222;max-width:720px;margin:0 auto;padding:32px 20px;background:#fff}
+  body{font-family:Figtree,system-ui,sans-serif;color:#222;max-width:720px;margin:0 auto;padding:32px 20px;background:#fff}
   header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:12px;margin-bottom:24px;gap:12px;flex-wrap:wrap}
-  h1{font-size:24px;margin:0} .muted{color:#777;font-size:13px}
+  h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;font-weight:600;margin:0} .muted{color:#777;font-size:13px}
   .item{display:flex;gap:20px;padding:16px 0;border-bottom:1px solid #eee;flex-wrap:wrap}
   .item img{width:180px;max-width:100%;object-fit:contain;border:6px solid #1a1a1a;box-shadow:0 4px 12px rgba(0,0,0,.15)}
-  h2{font-size:17px;margin:0 0 10px} dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:14px} dt{color:#777} dd{margin:0}
+  h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:600;margin:0 0 10px} dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:14px} dt{color:#777} dd{margin:0}
   .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:20px;font-size:15px}
-  .total strong{font-size:26px}
-  .acoes{margin-top:28px;display:flex;gap:10px} button{padding:10px 18px;font-size:14px;border-radius:6px;border:1px solid #222;background:#222;color:#fff;cursor:pointer}
+  .total strong{font-family:'Cormorant Garamond',Georgia,serif;font-size:36px;font-weight:600}
+  .acoes{margin-top:28px;display:flex;gap:10px} button{padding:12px 22px;font-size:14px;border-radius:999px;border:1px solid #222;background:#222;color:#fff;cursor:pointer}
   @media print{.acoes{display:none} body{padding:0}}
 </style></head><body>
 <header>
@@ -69,13 +70,13 @@ function resolveStatus(p) {
 }
 
 const STATUS = {
-  orcamento:  { label: 'Orçamento',         color: '#94A3B8' },
-  novo:       { label: 'Recebido',          color: '#4F9CF9' },
-  aprovado:   { label: 'Aprovado',          color: '#6366F1' },
-  em_producao:{ label: 'Em Produção',       color: '#F59E0B' },
-  pronto:     { label: 'Pronto p/ Entrega', color: '#A855F7' },
-  finalizado: { label: 'Finalizado',        color: '#22C55E' },
-  cancelado:  { label: 'Cancelado',         color: '#E05C5C' },
+  orcamento:   { label: 'Orçamento',         color: '#76716A' },
+  novo:        { label: 'Recebido',          color: '#2F5D8A' },
+  aprovado:    { label: 'Aprovado',          color: '#4F4785' },
+  em_producao: { label: 'Em produção',       color: '#9A5B0E' },
+  pronto:      { label: 'Pronto p/ entrega', color: '#6E3F7E' },
+  finalizado:  { label: 'Entregue',          color: '#2F7A4B' },
+  cancelado:   { label: 'Cancelado',         color: '#B4312A' },
 }
 
 const PERIODS = [
@@ -94,8 +95,8 @@ function startOf(period) {
   return null
 }
 
-export default function PedidosPage() {
-  const { colors } = useTheme()
+export default function PedidosPage({ onNovoPedido }) {
+  const { colors, fonts } = useTheme()
   const { lojista, profile } = useAuth()
   const markupDiv = 1 + (parseFloat(lojista?.markup_pct) || 0) / 100
   const [pedidos, setPedidos] = useState([])
@@ -149,24 +150,66 @@ export default function PedidosPage() {
 
   // Financeiro — apenas pedidos finalizados ou com OS (excluindo cancelados)
   const financeiro = useMemo(() => {
-    const ativos = filtered.filter(p => resolveStatus(p) !== 'cancelado' && resolveStatus(p) !== 'novo')
+    const ativos = filtered.filter(p => !['cancelado', 'novo', 'orcamento'].includes(resolveStatus(p)))
     const venda = ativos.reduce((s, p) => s + (p.revenda_total || 0), 0)
     const custo = ativos.reduce((s, p) => s + getB2b(p), 0)
     return { qtd: ativos.length, venda, custo, lucro: venda - custo }
   }, [filtered])
 
   const S = {
-    title:    { fontSize: 22, fontWeight: 800, color: colors.text, letterSpacing: -0.5, marginBottom: 4 },
-    subtitle: { fontSize: 13, color: colors.textMuted, marginBottom: 20 },
-    card:     { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 12, marginBottom: 10, overflow: 'hidden' },
-    kpi:      { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '16px 20px', flex: 1, minWidth: 120 },
-    pill:     (active) => ({ padding: '5px 14px', fontSize: 13, borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, background: active ? colors.accent : colors.surfaceAlt, color: active ? '#fff' : colors.textMuted }),
-    cardHeader: (exp) => ({ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', cursor: 'pointer', background: exp ? colors.surfaceAlt : 'transparent' }),
-    cardBody: { padding: '0 18px 18px', borderTop: `1px solid ${colors.border}` },
-    infoLabel: { fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 14, marginBottom: 4, fontWeight: 700 },
-    infoValue: { fontSize: 13, color: colors.text },
-    imgThumb: { width: 52, height: 52, objectFit: 'cover', borderRadius: 6, flexShrink: 0 },
-    select: { background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '6px 10px', color: colors.text, fontSize: 13, outline: 'none', cursor: 'pointer' },
+    eyebrow:  { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
+    title:    { fontFamily: fonts.display, fontSize: 'clamp(34px, 5vw, 48px)', fontWeight: 500, lineHeight: 1.05, letterSpacing: -0.4, margin: '6px 0 8px' },
+    subtitle: { fontSize: 15, color: colors.textMuted },
+    novoBtn:  { background: colors.text, color: colors.bg, border: 'none', borderRadius: 999, padding: '12px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' },
+    card:     { background: colors.surface, border: `1px solid ${colors.border}`, marginBottom: 12 },
+    kpiRow:   { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', borderTop: `1px solid ${colors.text}`, borderBottom: `1px solid ${colors.border}`, margin: '8px 0 36px' },
+    kpi:      { padding: '16px 20px 18px 0' },
+    kpiLabel: { fontSize: 12, fontWeight: 600, color: colors.textMuted, marginBottom: 6 },
+    kpiValue: { fontFamily: fonts.display, fontSize: 32, fontWeight: 600, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
+    pill:     (active) => ({ padding: '7px 14px', fontSize: 13, borderRadius: 999, border: `1px solid ${active ? colors.text : colors.border}`, cursor: 'pointer', fontWeight: 600, background: active ? colors.text : colors.surface, color: active ? colors.bg : colors.text }),
+    cardHeader: (exp) => ({ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', cursor: 'pointer', background: exp ? colors.surfaceAlt : 'transparent', flexWrap: 'wrap' }),
+    cardBody: { padding: '4px 20px 22px', borderTop: `1px solid ${colors.border}` },
+    infoLabel: { fontSize: 12, color: colors.textMuted, marginTop: 14, marginBottom: 3, fontWeight: 600 },
+    infoValue: { fontSize: 14, color: colors.text },
+    imgThumb: { width: 72, height: 72, objectFit: 'contain', background: colors.surfaceAlt, flexShrink: 0 },
+    rowThumb: { width: 48, height: 48, objectFit: 'contain', background: colors.surfaceAlt, flexShrink: 0 },
+    select: { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 999, padding: '7px 14px', color: colors.text, fontSize: 13, outline: 'none', cursor: 'pointer' },
+  }
+
+  const ETAPAS = [
+    { id: 'novo', label: 'Recebido' },
+    { id: 'aprovado', label: 'Aprovado' },
+    { id: 'em_producao', label: 'Em produção' },
+    { id: 'pronto', label: 'Pronto' },
+    { id: 'finalizado', label: 'Entregue' },
+  ]
+
+  const LinhaDoTempo = ({ stKey }) => {
+    if (stKey === 'orcamento') return (
+      <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 18, lineHeight: 1.5 }}>
+        Orçamento ainda não enviado ao estúdio. Mande o PDF ao cliente e confirme quando ele fechar.
+      </div>
+    )
+    if (stKey === 'cancelado') return (
+      <div style={{ fontSize: 13, color: colors.danger, marginTop: 18 }}>Pedido cancelado.</div>
+    )
+    const atual = ETAPAS.findIndex(e => e.id === stKey)
+    return (
+      <ol style={{ listStyle: 'none', display: 'flex', margin: '20px 0 4px', padding: 0 }} aria-label="Andamento do pedido">
+        {ETAPAS.map((e, i) => {
+          const feito = i <= atual
+          return (
+            <li key={e.id} style={{ flex: 1, minWidth: 0 }} aria-current={i === atual ? 'step' : undefined}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', flexShrink: 0, background: feito ? colors.text : colors.surface, border: `1.5px solid ${feito ? colors.text : colors.border}`, boxShadow: i === atual ? `0 0 0 4px ${colors.accent}33` : 'none' }} />
+                {i < ETAPAS.length - 1 && <span style={{ flex: 1, height: 1.5, background: i < atual ? colors.text : colors.border }} />}
+              </div>
+              <div style={{ fontSize: 12, marginTop: 8, paddingRight: 6, color: feito ? colors.text : colors.textMuted, fontWeight: i === atual ? 700 : 500 }}>{e.label}</div>
+            </li>
+          )
+        })}
+      </ol>
+    )
   }
 
   const formatDate = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -175,11 +218,17 @@ export default function PedidosPage() {
 
   return (
     <div>
-      <div style={S.title}>Meus Pedidos</div>
-      <div style={S.subtitle}>{pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} no total</div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
+        <div>
+          <div style={S.eyebrow}>Meus pedidos</div>
+          <h1 style={S.title}>Pedidos e orçamentos</h1>
+          <div style={S.subtitle}>{pedidos.length} no total. Acompanhe a produção e gere o orçamento para o seu cliente.</div>
+        </div>
+        {onNovoPedido && <button style={S.novoBtn} onClick={onNovoPedido}>Novo pedido</button>}
+      </div>
 
       {/* Filtros de período */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         {PERIODS.map(p => (
           <button key={p.id} style={S.pill(period === p.id)} onClick={() => setPeriod(p.id)}>{p.label}</button>
         ))}
@@ -190,16 +239,16 @@ export default function PedidosPage() {
       </div>
 
       {/* Painel financeiro */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div style={S.kpiRow}>
         {[
-          { label: 'Pedidos',      value: financeiro.qtd,   fmt: false, color: colors.accent },
-          { label: 'Total vendido',value: financeiro.venda,  fmt: true, color: colors.text },
-          { label: 'Custo estúdio',value: financeiro.custo,  fmt: true, color: colors.textMuted },
-          { label: 'Seu lucro',    value: financeiro.lucro,  fmt: true, color: financeiro.lucro >= 0 ? '#22C55E' : '#EF4444' },
+          { label: 'Pedidos aprovados', value: financeiro.qtd,   fmt: false, color: colors.text },
+          { label: 'Vendido',           value: financeiro.venda, fmt: true,  color: colors.text },
+          { label: 'Custo do estúdio',  value: financeiro.custo, fmt: true,  color: colors.textMuted },
+          { label: 'Seu lucro',         value: financeiro.lucro, fmt: true,  color: financeiro.lucro >= 0 ? colors.success : colors.danger },
         ].map(c => (
           <div key={c.label} style={S.kpi}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>{c.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: c.color }}>{c.fmt ? fmt(c.value) : c.value}</div>
+            <div style={S.kpiLabel}>{c.label}</div>
+            <div style={{ ...S.kpiValue, color: c.color }}>{c.fmt ? fmt(c.value) : c.value}</div>
           </div>
         ))}
       </div>
@@ -207,7 +256,12 @@ export default function PedidosPage() {
       {erro && <div style={{ color: '#E05C5C', fontSize: 13, marginBottom: 16 }}>{erro}</div>}
 
       {filtered.length === 0 ? (
-        <EmptyState title="Nenhum pedido no período" description="Tente ampliar o filtro de período." />
+        <EmptyState
+          title={pedidos.length === 0 ? 'Você ainda não fez nenhum pedido' : 'Nenhum pedido neste período'}
+          description={pedidos.length === 0 ? 'Monte o primeiro quadro no Novo pedido.' : 'Escolha um período maior ou outro status.'}
+          action={pedidos.length === 0 && onNovoPedido ? 'Fazer o primeiro pedido' : undefined}
+          onAction={onNovoPedido}
+        />
       ) : (
         filtered.map(p => {
           const stKey = resolveStatus(p)
@@ -219,29 +273,34 @@ export default function PedidosPage() {
           return (
             <div key={p.id} style={S.card}>
               <div style={S.cardHeader(expanded)} onClick={() => setExpandedId(expanded ? null : p.id)}>
-                <Badge label={st.label} color={st.color} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: colors.text }}>
-                    {p.os?.number ? `OS #${p.os.number}` : `Pedido #${p.numero ?? p.id.slice(-6).toUpperCase()}`}
-                    {itens[0]?.montagem_nome && <span style={{ fontWeight: 400, color: colors.textMuted }}> · {itens[0].montagem_nome}</span>}
+                {itens[0]?.imagem_url ? <img src={itens[0].imagem_url} alt="" style={S.rowThumb} /> : <div style={S.rowThumb} />}
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <div style={{ fontFamily: fonts.display, fontSize: 20, fontWeight: 600, color: colors.text, lineHeight: 1.15 }}>
+                    {itens[0]?.imagem_titulo || (p.cliente_nome ? `Quadro de ${p.cliente_nome}` : 'Quadro sob medida')}
                   </div>
-                  <div style={{ fontSize: 12, color: colors.textMuted }}>{formatDate(p.created_at)}</div>
+                  <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                    {p.os?.number ? `OS #${p.os.number}` : `Pedido #${p.numero ?? p.id.slice(-6).toUpperCase()}`}
+                    {' · '}{formatDate(p.created_at)}
+                    {p.cliente_nome && itens[0]?.imagem_titulo ? ` · ${p.cliente_nome}` : ''}
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 999, border: `1px solid ${st.color}`, color: st.color, whiteSpace: 'nowrap' }}>{st.label}</span>
+                <div style={{ textAlign: 'right', minWidth: 110 }}>
                   {p.revenda_total > 0 && (
-                    <div style={{ fontSize: 14, fontWeight: 700, color: colors.text }}>{fmt(p.revenda_total)}</div>
+                    <div style={{ fontFamily: fonts.display, fontSize: 22, fontWeight: 600, color: colors.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fmt(p.revenda_total)}</div>
                   )}
                   {b2b > 0 && (
-                    <div style={{ fontSize: 11, color: lucro >= 0 ? '#22C55E' : '#EF4444', fontWeight: 600 }}>
-                      lucro {fmt(lucro)}
+                    <div style={{ fontSize: 12, color: lucro >= 0 ? colors.success : colors.danger, fontWeight: 600, marginTop: 4 }}>
+                      seu lucro {fmt(lucro)}
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: 12, color: colors.textMuted, marginLeft: 4 }}>{expanded ? '▲' : '▼'}</div>
+                <span aria-hidden="true" style={{ fontSize: 12, color: colors.textMuted }}>{expanded ? '▲' : '▼'}</span>
               </div>
 
               {expanded && (
                 <div style={S.cardBody}>
+                  <LinhaDoTempo stKey={stKey} />
                   {/* Cabeçalho do pedido */}
                   <div style={{ display: 'flex', gap: 24, marginTop: 16, flexWrap: 'wrap' }}>
                     <div>
@@ -276,7 +335,7 @@ export default function PedidosPage() {
 
                   {/* Itens */}
                   {itens.map((item, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: colors.surfaceAlt, borderRadius: 8, padding: '12px 14px', marginTop: 12 }}>
+                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: colors.bg, border: `1px solid ${colors.border}`, padding: 14, marginTop: 16 }}>
                       {item.imagem_url && <img src={item.imagem_url} alt="" style={S.imgThumb} />}
                       <div style={{ flex: 1 }}>
                         {item.imagem_titulo && <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: colors.text }}>{item.imagem_titulo}</div>}
@@ -307,7 +366,7 @@ export default function PedidosPage() {
                     {b2b > 0 && p.revenda_total > 0 && (
                       <div>
                         <div style={S.infoLabel}>Seu lucro</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: lucro >= 0 ? '#22C55E' : '#EF4444' }}>{fmt(lucro)}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: lucro >= 0 ? colors.success : colors.danger }}>{fmt(lucro)}</div>
                       </div>
                     )}
                   </div>
@@ -322,7 +381,7 @@ export default function PedidosPage() {
                   {p.revenda_total > 0 && (
                     <button
                       onClick={() => abrirOrcamentoCliente(p, lojista?.store_name || profile?.name || 'Orçamento')}
-                      style={{ marginTop: 16, width: '100%', background: 'transparent', color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}
+                      style={{ marginTop: 20, width: '100%', background: 'transparent', color: colors.text, border: `1px solid ${colors.text}`, borderRadius: 999, padding: '13px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body }}
                     >
                       Orçamento para o cliente (PDF)
                     </button>
@@ -334,13 +393,13 @@ export default function PedidosPage() {
                       disabled={confirmando === p.id}
                       style={{
                         marginTop: 16, width: '100%',
-                        background: confirmando === p.id ? colors.textMuted : '#22C55E',
-                        color: '#fff', border: 'none', borderRadius: 8,
-                        padding: '12px', fontSize: 14, fontWeight: 700,
+                        background: confirmando === p.id ? colors.textMuted : colors.text,
+                        color: colors.bg, border: 'none', borderRadius: 999,
+                        padding: '14px', fontSize: 14, fontWeight: 700,
                         cursor: confirmando === p.id ? 'default' : 'pointer',
-                        fontFamily: 'Inter, system-ui, sans-serif',
+                        fontFamily: fonts.body,
                       }}>
-                      {confirmando === p.id ? 'Confirmando…' : '✓ Confirmar Pedido — Enviar ao Estúdio'}
+                      {confirmando === p.id ? 'Enviando…' : 'Cliente fechou: enviar ao estúdio'}
                     </button>
                   )}
                 </div>

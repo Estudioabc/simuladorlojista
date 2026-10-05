@@ -1,28 +1,46 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 
 const ThemeContext = createContext()
 
 const COLORS = {
-  bg:         '#f5f5f0',
-  surface:    '#ffffff',
-  surfaceAlt: '#f0ede8',
-  border:     '#e0ddd8',
-  text:       '#1a1814',
-  textMuted:  '#6b6860',
-  accent:     '#b08a4e',
-  accentHover:'#9a7640',
-  danger:     '#cc3333',
-  success:    '#16a34a',
-  warning:    '#d97706',
-  overlay:    'rgba(0,0,0,0.4)',
+  bg:         '#FAF9F6',
+  surface:    '#FFFFFF',
+  surfaceAlt: '#F2EFE9',
+  border:     '#E6E2DA',
+  text:       '#17150F',
+  textMuted:  '#76716A',
+  accent:     '#8F6D37',
+  accentHover:'#76592B',
+  danger:     '#B4312A',
+  success:    '#2F7A4B',
+  warning:    '#B26B12',
+  overlay:    'rgba(23,21,15,0.45)',
+}
+
+export const FONTS = {
+  display: "'Cormorant Garamond', Georgia, 'Times New Roman', serif",
+  body: "Figtree, system-ui, -apple-system, sans-serif",
 }
 
 export function ThemeProvider({ children }) {
   return (
-    <ThemeContext.Provider value={{ colors: COLORS }}>
+    <ThemeContext.Provider value={{ colors: COLORS, fonts: FONTS }}>
       {children}
     </ThemeContext.Provider>
   )
+}
+
+const MOBILE_QUERY = '(max-width: 760px)'
+
+export function useIsMobile() {
+  const [mobile, setMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY)
+    const on = () => setMobile(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return mobile
 }
 
 export function useTheme() {

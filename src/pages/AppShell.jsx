@@ -1,108 +1,88 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useTheme } from '../styles/theme'
+import { useTheme, useIsMobile } from '../styles/theme'
 import BancoImagensPage from './BancoImagensPage'
 import SimuladorPage from './SimuladorPage'
 import PedidosPage from './PedidosPage'
 import ConfigPage from './ConfigPage'
 
 const NAV = [
-  { id: 'banco',     label: 'Banco de Imagens', short: 'Imagens' },
-  { id: 'simulador', label: 'Novo Pedido',      short: 'Novo pedido' },
-  { id: 'pedidos',   label: 'Meus Pedidos',     short: 'Pedidos' },
-  { id: 'config',    label: 'Configurações',    short: 'Ajustes' },
+  { id: 'banco',     label: 'Acervo' },
+  { id: 'simulador', label: 'Novo pedido' },
+  { id: 'pedidos',   label: 'Meus pedidos' },
+  { id: 'config',    label: 'Ajustes' },
 ]
-
-const MOBILE_QUERY = '(max-width: 760px)'
-
-function useIsMobile() {
-  const [mobile, setMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
-  useEffect(() => {
-    const mq = window.matchMedia(MOBILE_QUERY)
-    const on = () => setMobile(mq.matches)
-    mq.addEventListener('change', on)
-    return () => mq.removeEventListener('change', on)
-  }, [])
-  return mobile
-}
 
 export default function AppShell() {
   const { profile, lojista, signOut } = useAuth()
-  const { colors } = useTheme()
+  const { colors, fonts } = useTheme()
   const [tab, setTab] = useState('banco')
   const isMobile = useIsMobile()
   const [imagemParaSimulador, setImagemParaSimulador] = useState(null)
 
+  const irPara = (id) => { setTab(id); window.scrollTo({ top: 0 }) }
+
   const handleSelectImagem = (img) => {
     setImagemParaSimulador(img)
-    setTab('simulador')
+    irPara('simulador')
   }
+
+  const loja = lojista?.store_name ?? profile?.name ?? 'Portal do Lojista'
 
   const S = {
-    shell: { minHeight: '100vh', background: colors.bg, display: 'flex', flexDirection: 'column' },
-    header: { background: colors.surface, borderBottom: `1px solid ${colors.border}`, padding: isMobile ? '0 16px' : '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60, gap: 16, position: 'sticky', top: 0, zIndex: 100 },
-    logo: { fontSize: 15, fontWeight: 800, color: colors.text, letterSpacing: -0.3, whiteSpace: 'nowrap' },
-    logoSub: { fontSize: 11, color: colors.textMuted, fontWeight: 400 },
-    nav: { display: 'flex', gap: 4, flex: 1, justifyContent: 'center' },
-    navBtn: (active) => ({ background: active ? colors.accent + '18' : 'transparent', color: active ? colors.accent : colors.textMuted, border: `1px solid ${active ? colors.accent + '40' : 'transparent'}`, borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s', whiteSpace: 'nowrap' }),
-    userArea: { display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 },
-    avatar: { width: 32, height: 32, borderRadius: '50%', background: colors.accent + '30', color: colors.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 },
-    userName: { fontSize: 13, fontWeight: 600, color: colors.text },
-    storeName: { fontSize: 11, color: colors.textMuted },
-    signOutBtn: { background: 'transparent', border: `1px solid ${colors.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 12, color: colors.textMuted, cursor: 'pointer' },
-    content: { flex: 1, padding: isMobile ? '20px 16px 88px' : '32px 24px', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' },
-    // mobile nav
-    mobileNav: { position: 'fixed', bottom: 0, left: 0, right: 0, background: colors.surface, borderTop: `1px solid ${colors.border}`, display: 'flex', zIndex: 100 },
-    mobileBtn: (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', color: active ? colors.accent : colors.textMuted, fontSize: 10, fontWeight: active ? 700 : 400 }),
+    shell: { minHeight: '100vh', background: colors.bg, color: colors.text, fontFamily: fonts.body, display: 'flex', flexDirection: 'column' },
+    header: { background: colors.bg + 'F2', backdropFilter: 'blur(8px)', borderBottom: `1px solid ${colors.border}`, position: 'sticky', top: 0, zIndex: 100 },
+    headerInner: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '0 16px' : '0 32px', height: isMobile ? 60 : 72, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 },
+    brand: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+    loja: { fontFamily: fonts.display, fontSize: isMobile ? 22 : 26, fontWeight: 600, lineHeight: 1, letterSpacing: -0.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    sub: { fontSize: 10, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5 },
+    nav: { display: 'flex', gap: 28, alignItems: 'stretch', height: '100%' },
+    navBtn: (active) => ({ background: 'none', border: 'none', borderBottom: `2px solid ${active ? colors.text : 'transparent'}`, color: active ? colors.text : colors.textMuted, fontSize: 14, fontWeight: active ? 600 : 500, cursor: 'pointer', padding: '0 2px', marginBottom: -1, transition: 'color 0.15s, border-color 0.15s' }),
+    sair: { background: 'none', border: 'none', color: colors.textMuted, fontSize: 13, fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, padding: 4 },
+    content: { flex: 1, width: '100%', maxWidth: 1200, margin: '0 auto', padding: isMobile ? '24px 16px 96px' : '44px 32px 72px', boxSizing: 'border-box' },
+    mobileNav: { position: 'fixed', bottom: 0, left: 0, right: 0, background: colors.surface, borderTop: `1px solid ${colors.border}`, display: 'flex', zIndex: 100, paddingBottom: 'env(safe-area-inset-bottom)' },
+    mobileBtn: (active) => ({ flex: 1, minHeight: 58, background: 'none', border: 'none', borderTop: `2px solid ${active ? colors.text : 'transparent'}`, color: active ? colors.text : colors.textMuted, fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer' }),
   }
-
-  const initials = (profile?.name ?? 'L').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
 
   return (
     <div style={S.shell}>
-      {/* Header desktop */}
       <header style={S.header}>
-        <div>
-          <div style={S.logo}>{lojista?.store_name ?? 'Estúdio ABC'}</div>
-          <div style={S.logoSub}>Portal do Lojista</div>
-        </div>
-
-        {!isMobile && <nav style={S.nav}>
-          {NAV.map(n => (
-            <button key={n.id} style={S.navBtn(tab === n.id)} onClick={() => setTab(n.id)}>
-              {n.label}
-            </button>
-          ))}
-        </nav>}
-
-        <div style={S.userArea}>
-          <div style={S.avatar}>{initials}</div>
-          <div style={{ display: 'none' }}>
-            <div style={S.userName}>{lojista?.store_name ?? profile?.name}</div>
-            <div style={S.storeName}>{profile?.email}</div>
+        <div style={S.headerInner}>
+          <div style={S.brand}>
+            <div style={S.loja}>{loja}</div>
+            <div style={S.sub}>Portal do lojista · Estúdio ABC</div>
           </div>
-          <button style={S.signOutBtn} onClick={signOut}>Sair</button>
+
+          {!isMobile && (
+            <nav style={S.nav} aria-label="Seções">
+              {NAV.map(n => (
+                <button key={n.id} style={S.navBtn(tab === n.id)} onClick={() => irPara(n.id)} aria-current={tab === n.id ? 'page' : undefined}>
+                  {n.label}
+                </button>
+              ))}
+            </nav>
+          )}
+
+          <button style={S.sair} onClick={signOut}>Sair</button>
         </div>
       </header>
 
-      {/* Content */}
       <main style={S.content}>
         {tab === 'banco'     && <BancoImagensPage onSelectImagem={handleSelectImagem} />}
-        {tab === 'simulador' && <SimuladorPage imagemInicial={imagemParaSimulador} onImagemClear={() => setImagemParaSimulador(null)} />}
-        {tab === 'pedidos'   && <PedidosPage />}
+        {tab === 'simulador' && <SimuladorPage imagemInicial={imagemParaSimulador} onImagemClear={() => setImagemParaSimulador(null)} onVerPedidos={() => irPara('pedidos')} />}
+        {tab === 'pedidos'   && <PedidosPage onNovoPedido={() => irPara('simulador')} />}
         {tab === 'config'    && <ConfigPage />}
       </main>
 
       {isMobile && (
-        <nav style={S.mobileNav}>
+        <nav style={S.mobileNav} aria-label="Seções">
           {NAV.map(n => (
-            <button key={n.id} style={{ ...S.mobileBtn(tab === n.id), fontSize: 12, minHeight: 56 }} onClick={() => setTab(n.id)}>
-              {n.short}
+            <button key={n.id} style={S.mobileBtn(tab === n.id)} onClick={() => irPara(n.id)} aria-current={tab === n.id ? 'page' : undefined}>
+              {n.label}
             </button>
           ))}
         </nav>
       )}
-
     </div>
   )
 }

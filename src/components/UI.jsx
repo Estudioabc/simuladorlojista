@@ -4,7 +4,7 @@ export function Spinner({ label = 'Carregando...' }) {
   const { colors } = useTheme()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 48, color: colors.textMuted, fontSize: 13 }}>
-      <div style={{ width: 28, height: 28, border: `3px solid ${colors.border}`, borderTopColor: colors.accent, borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <div style={{ width: 26, height: 26, border: `2px solid ${colors.border}`, borderTopColor: colors.text, borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       {label}
     </div>
@@ -28,13 +28,13 @@ export function Modal({ open, onClose, title, children, wide }) {
 }
 
 export function EmptyState({ icon, title, description, action, onAction }) {
-  const { colors } = useTheme()
+  const { colors, fonts } = useTheme()
   return (
     <div style={{ textAlign: 'center', padding: '60px 24px', color: colors.textMuted }}>
       {icon && <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>}
-      <div style={{ fontSize: 16, fontWeight: 600, color: colors.text, marginBottom: 6 }}>{title}</div>
-      {description && <div style={{ fontSize: 13, marginBottom: 20 }}>{description}</div>}
-      {action && <button onClick={onAction} style={{ background: colors.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{action}</button>}
+      <div style={{ fontFamily: fonts.display, fontSize: 28, fontWeight: 600, color: colors.text, marginBottom: 8, lineHeight: 1.15 }}>{title}</div>
+      {description && <div style={{ fontSize: 14, marginBottom: 22 }}>{description}</div>}
+      {action && <button onClick={onAction} style={{ background: 'transparent', color: colors.text, border: `1px solid ${colors.text}`, borderRadius: 999, padding: '11px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{action}</button>}
     </div>
   )
 }
