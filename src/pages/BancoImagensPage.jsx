@@ -113,7 +113,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       while (true) {
         const { data, error } = await supabase
           .from('catalogo_imagens')
-          .select('id, titulo, categoria, img_url, sizes, ratio')
+          .select('*')
           .eq('tenant_id', profile.tenant_id)
           .eq('ativo', true)
           .order('categoria')
@@ -129,6 +129,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       setKitOf(ko)
       setCoverOf(co)
       setCategorias([...new Set(all.map(i => i.categoria).filter(Boolean))])
+      if (all.some(i => i.em_alta)) setCatAtiva('em_alta')
       setLoading(false)
     }
     fetchAll()
@@ -147,7 +148,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
   const filtradas = imagens.filter(img => {
     if (coverOf[img.id]) return false
-    const matchCat = catAtiva === 'todas' || img.categoria === catAtiva
+    const matchCat = catAtiva === 'todas' || (catAtiva === 'em_alta' ? img.em_alta : img.categoria === catAtiva)
     const matchBusca = !busca || img.titulo.toLowerCase().includes(busca.toLowerCase())
     const matchFormato = !formato || formatoDe(img.ratio) === formato
     const matchFav = !soFavoritos || favoritos.has(cardKeyOf(img))
@@ -174,6 +175,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const exibidos = cards.slice(0, visiveis)
   const temMais = visiveis < cards.length
   const contaCat = (cat) => imagens.filter(i => !coverOf[i.id] && i.categoria === cat).length
+  const nEmAlta = imagens.filter(i => !coverOf[i.id] && i.em_alta).length
 
   async function montarSelecao(img) {
     let ratio = parseFloat(img.ratio)
@@ -270,6 +272,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
           </button>
         </div>
         <div style={S.cats} role="tablist" aria-label="Temas">
+          {nEmAlta > 0 && (
+            <button role="tab" aria-selected={catAtiva === 'em_alta'} style={{ ...S.catBtn(catAtiva === 'em_alta'), color: catAtiva === 'em_alta' ? colors.text : colors.accent }} onClick={() => setCatAtiva('em_alta')}>
+              ★ Em alta<span style={S.catCount}>{nEmAlta}</span>
+            </button>
+          )}
           <button role="tab" aria-selected={catAtiva === 'todas'} style={S.catBtn(catAtiva === 'todas')} onClick={() => setCatAtiva('todas')}>
             Todas
           </button>
@@ -282,7 +289,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       </div>
 
       <div style={S.meta}>
-        <span>{cards.length} {cards.length === 1 ? 'obra' : 'obras'}{catAtiva !== 'todas' ? ` em ${catAtiva}` : ''}</span>
+        <span>{cards.length} {cards.length === 1 ? 'obra' : 'obras'}{catAtiva === 'em_alta' ? ' em alta: o que mais está vendendo nas grandes lojas de quadros' : catAtiva !== 'todas' ? ` em ${catAtiva}` : ''}</span>
         {temFiltro && <button style={S.linkBtn} onClick={limparFiltros}>Limpar filtros</button>}
       </div>
 
