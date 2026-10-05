@@ -1,10 +1,72 @@
 import { useEffect, useRef, useState } from 'react'
 
-// Foto: 5316x7000 — parede branca, sofá no terço inferior
-// Zona da parede onde o quadro vai: definida como % das dimensões da foto
-const FRAME_ZONE = { top: 0.08, bottom: 0.54, left: 0.14, right: 0.86 }
-const IMG_W = 5316
-const IMG_H = 7000
+// Ambientes disponíveis — zone define área da parede em % das dimensões da foto
+export const ROOMS = [
+  {
+    id: 'amb1',
+    label: 'Sala Azul',
+    src: '/ambiente-1.jpg',
+    w: 1920, h: 960,
+    zone: { top: 0.04, bottom: 0.76, left: 0.30, right: 0.92 },
+    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
+  },
+  {
+    id: 'amb2',
+    label: 'Quarto',
+    src: '/ambiente-2.jpg',
+    w: 1920, h: 1076,
+    zone: { top: 0.02, bottom: 0.52, left: 0.20, right: 0.80 },
+    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
+  },
+  {
+    id: 'amb3',
+    label: 'Minimalista',
+    src: '/ambiente-3.jpg',
+    w: 1433, h: 1920,
+    zone: { top: 0.02, bottom: 0.58, left: 0.05, right: 0.95 },
+    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
+  },
+  {
+    id: 'amb4',
+    label: 'Sala Cinza',
+    src: '/ambiente-4.jpg',
+    w: 1458, h: 1920,
+    zone: { top: 0.04, bottom: 0.68, left: 0.10, right: 0.90 },
+    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
+  },
+  {
+    id: 'amb5',
+    label: 'Loft Dark',
+    src: '/ambiente-5.jpg',
+    w: 1920, h: 1280,
+    zone: { top: 0.06, bottom: 0.80, left: 0.20, right: 0.82 },
+    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
+  },
+  {
+    id: 'amb6',
+    label: 'Terracota',
+    src: '/ambiente-6.jpg',
+    w: 1920, h: 1355,
+    zone: { top: 0.02, bottom: 0.72, left: 0.16, right: 0.84 },
+    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
+  },
+  {
+    id: 'amb7',
+    label: 'Sala de Jantar',
+    src: '/ambiente-7.jpg',
+    w: 1920, h: 1280,
+    zone: { top: 0.04, bottom: 0.65, left: 0.28, right: 0.85 },
+    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
+  },
+  {
+    id: 'amb8',
+    label: 'Café Industrial',
+    src: '/ambiente-8.jpg',
+    w: 1920, h: 1280,
+    zone: { top: 0.04, bottom: 0.68, left: 0.32, right: 0.95 },
+    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
+  },
+]
 
 const FRAME_STYLES = {
   branco:  { fill: '#f8f6f3', stroke: '#dedad4', inner: 'rgba(0,0,0,0.05)' },
@@ -22,45 +84,30 @@ function loadImg(src) {
   })
 }
 
-function drawFrameOnly(ctx, fx, fy, fw, fh, pad, fs) {
-  ctx.save()
-  ctx.shadowColor = 'rgba(0,0,0,0.28)'
-  ctx.shadowBlur = 16
-  ctx.shadowOffsetX = 2
-  ctx.shadowOffsetY = 6
-  ctx.fillStyle = '#fff'
-  ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
-  ctx.restore()
-  ctx.fillStyle = fs.fill
-  ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
-  ctx.strokeStyle = fs.stroke
-  ctx.lineWidth = 1.5
-  ctx.strokeRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
+// Cache da foto de fundo por src
+const _roomImgCache = {}
+function loadRoomImg(src) {
+  if (!_roomImgCache[src]) _roomImgCache[src] = loadImg(src)
+  return _roomImgCache[src]
 }
 
-// Cache da foto de fundo (carregada uma vez)
-let _roomImgPromise = null
-function loadRoomImg() {
-  if (!_roomImgPromise) _roomImgPromise = loadImg('/mockup-sala.jpg')
-  return _roomImgPromise
-}
+const PAD_RATIO = 0.018  // espessura da moldura como fração da altura do quadro
 
-// Recorte da sala para thumbnail: mostra só a área dos quadros + contexto
-const THUMB_CROP = { top: 0.04, bottom: 0.62, left: 0.08, right: 0.92 }
-
-async function drawKitOnCanvas(canvas, kitUrls, frameColor, thumbMode = false) {
+async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = false) {
   const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
   const W = canvas.width
   const H = canvas.height
   const ctx = canvas.getContext('2d')
+  const THUMB_CROP = room.thumb
+  const FRAME_ZONE = room.zone
 
-  const roomImg = await loadRoomImg()
+  const roomImg = await loadRoomImg(room.src)
 
   if (thumbMode) {
-    const srcX = THUMB_CROP.left * IMG_W
-    const srcY = THUMB_CROP.top * IMG_H
-    const srcW = (THUMB_CROP.right - THUMB_CROP.left) * IMG_W
-    const srcH = (THUMB_CROP.bottom - THUMB_CROP.top) * IMG_H
+    const srcX = THUMB_CROP.left * room.w
+    const srcY = THUMB_CROP.top * room.h
+    const srcW = (THUMB_CROP.right - THUMB_CROP.left) * room.w
+    const srcH = (THUMB_CROP.bottom - THUMB_CROP.top) * room.h
     ctx.drawImage(roomImg, srcX, srcY, srcW, srcH, 0, 0, W, H)
   } else {
     ctx.drawImage(roomImg, 0, 0, W, H)
@@ -81,37 +128,41 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, thumbMode = false) {
   const zH = zB - zT
 
   const N = kitUrls.length
-  const gap = N > 1 ? Math.round(W * 0.035) : 0
-  const pad = Math.max(thumbMode ? 2 : 5, Math.round(W * (thumbMode ? 0.008 : 0.012)))
+  const gap = N > 1 ? Math.round(W * 0.03) : 0
 
   const artImgs = await Promise.all(kitUrls.map(u => loadImg(u).catch(() => null)))
   const ratios = artImgs.map(a => a ? (a.naturalWidth / a.naturalHeight) : 1)
 
-  let fh = zH * 0.88
+  let fh = zH * 0.55
   let fws = ratios.map(r => fh * r)
   const totalW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
-  if (totalW > zW * 0.95) {
-    const scale = (zW * 0.95) / totalW
+  if (totalW > zW * 0.75) {
+    const scale = (zW * 0.75) / totalW
     fh *= scale
     fws = fws.map(w => w * scale)
   }
+  const pad = thumbMode ? 2 : Math.max(2, Math.round(fh * PAD_RATIO))
 
   const totalKitW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
-  let cx = zL + (zW - totalKitW) / 2
+  let startX = zL + (zW - totalKitW) / 2
   const fy = zT + (zH - fh) / 2
 
   const frames = []
   for (let i = 0; i < N; i++) {
-    frames.push({ fx: cx, fy, fw: fws[i], fh })
-    cx += fws[i] + gap
+    frames.push({ fx: startX, fy, fw: fws[i], fh })
+    startX += fws[i] + gap
   }
 
+  drawFrames(ctx, frames, artImgs, fs, pad, thumbMode)
+}
+
+function drawFrames(ctx, frames, artImgs, fs, pad, thumbMode = false) {
   frames.forEach(({ fx, fy, fw, fh }) => {
     ctx.save()
-    ctx.shadowColor = 'rgba(0,0,0,0.28)'
-    ctx.shadowBlur = thumbMode ? 8 : 16
+    ctx.shadowColor = 'rgba(0,0,0,0.30)'
+    ctx.shadowBlur = thumbMode ? 8 : 18
     ctx.shadowOffsetX = 1
-    ctx.shadowOffsetY = thumbMode ? 3 : 6
+    ctx.shadowOffsetY = thumbMode ? 3 : 7
     ctx.fillStyle = '#fff'
     ctx.fillRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
     ctx.restore()
@@ -121,7 +172,6 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, thumbMode = false) {
     ctx.lineWidth = 1
     ctx.strokeRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
   })
-
   frames.forEach(({ fx, fy, fw, fh }, i) => {
     if (artImgs[i]) {
       ctx.drawImage(artImgs[i], fx, fy, fw, fh)
@@ -136,62 +186,328 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, thumbMode = false) {
 }
 
 // Thumbnail do kit para o grid: renderiza só quando visível (lazy)
-export function KitThumb({ kitUrls, frameColor = 'branco', cardWidth = 200 }) {
+export function KitThumb({ kitUrls, frameColor = 'branco', cardWidth = 200, room }) {
   const canvasRef = useRef()
   const [drawn, setDrawn] = useState(false)
+  const roomCfg = room || ROOMS[0]
 
-  const cropRatio = (THUMB_CROP.right - THUMB_CROP.left) / (THUMB_CROP.bottom - THUMB_CROP.top)
+  const thumbCrop = roomCfg.thumb
+  const cropRatio = (thumbCrop.right - thumbCrop.left) / ((thumbCrop.bottom - thumbCrop.top) || 1) * (roomCfg.w / roomCfg.h)
   const W = cardWidth
   const H = Math.round(W / cropRatio)
+
+  useEffect(() => { setDrawn(false) }, [roomCfg.id])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !kitUrls?.length) return
-
     const observer = new IntersectionObserver(entries => {
       if (!entries[0].isIntersecting || drawn) return
       canvas.width = W
       canvas.height = H
-      drawKitOnCanvas(canvas, kitUrls, frameColor, true).then(() => setDrawn(true)).catch(() => {})
+      drawKitOnCanvas(canvas, kitUrls, frameColor, roomCfg, true).then(() => setDrawn(true)).catch(() => {})
     }, { rootMargin: '200px' })
-
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [kitUrls, frameColor, W, H, drawn])
+  }, [kitUrls, frameColor, W, H, drawn, roomCfg])
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={W}
-      height={H}
-      style={{ width: '100%', aspectRatio: `${W}/${H}`, display: 'block' }}
-    />
+    <canvas ref={canvasRef} width={W} height={H}
+      style={{ width: '100%', aspectRatio: `${W}/${H}`, display: 'block' }} />
   )
 }
 
-// kitUrls: array de URLs (modo kit) — se undefined, usa imgUrl (modo single)
-export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600 }) {
-  const canvasRef = useRef()
+// Hash determinístico para escolher cor de moldura pelo src
+function hashStr(s) {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+const GRID_FRAME_PALETTE = [
+  { fill: '#1a1a1a', stroke: '#000' },    // preta
+  { fill: '#f0ede8', stroke: '#d5cfc8' }, // branca
+  { fill: '#7B5230', stroke: '#5c3a1e' }, // madeira
+]
 
-  const W = width
-  const H = Math.round(W * IMG_H / IMG_W)
+// Miniatura de arte com moldura sobre fundo branco — para uso no grid
+export function FramedArtThumb({ src, alt }) {
+  const wrapRef = useRef()
+  const canvasRef = useRef()
+  const imgCacheRef = useRef(null)
+  const fs = GRID_FRAME_PALETTE[hashStr(src || '') % 3]
+
+  function drawOn(canvas, img, W) {
+    const H = Math.round(W * 0.95)
+    canvas.width = W
+    canvas.height = H
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#f7f5f2'
+    ctx.fillRect(0, 0, W, H)
+    const FRAME_THICK = Math.max(1, Math.round(H * 0.018))
+    const OUTER_PAD = Math.round(H * 0.1)
+    const maxArtW = W - OUTER_PAD * 2
+    const maxArtH = H - OUTER_PAD * 2
+    const imgRatio = img.naturalWidth / img.naturalHeight
+    const areaRatio = maxArtW / maxArtH
+    let artW, artH
+    if (imgRatio > areaRatio) { artW = maxArtW; artH = artW / imgRatio }
+    else { artH = maxArtH; artW = artH * imgRatio }
+    const artX = (W - artW) / 2
+    const artY = (H - artH) / 2
+    ctx.save()
+    ctx.shadowColor = 'rgba(0,0,0,0.22)'
+    ctx.shadowBlur = 14
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 5
+    ctx.fillStyle = fs.fill
+    ctx.fillRect(artX - FRAME_THICK, artY - FRAME_THICK, artW + FRAME_THICK * 2, artH + FRAME_THICK * 2)
+    ctx.restore()
+    ctx.fillStyle = fs.fill
+    ctx.fillRect(artX - FRAME_THICK, artY - FRAME_THICK, artW + FRAME_THICK * 2, artH + FRAME_THICK * 2)
+    ctx.strokeStyle = fs.stroke
+    ctx.lineWidth = 0.5
+    ctx.strokeRect(artX - FRAME_THICK, artY - FRAME_THICK, artW + FRAME_THICK * 2, artH + FRAME_THICK * 2)
+    ctx.drawImage(img, artX, artY, artW, artH)
+  }
 
   useEffect(() => {
+    imgCacheRef.current = null
+    const wrap = wrapRef.current
+    const canvas = canvasRef.current
+    if (!wrap || !canvas || !src) return
+    let ro
+    const io = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting) return
+      io.disconnect()
+      loadImg(src).then(img => {
+        imgCacheRef.current = img
+        const W = wrap.offsetWidth || 320
+        drawOn(canvas, img, W)
+        ro = new ResizeObserver(([e]) => {
+          const W2 = Math.round(e.contentRect.width)
+          if (W2 > 0) drawOn(canvas, img, W2)
+        })
+        ro.observe(wrap)
+      }).catch(() => {})
+    }, { rootMargin: '300px' })
+    io.observe(wrap)
+    return () => { io.disconnect(); ro?.disconnect() }
+  }, [src])
+
+  return (
+    <div ref={wrapRef} style={{ width: '100%' }}>
+      <canvas ref={canvasRef} style={{ width: '100%', display: 'block' }} />
+    </div>
+  )
+}
+
+// MockupCanvas: modo normal (interactive=false) ou interativo (drag + resize)
+export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false }) {
+  const canvasRef = useRef()
+  const roomCfg = room || ROOMS[0]
+
+  const W = width
+  const H = Math.round(W * roomCfg.h / roomCfg.w)
+
+  // ── Modo normal (não interativo) ──────────────────────────────────────────
+  useEffect(() => {
+    if (interactive) return
     const canvas = canvasRef.current
     if (!canvas) return
-    const urls = kitUrls?.length > 1 ? kitUrls : (imgUrl ? [imgUrl] : [])
+    const urls = kitUrls?.length >= 1 ? kitUrls : (imgUrl ? [imgUrl] : [])
     if (!urls.length) return
     canvas.width = W
     canvas.height = H
-    drawKitOnCanvas(canvas, urls, frameColor, false).catch(() => {})
-  }, [imgUrl, kitUrls, ratio, frameColor, W, H])
+    drawKitOnCanvas(canvas, urls, frameColor, roomCfg, false).catch(() => {})
+  }, [imgUrl, kitUrls, ratio, frameColor, W, H, roomCfg, interactive])
+
+  // ── Modo interativo ───────────────────────────────────────────────────────
+  // cx, cy = centro do kit como fração do canvas; scale = fator de escala
+  const stateRef = useRef({ cx: 0.5, cy: 0.38, scale: 1.0 })
+  const loadedRef = useRef({ roomImg: null, artImgs: null, ratios: null })
+  const dragRef = useRef(null)
+
+  // Calcula layout do kit com base no estado atual
+  const getLayout = () => {
+    const { cx, cy, scale } = stateRef.current
+    const { ratios } = loadedRef.current
+    if (!ratios) return null
+    const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
+    const N = ratios.length
+    const gap = N > 1 ? Math.round(W * 0.03) : 0
+    const FRAME_ZONE = roomCfg.zone
+    const zH = (FRAME_ZONE.bottom - FRAME_ZONE.top) * H
+    const zW = (FRAME_ZONE.right - FRAME_ZONE.left) * W
+
+    let fh = zH * 0.55 * scale
+    let fws = ratios.map(r => fh * r)
+    const totalW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
+    if (totalW > zW * 0.9) {
+      const sc = (zW * 0.9) / totalW
+      fh *= sc; fws = fws.map(w => w * sc)
+    }
+    const pad = Math.max(2, Math.round(fh * PAD_RATIO))
+
+    const kitW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
+    const kitH = fh
+    const kitX = cx * W - kitW / 2
+    const kitY = cy * H - kitH / 2
+
+    const frames = []
+    let x = kitX
+    for (let i = 0; i < N; i++) {
+      frames.push({ fx: x, fy: kitY, fw: fws[i], fh })
+      x += fws[i] + gap
+    }
+    return { frames, fs, pad, kitX, kitY, kitW, kitH }
+  }
+
+  const redraw = () => {
+    const canvas = canvasRef.current
+    if (!canvas || !loadedRef.current.roomImg) return
+    const ctx = canvas.getContext('2d')
+    const { roomImg, artImgs } = loadedRef.current
+
+    ctx.drawImage(roomImg, 0, 0, W, H)
+
+    const layout = getLayout()
+    if (!layout) return
+    const { frames, fs, pad, kitX, kitY, kitW, kitH } = layout
+
+    drawFrames(ctx, frames, artImgs, fs, pad, false)
+
+    // Borda tracejada só aparece durante interação (drag ou resize)
+    if (dragRef.current) {
+      ctx.save()
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([6, 5])
+      ctx.strokeRect(kitX - pad - 4, kitY - pad - 4, kitW + (pad + 4) * 2, kitH + (pad + 4) * 2)
+      ctx.restore()
+    }
+  }
+
+  // Carrega assets quando entra no modo interativo ou muda imagem/room
+  useEffect(() => {
+    if (!interactive) return
+    const urls = kitUrls?.length >= 1 ? kitUrls : (imgUrl ? [imgUrl] : [])
+    if (!urls.length) return
+    // Reset posição ao trocar imagem ou ambiente
+    stateRef.current = { cx: 0.5, cy: 0.38, scale: 1.0 }
+    loadedRef.current = { roomImg: null, artImgs: null, ratios: null }
+
+    const canvas = canvasRef.current
+    if (canvas) { canvas.width = W; canvas.height = H }
+
+    Promise.all([
+      loadRoomImg(roomCfg.src),
+      Promise.all(urls.map(u => loadImg(u).catch(() => null))),
+    ]).then(([roomImg, artImgs]) => {
+      loadedRef.current = {
+        roomImg,
+        artImgs,
+        ratios: artImgs.map(a => (a ? a.naturalWidth / a.naturalHeight : 1)),
+      }
+      redraw()
+    })
+  }, [imgUrl, JSON.stringify(kitUrls), roomCfg.id, interactive, W, H])
+
+  // Redesenha quando frameColor muda
+  useEffect(() => {
+    if (!interactive || !loadedRef.current.roomImg) return
+    redraw()
+  }, [frameColor])
+
+  // Converte evento de mouse/touch para coordenadas internas do canvas
+  const getCanvasPt = (e) => {
+    const canvas = canvasRef.current
+    const rect = canvas.getBoundingClientRect()
+    const sx = W / rect.width
+    const sy = H / rect.height
+    const src = e.touches ? e.touches[0] : e
+    return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy }
+  }
+
+  const handleDown = (e) => {
+    if (!interactive) return
+    e.preventDefault()
+    const pt = getCanvasPt(e)
+    const layout = getLayout()
+    if (!layout) return
+
+    const { pad, kitX, kitY, kitW, kitH } = layout
+    const H_SIZE = 18  // hit area maior que o visual para facilitar toque
+
+    // Detecta clique em handle de canto
+    const corners = [
+      [kitX - pad, kitY - pad],
+      [kitX + kitW + pad, kitY - pad],
+      [kitX - pad, kitY + kitH + pad],
+      [kitX + kitW + pad, kitY + kitH + pad],
+    ]
+    const onCorner = corners.some(([cx, cy]) =>
+      Math.abs(pt.x - cx) < H_SIZE && Math.abs(pt.y - cy) < H_SIZE
+    )
+
+    if (onCorner) {
+      const { cx, cy, scale } = stateRef.current
+      const dist = Math.hypot(pt.x - cx * W, pt.y - cy * H)
+      dragRef.current = { mode: 'resize', startDist: dist, startScale: scale }
+    } else if (
+      pt.x >= kitX - pad - 4 && pt.x <= kitX + kitW + pad + 4 &&
+      pt.y >= kitY - pad - 4 && pt.y <= kitY + kitH + pad + 4
+    ) {
+      const { cx, cy } = stateRef.current
+      dragRef.current = { mode: 'drag', startPt: pt, startCx: cx, startCy: cy }
+    }
+  }
+
+  const handleMove = (e) => {
+    if (!interactive || !dragRef.current) return
+    e.preventDefault()
+    const pt = getCanvasPt(e)
+    const d = dragRef.current
+
+    if (d.mode === 'drag') {
+      stateRef.current.cx = Math.max(0.02, Math.min(0.98, d.startCx + (pt.x - d.startPt.x) / W))
+      stateRef.current.cy = Math.max(0.02, Math.min(0.98, d.startCy + (pt.y - d.startPt.y) / H))
+    } else if (d.mode === 'resize') {
+      const { cx, cy } = stateRef.current
+      const dist = Math.hypot(pt.x - cx * W, pt.y - cy * H)
+      stateRef.current.scale = Math.max(0.25, Math.min(4.0, d.startScale * dist / Math.max(1, d.startDist)))
+    }
+
+    redraw()
+  }
+
+  const handleUp = () => { dragRef.current = null }
+
+  const canvasStyle = {
+    maxWidth: '100%',
+    maxHeight: 'calc(100vh - 160px)',
+    width: 'auto',
+    height: 'auto',
+    borderRadius: 8,
+    display: 'block',
+    margin: '0 auto',
+    ...(interactive ? { cursor: 'grab', touchAction: 'none' } : {}),
+  }
 
   return (
     <canvas
       ref={canvasRef}
       width={W}
       height={H}
-      style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 160px)', width: 'auto', height: 'auto', borderRadius: 8, display: 'block', margin: '0 auto' }}
+      style={canvasStyle}
+      {...(interactive ? {
+        onMouseDown: handleDown,
+        onMouseMove: handleMove,
+        onMouseUp: handleUp,
+        onMouseLeave: handleUp,
+        onTouchStart: handleDown,
+        onTouchMove: handleMove,
+        onTouchEnd: handleUp,
+      } : {})}
     />
   )
 }

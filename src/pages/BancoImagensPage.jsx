@@ -3,7 +3,7 @@ import { supabase } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../styles/theme'
 import { Spinner, EmptyState, Tag } from '../components/UI'
-import MockupCanvas, { KitThumb } from '../components/MockupCanvas'
+import MockupCanvas, { KitThumb, FramedArtThumb, ROOMS } from '../components/MockupCanvas'
 
 const PAGE_SIZE = 48
 
@@ -60,12 +60,15 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const { colors } = useTheme()
   const [imagens, setImagens] = useState([])
   const [categorias, setCategorias] = useState([])
+  const [catThumb, setCatThumb] = useState({}) // categoria → url de imagem aleatória
   const [catAtiva, setCatAtiva] = useState('todas')
+  const [catSelecionada, setCatSelecionada] = useState(null) // null = tela de categorias
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
   const [previewMode, setPreviewMode] = useState('arte')
   const [frameColor, setFrameColor] = useState('branco')
+  const [selectedRoom, setSelectedRoom] = useState(ROOMS[0])
   const [hoveredId, setHoveredId] = useState(null)
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
   const [kitOf, setKitOf] = useState({})
@@ -96,6 +99,13 @@ export default function BancoImagensPage({ onSelectImagem }) {
       setCoverOf(co)
       const cats = [...new Set(all.map(i => i.categoria).filter(Boolean))]
       setCategorias(cats)
+      // thumbnail aleatório por categoria
+      const thumbs = {}
+      cats.forEach(cat => {
+        const pool = all.filter(i => i.categoria === cat && i.img_url)
+        if (pool.length) thumbs[cat] = pool[Math.floor(Math.random() * pool.length)].img_url
+      })
+      setCatThumb(thumbs)
       setLoading(false)
     }
     fetchAll()
@@ -137,9 +147,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
     toolbar: { display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 20 },
     search: { flex: 1, minWidth: 200, background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '9px 14px', color: colors.text, fontSize: 13, outline: 'none', fontFamily: 'inherit' },
     tags: { display: 'flex', gap: 6, flexWrap: 'wrap' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 },
-    card: (hovered) => ({ background: colors.surface, border: `1px solid ${hovered ? colors.accent : colors.border}`, borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s, transform 0.15s', transform: hovered ? 'translateY(-2px)' : 'none' }),
-    img: { width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block', background: colors.surfaceAlt },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 },
+    card: (hovered) => ({ background: colors.surface, border: `1px solid ${hovered ? colors.accent : colors.border}`, borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s, transform 0.15s, box-shadow 0.15s', transform: hovered ? 'translateY(-2px)' : 'none', boxShadow: hovered ? `0 6px 20px rgba(0,0,0,0.18)` : 'none' }),
     cardBody: { padding: '10px 12px' },
     cardTitle: { fontSize: 12, fontWeight: 600, color: colors.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     cardCat: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
@@ -156,11 +165,53 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
   if (loading) return <Spinner />
 
+  // ── Tela inicial: grade de categorias ──────────────────────────────────────
+  if (!catSelecionada) {
+    return (
+      <div>
+        <div style={S.header}>
+          <div style={S.title}>Banco de Imagens</div>
+          <div style={S.subtitle}>{categorias.length} categorias · {imagens.length} imagens</div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+          {categorias.map(cat => (
+            <div
+              key={cat}
+              onClick={() => { setCatSelecionada(cat); setCatAtiva(cat) }}
+              onMouseEnter={() => setHoveredId(cat)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{ borderRadius: 12, overflow: 'hidden', cursor: 'pointer', border: `1px solid ${hoveredId === cat ? colors.accent : colors.border}`, transform: hoveredId === cat ? 'translateY(-2px)' : 'none', transition: 'all 0.15s', background: colors.surface }}
+            >
+              <div style={{ position: 'relative', aspectRatio: '4/3', background: colors.surfaceAlt }}>
+                {catThumb[cat]
+                  ? <img src={catThumb[cat]} alt={cat} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🖼</div>
+                }
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)' }} />
+                <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12 }}>
+                  <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>{cat}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 2 }}>
+                    {imagens.filter(i => i.categoria === cat).length} imagens
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Tela de imagens da categoria ───────────────────────────────────────────
   return (
     <div>
       <div style={S.header}>
-        <div style={S.title}>Banco de Imagens</div>
-        <div style={S.subtitle}>{imagens.length} imagens disponíveis</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <button onClick={() => { setCatSelecionada(null); setCatAtiva('todas') }} style={{ background: 'none', border: 'none', color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>← Categorias</button>
+          <span style={{ color: colors.textMuted, fontSize: 13 }}>/</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: colors.text }}>{catSelecionada}</span>
+        </div>
+        <div style={S.subtitle}>{imagens.filter(i => i.categoria === catSelecionada).length} imagens</div>
       </div>
 
       <div style={S.toolbar}>
@@ -171,9 +222,9 @@ export default function BancoImagensPage({ onSelectImagem }) {
           onChange={e => setBusca(e.target.value)}
         />
         <div style={S.tags}>
-          <Tag label="Todas" active={catAtiva === 'todas'} onClick={() => setCatAtiva('todas')} />
+          <Tag label="Todas as categorias" active={false} onClick={() => { setCatSelecionada(null); setCatAtiva('todas') }} />
           {categorias.map(c => (
-            <Tag key={c} label={c} active={catAtiva === c} onClick={() => setCatAtiva(c)} />
+            <Tag key={c} label={c} active={catAtiva === c} onClick={() => { setCatAtiva(c); setCatSelecionada(c) }} />
           ))}
         </div>
       </div>
@@ -216,8 +267,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
                   >
                     <div style={{ position: 'relative' }}>
                       {isKit
-                        ? <KitThumb kitUrls={kit.parts.map(p => p.img_url)} frameColor="branco" cardWidth={200} />
-                        : <img src={img.img_url} alt={title} style={S.img} loading="lazy" />
+                        ? <KitThumb kitUrls={kit.parts.map(p => p.img_url)} frameColor="branco" cardWidth={320} />
+                        : <FramedArtThumb src={img.img_url} alt={title} />
                       }
                       {isKit && (
                         <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', letterSpacing: 0.3 }}>
@@ -244,7 +295,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
       {preview && (
         <div style={S.previewOverlay} onClick={() => setPreview(null)}>
-          <div style={{ width: '100%', maxWidth: previewMode === 'ambiente' ? 700 : 860, display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+          <div style={{ width: '100%', maxWidth: previewMode === 'ambiente' ? 1100 : 960, display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
 
             {/* Barra de controles */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
@@ -281,14 +332,48 @@ export default function BancoImagensPage({ onSelectImagem }) {
               )}
             </div>
 
+            {/* Seletor de ambiente — thumbnails horizontais */}
+            {previewMode === 'ambiente' && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12, overflowX: 'auto', width: '100%', paddingBottom: 4 }}>
+                {ROOMS.map(room => (
+                  <button
+                    key={room.id}
+                    onClick={() => setSelectedRoom(room)}
+                    title={room.label}
+                    style={{
+                      flexShrink: 0,
+                      width: 80, height: 50,
+                      borderRadius: 6,
+                      overflow: 'hidden',
+                      border: selectedRoom.id === room.id ? '2px solid #fff' : '2px solid rgba(255,255,255,0.2)',
+                      cursor: 'pointer',
+                      padding: 0,
+                      background: '#000',
+                      outline: selectedRoom.id === room.id ? '2px solid rgba(255,255,255,0.4)' : 'none',
+                      outlineOffset: 2,
+                      transition: 'border 0.15s, outline 0.15s',
+                    }}
+                  >
+                    <img
+                      src={room.src}
+                      alt={room.label}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+
             {previewMode === 'arte'
               ? <img src={preview.img_url} alt={preview.titulo} style={S.previewImg} />
               : <MockupCanvas
                   imgUrl={preview.kitParts ? null : preview.img_url}
-                  kitUrls={preview.kitParts ? preview.kitParts.map(p => p.img_url) : null}
+                  kitUrls={preview.kitParts ? preview.kitParts.map(p => p.img_url) : [preview.img_url]}
                   ratio={preview.ratio || 1}
                   frameColor={frameColor}
-                  width={700}
+                  width={1100}
+                  room={selectedRoom}
+                  interactive
                 />
             }
 
