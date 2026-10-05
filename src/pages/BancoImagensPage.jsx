@@ -22,6 +22,25 @@ function detectImageRatio(url) {
   })
 }
 
+const FORMATOS = [
+  { id: '', label: 'Todos' },
+  { id: 'vertical', label: 'Vertical' },
+  { id: 'horizontal', label: 'Horizontal' },
+  { id: 'quadrado', label: 'Quadrado' },
+]
+
+function formatoDe(ratio) {
+  const r = parseFloat(ratio)
+  if (!r || r <= 0) return null
+  if (r < 0.9) return 'vertical'
+  if (r > 1.1) return 'horizontal'
+  return 'quadrado'
+}
+
+function lerFavoritos(key) {
+  try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')) } catch { return new Set() }
+}
+
 function extractKitParte(titulo) {
   // Retorna { kitName, parte } para qualquer parte >= 0
   let m = titulo.match(/^(.+?)\s+Parte\s+(\d+)$/i)
@@ -73,6 +92,19 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
   const [kitOf, setKitOf] = useState({})
   const [coverOf, setCoverOf] = useState({})
+  const [formato, setFormato] = useState('')
+  const [soFavoritos, setSoFavoritos] = useState(false)
+  const favKey = `favoritos:${profile?.id}`
+  const [favoritos, setFavoritos] = useState(() => lerFavoritos(favKey))
+
+  const toggleFavorito = (key) => {
+    setFavoritos(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      try { localStorage.setItem(favKey, JSON.stringify([...next])) } catch { /* sem storage */ }
+      return next
+    })
+  }
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -111,33 +143,45 @@ export default function BancoImagensPage({ onSelectImagem }) {
     fetchAll()
   }, [])
 
-  useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca])
+  useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca, formato, soFavoritos])
+
+  const cardKeyOf = (img) => kitOf[img.id] ? `kit-${kitOf[img.id].kitName}` : img.id
 
   const filtradas = imagens.filter(img => {
     const matchCat = catAtiva === 'todas' || img.categoria === catAtiva
     const matchBusca = !busca || img.titulo.toLowerCase().includes(busca.toLowerCase())
-    return matchCat && matchBusca
+    const matchFormato = !formato || formatoDe(img.ratio) === formato
+    const matchFav = !soFavoritos || favoritos.has(cardKeyOf(img))
+    return matchCat && matchBusca && matchFormato && matchFav
   })
 
   const exibidas = filtradas.slice(0, visiveis)
   const temMais = visiveis < filtradas.length
 
-  async function openPreview(img) {
+  async function montarSelecao(img) {
     let ratio = parseFloat(img.ratio)
     if (!ratio || ratio <= 0) {
       ratio = await detectImageRatio(img.img_url)
     }
     const kit = kitOf[img.id]
     const coverImg = kit?.cover ?? null
-    setPreview({
+    return {
       ...img,
       titulo: kit ? kit.kitName : img.titulo,
       img_url: coverImg ? coverImg.img_url : img.img_url,
       ratio: coverImg ? (parseFloat(coverImg.ratio) || ratio) : ratio,
       kitParts: kit?.parts ?? null,
       kitCount: kit?.kitCount ?? 1,
-    })
+    }
+  }
+
+  async function openPreview(img) {
+    setPreview(await montarSelecao(img))
     setPreviewMode('arte')
+  }
+
+  async function usarNoSimulador(img) {
+    onSelectImagem(await montarSelecao(img))
   }
 
   const S = {
@@ -147,18 +191,21 @@ export default function BancoImagensPage({ onSelectImagem }) {
     toolbar: { display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 20 },
     search: { flex: 1, minWidth: 200, background: colors.surfaceAlt, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '9px 14px', color: colors.text, fontSize: 13, outline: 'none', fontFamily: 'inherit' },
     tags: { display: 'flex', gap: 6, flexWrap: 'wrap' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, max(240px, calc((100% - 32px) / 3))), 1fr))', gap: 16 },
     card: (hovered) => ({ background: colors.surface, border: `1px solid ${hovered ? colors.accent : colors.border}`, borderRadius: 10, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s, transform 0.15s, box-shadow 0.15s', transform: hovered ? 'translateY(-2px)' : 'none', boxShadow: hovered ? `0 6px 20px rgba(0,0,0,0.18)` : 'none' }),
     cardBody: { padding: '10px 12px' },
+    chip: (active) => ({ background: active ? colors.accent : 'transparent', color: active ? '#fff' : colors.textMuted, border: `1px solid ${active ? colors.accent : colors.border}`, borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }),
+    favBtn: (on) => ({ position: 'absolute', top: 8, right: 8, width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.92)', color: on ? '#d64545' : '#555', fontSize: 18, lineHeight: 1, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }),
+    usarBtn: { marginTop: 8, width: '100%', background: 'transparent', color: colors.accent, border: `1px solid ${colors.accent}`, borderRadius: 6, padding: '6px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
     cardTitle: { fontSize: 12, fontWeight: 600, color: colors.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     cardCat: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
     maisBtn: { display: 'block', margin: '28px auto 0', background: 'transparent', border: `1.5px solid ${colors.border}`, borderRadius: 8, padding: '10px 28px', fontSize: 13, fontWeight: 600, color: colors.textMuted, cursor: 'pointer', fontFamily: 'inherit' },
     previewOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 24px' },
     previewImg: { maxWidth: '100%', maxHeight: 'calc(100vh - 140px)', objectFit: 'contain', display: 'block', borderRadius: 6 },
-    previewCaption: { display: 'flex', alignItems: 'center', gap: 16, marginTop: 16, width: '100%', maxWidth: 700 },
+    previewCaption: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginTop: 16, width: '100%', maxWidth: 700 },
     previewTitle: { flex: 1, color: '#fff', fontSize: 14, fontWeight: 600 },
     previewCat: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
-    btnRow: { display: 'flex', gap: 10 },
+    btnRow: { display: 'flex', gap: 10, flexWrap: 'wrap' },
     btnPrimary: { background: colors.accent, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' },
     btnSecondary: { background: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   }
@@ -173,7 +220,15 @@ export default function BancoImagensPage({ onSelectImagem }) {
           <div style={S.title}>Banco de Imagens</div>
           <div style={S.subtitle}>{categorias.length} categorias · {imagens.length} imagens</div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+        {favoritos.size > 0 && (
+          <button
+            onClick={() => { setSoFavoritos(true); setCatAtiva('todas'); setCatSelecionada('Meus favoritos') }}
+            style={{ ...S.chip(false), marginBottom: 16 }}
+          >
+            ♥ Meus favoritos ({favoritos.size})
+          </button>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 16 }}>
           {categorias.map(cat => (
             <div
               key={cat}
@@ -207,11 +262,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
     <div>
       <div style={S.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-          <button onClick={() => { setCatSelecionada(null); setCatAtiva('todas') }} style={{ background: 'none', border: 'none', color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>← Categorias</button>
+          <button onClick={() => { setCatSelecionada(null); setCatAtiva('todas'); setSoFavoritos(false) }} style={{ background: 'none', border: 'none', color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>← Categorias</button>
           <span style={{ color: colors.textMuted, fontSize: 13 }}>/</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: colors.text }}>{catSelecionada}</span>
         </div>
-        <div style={S.subtitle}>{imagens.filter(i => i.categoria === catSelecionada).length} imagens</div>
+        <div style={S.subtitle}>{filtradas.length} imagens</div>
       </div>
 
       <div style={S.toolbar}>
@@ -222,10 +277,16 @@ export default function BancoImagensPage({ onSelectImagem }) {
           onChange={e => setBusca(e.target.value)}
         />
         <div style={S.tags}>
-          <Tag label="Todas as categorias" active={false} onClick={() => { setCatSelecionada(null); setCatAtiva('todas') }} />
+          <Tag label="Todas as categorias" active={false} onClick={() => { setCatSelecionada(null); setCatAtiva('todas'); setSoFavoritos(false) }} />
           {categorias.map(c => (
-            <Tag key={c} label={c} active={catAtiva === c} onClick={() => { setCatAtiva(c); setCatSelecionada(c) }} />
+            <Tag key={c} label={c} active={!soFavoritos && catAtiva === c} onClick={() => { setSoFavoritos(false); setCatAtiva(c); setCatSelecionada(c) }} />
           ))}
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%' }}>
+          {FORMATOS.map(f => (
+            <button key={f.id} onClick={() => setFormato(f.id)} style={S.chip(formato === f.id)}>{f.label}</button>
+          ))}
+          <button onClick={() => setSoFavoritos(v => !v)} style={S.chip(soFavoritos)}>♥ Favoritos</button>
         </div>
       </div>
 
@@ -270,8 +331,16 @@ export default function BancoImagensPage({ onSelectImagem }) {
                         ? <KitThumb kitUrls={kit.parts.map(p => p.img_url)} frameColor="branco" cardWidth={320} />
                         : <FramedArtThumb src={img.img_url} alt={title} />
                       }
+                      <button
+                        onClick={e => { e.stopPropagation(); toggleFavorito(cardKey) }}
+                        title={favoritos.has(cardKey) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                        aria-pressed={favoritos.has(cardKey)}
+                        style={S.favBtn(favoritos.has(cardKey))}
+                      >
+                        {favoritos.has(cardKey) ? '♥' : '♡'}
+                      </button>
                       {isKit && (
-                        <span style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', letterSpacing: 0.3 }}>
+                        <span style={{ position: 'absolute', top: 6, left: 6, background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', letterSpacing: 0.3 }}>
                           Kit {kit.kitCount}x
                         </span>
                       )}
@@ -279,6 +348,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
                     <div style={S.cardBody}>
                       <div style={S.cardTitle}>{title}</div>
                       {img.categoria && <div style={S.cardCat}>{img.categoria}</div>}
+                      {onSelectImagem && (
+                        <button style={S.usarBtn} onClick={e => { e.stopPropagation(); usarNoSimulador(img) }}>
+                          Usar no simulador
+                        </button>
+                      )}
                     </div>
                   </div>
                 )
@@ -298,7 +372,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
           <div style={{ width: '100%', maxWidth: previewMode === 'ambiente' ? 1100 : 960, display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
 
             {/* Barra de controles */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
               {/* Toggle Arte / Ambiente */}
               <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: 3, gap: 2 }}>
                 {['arte', 'ambiente'].map(mode => (

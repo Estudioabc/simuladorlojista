@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../styles/theme'
 import BancoImagensPage from './BancoImagensPage'
@@ -7,17 +7,30 @@ import PedidosPage from './PedidosPage'
 import ConfigPage from './ConfigPage'
 
 const NAV = [
-  { id: 'banco',     label: 'Banco de Imagens' },
-  { id: 'simulador', label: 'Novo Pedido' },
-  { id: 'pedidos',   label: 'Meus Pedidos' },
-  { id: 'config',    label: 'Configurações' },
+  { id: 'banco',     label: 'Banco de Imagens', short: 'Imagens' },
+  { id: 'simulador', label: 'Novo Pedido',      short: 'Novo pedido' },
+  { id: 'pedidos',   label: 'Meus Pedidos',     short: 'Pedidos' },
+  { id: 'config',    label: 'Configurações',    short: 'Ajustes' },
 ]
+
+const MOBILE_QUERY = '(max-width: 760px)'
+
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY)
+    const on = () => setMobile(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return mobile
+}
 
 export default function AppShell() {
   const { profile, lojista, signOut } = useAuth()
   const { colors } = useTheme()
   const [tab, setTab] = useState('banco')
-  const [menuOpen, setMenuOpen] = useState(false)
+  const isMobile = useIsMobile()
   const [imagemParaSimulador, setImagemParaSimulador] = useState(null)
 
   const handleSelectImagem = (img) => {
@@ -27,7 +40,7 @@ export default function AppShell() {
 
   const S = {
     shell: { minHeight: '100vh', background: colors.bg, display: 'flex', flexDirection: 'column' },
-    header: { background: colors.surface, borderBottom: `1px solid ${colors.border}`, padding: '0 24px', display: 'flex', alignItems: 'center', height: 60, gap: 16, position: 'sticky', top: 0, zIndex: 100 },
+    header: { background: colors.surface, borderBottom: `1px solid ${colors.border}`, padding: isMobile ? '0 16px' : '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60, gap: 16, position: 'sticky', top: 0, zIndex: 100 },
     logo: { fontSize: 15, fontWeight: 800, color: colors.text, letterSpacing: -0.3, whiteSpace: 'nowrap' },
     logoSub: { fontSize: 11, color: colors.textMuted, fontWeight: 400 },
     nav: { display: 'flex', gap: 4, flex: 1, justifyContent: 'center' },
@@ -37,7 +50,7 @@ export default function AppShell() {
     userName: { fontSize: 13, fontWeight: 600, color: colors.text },
     storeName: { fontSize: 11, color: colors.textMuted },
     signOutBtn: { background: 'transparent', border: `1px solid ${colors.border}`, borderRadius: 6, padding: '5px 10px', fontSize: 12, color: colors.textMuted, cursor: 'pointer' },
-    content: { flex: 1, padding: '32px 24px', maxWidth: 900, margin: '0 auto', width: '100%' },
+    content: { flex: 1, padding: isMobile ? '20px 16px 88px' : '32px 24px', maxWidth: 1200, margin: '0 auto', width: '100%', boxSizing: 'border-box' },
     // mobile nav
     mobileNav: { position: 'fixed', bottom: 0, left: 0, right: 0, background: colors.surface, borderTop: `1px solid ${colors.border}`, display: 'flex', zIndex: 100 },
     mobileBtn: (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', color: active ? colors.accent : colors.textMuted, fontSize: 10, fontWeight: active ? 700 : 400 }),
@@ -54,14 +67,13 @@ export default function AppShell() {
           <div style={S.logoSub}>Portal do Lojista</div>
         </div>
 
-        {/* Nav desktop */}
-        <nav style={S.nav}>
+        {!isMobile && <nav style={S.nav}>
           {NAV.map(n => (
             <button key={n.id} style={S.navBtn(tab === n.id)} onClick={() => setTab(n.id)}>
               {n.label}
             </button>
           ))}
-        </nav>
+        </nav>}
 
         <div style={S.userArea}>
           <div style={S.avatar}>{initials}</div>
@@ -80,6 +92,16 @@ export default function AppShell() {
         {tab === 'pedidos'   && <PedidosPage />}
         {tab === 'config'    && <ConfigPage />}
       </main>
+
+      {isMobile && (
+        <nav style={S.mobileNav}>
+          {NAV.map(n => (
+            <button key={n.id} style={{ ...S.mobileBtn(tab === n.id), fontSize: 12, minHeight: 56 }} onClick={() => setTab(n.id)}>
+              {n.short}
+            </button>
+          ))}
+        </nav>
+      )}
 
     </div>
   )

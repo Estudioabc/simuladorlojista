@@ -7,7 +7,7 @@ export const ROOMS = [
     label: 'Sala Azul',
     src: '/ambiente-1.jpg',
     w: 1920, h: 960,
-    zone: { top: 0.04, bottom: 0.76, left: 0.30, right: 0.92 },
+    zone: { top: 0.04, bottom: 0.60, left: 0.27, right: 0.86 },
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
@@ -15,7 +15,7 @@ export const ROOMS = [
     label: 'Quarto',
     src: '/ambiente-2.jpg',
     w: 1920, h: 1076,
-    zone: { top: 0.02, bottom: 0.52, left: 0.20, right: 0.80 },
+    zone: { top: 0.04, bottom: 0.49, left: 0.24, right: 0.76 },
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
@@ -23,7 +23,7 @@ export const ROOMS = [
     label: 'Minimalista',
     src: '/ambiente-3.jpg',
     w: 1433, h: 1920,
-    zone: { top: 0.02, bottom: 0.58, left: 0.05, right: 0.95 },
+    zone: { top: 0.06, bottom: 0.63, left: 0.12, right: 0.92 },
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
@@ -31,7 +31,7 @@ export const ROOMS = [
     label: 'Sala Cinza',
     src: '/ambiente-4.jpg',
     w: 1458, h: 1920,
-    zone: { top: 0.04, bottom: 0.68, left: 0.10, right: 0.90 },
+    zone: { top: 0.04, bottom: 0.53, left: 0.10, right: 0.88 },
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
@@ -39,7 +39,7 @@ export const ROOMS = [
     label: 'Loft Dark',
     src: '/ambiente-5.jpg',
     w: 1920, h: 1280,
-    zone: { top: 0.06, bottom: 0.80, left: 0.20, right: 0.82 },
+    zone: { top: 0.06, bottom: 0.55, left: 0.31, right: 0.86 },
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
@@ -47,7 +47,7 @@ export const ROOMS = [
     label: 'Terracota',
     src: '/ambiente-6.jpg',
     w: 1920, h: 1355,
-    zone: { top: 0.02, bottom: 0.72, left: 0.16, right: 0.84 },
+    zone: { top: 0.14, bottom: 0.66, left: 0.18, right: 0.76 },
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
@@ -55,7 +55,7 @@ export const ROOMS = [
     label: 'Sala de Jantar',
     src: '/ambiente-7.jpg',
     w: 1920, h: 1280,
-    zone: { top: 0.04, bottom: 0.65, left: 0.28, right: 0.85 },
+    zone: { top: 0.19, bottom: 0.50, left: 0.24, right: 0.74 },
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
@@ -63,7 +63,7 @@ export const ROOMS = [
     label: 'Café Industrial',
     src: '/ambiente-8.jpg',
     w: 1920, h: 1280,
-    zone: { top: 0.04, bottom: 0.68, left: 0.32, right: 0.95 },
+    zone: { top: 0.31, bottom: 0.68, left: 0.28, right: 0.96 },
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
 ]
@@ -323,7 +323,12 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
 
   // ── Modo interativo ───────────────────────────────────────────────────────
   // cx, cy = centro do kit como fração do canvas; scale = fator de escala
-  const stateRef = useRef({ cx: 0.5, cy: 0.38, scale: 1.0 })
+  const zoneCenter = () => ({
+    cx: (roomCfg.zone.left + roomCfg.zone.right) / 2,
+    cy: (roomCfg.zone.top + roomCfg.zone.bottom) / 2,
+    scale: 1.0,
+  })
+  const stateRef = useRef(zoneCenter())
   const loadedRef = useRef({ roomImg: null, artImgs: null, ratios: null })
   const dragRef = useRef(null)
 
@@ -393,7 +398,7 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     const urls = kitUrls?.length >= 1 ? kitUrls : (imgUrl ? [imgUrl] : [])
     if (!urls.length) return
     // Reset posição ao trocar imagem ou ambiente
-    stateRef.current = { cx: 0.5, cy: 0.38, scale: 1.0 }
+    stateRef.current = zoneCenter()
     loadedRef.current = { roomImg: null, artImgs: null, ratios: null }
 
     const canvas = canvasRef.current

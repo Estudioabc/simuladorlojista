@@ -6,6 +6,55 @@ import { Spinner, EmptyState, Badge } from '../components/UI'
 
 const fmt = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+
+function abrirOrcamentoCliente(p, lojaNome) {
+  const w = window.open('', '_blank')
+  if (!w) { alert('Permita pop-ups para abrir o orçamento.'); return }
+  const hoje = new Date(p.created_at)
+  const validade = new Date(hoje); validade.setDate(validade.getDate() + 7)
+  const data = (d) => d.toLocaleDateString('pt-BR')
+  const itens = (p.itens ?? []).map(it => `
+    <div class="item">
+      ${it.imagem_url ? `<img src="${esc(it.imagem_url)}" alt="">` : ''}
+      <div>
+        <h2>${esc(it.imagem_titulo || 'Quadro sob medida')}</h2>
+        <dl>
+          ${it.largura_cm && it.altura_cm ? `<dt>Tamanho</dt><dd>${esc(it.largura_cm)} × ${esc(it.altura_cm)} cm</dd>` : ''}
+          ${it.montagem_nome ? `<dt>Acabamento</dt><dd>${esc(it.montagem_nome)}</dd>` : ''}
+          ${it.moldura_nome ? `<dt>Moldura</dt><dd>${esc(it.moldura_nome)}</dd>` : ''}
+          <dt>Quantidade</dt><dd>${esc(it.quantidade || 1)}</dd>
+        </dl>
+      </div>
+    </div>`).join('')
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orçamento ${esc(p.numero ?? '')} — ${esc(lojaNome)}</title>
+<style>
+  body{font-family:Inter,system-ui,sans-serif;color:#222;max-width:720px;margin:0 auto;padding:32px 20px;background:#fff}
+  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:12px;margin-bottom:24px;gap:12px;flex-wrap:wrap}
+  h1{font-size:24px;margin:0} .muted{color:#777;font-size:13px}
+  .item{display:flex;gap:20px;padding:16px 0;border-bottom:1px solid #eee;flex-wrap:wrap}
+  .item img{width:180px;max-width:100%;object-fit:contain;border:6px solid #1a1a1a;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+  h2{font-size:17px;margin:0 0 10px} dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:14px} dt{color:#777} dd{margin:0}
+  .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:20px;font-size:15px}
+  .total strong{font-size:26px}
+  .acoes{margin-top:28px;display:flex;gap:10px} button{padding:10px 18px;font-size:14px;border-radius:6px;border:1px solid #222;background:#222;color:#fff;cursor:pointer}
+  @media print{.acoes{display:none} body{padding:0}}
+</style></head><body>
+<header>
+  <div><h1>${esc(lojaNome)}</h1><div class="muted">Orçamento${p.numero ? ' nº ' + esc(p.numero) : ''}</div></div>
+  <div class="muted">Emitido em ${data(hoje)}<br>Válido até ${data(validade)}</div>
+</header>
+${p.cliente_nome ? `<p><span class="muted">Cliente:</span> ${esc(p.cliente_nome)}</p>` : ''}
+${itens}
+<div class="total"><span>Total</span><strong>${esc(fmt(p.revenda_total))}</strong></div>
+${p.forma_entrega ? `<p class="muted">${p.forma_entrega === 'retirada' ? 'Retirada na loja' : 'Entrega no endereço combinado'}</p>` : ''}
+<div class="acoes"><button onclick="window.print()">Salvar PDF / Imprimir</button></div>
+</body></html>`)
+  w.document.close()
+}
+
 // Deriva status de exibição a partir do catalogo_pedido + OS linkada
 function resolveStatus(p) {
   if (p.status === 'orcamento') return 'orcamento'
@@ -47,7 +96,7 @@ function startOf(period) {
 
 export default function PedidosPage() {
   const { colors } = useTheme()
-  const { lojista } = useAuth()
+  const { lojista, profile } = useAuth()
   const markupDiv = 1 + (parseFloat(lojista?.markup_pct) || 0) / 100
   const [pedidos, setPedidos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -268,6 +317,15 @@ export default function PedidosPage() {
                       <div style={S.infoLabel}>Observações</div>
                       <div style={{ ...S.infoValue, color: colors.textMuted, fontStyle: 'italic' }}>{p.obs}</div>
                     </div>
+                  )}
+
+                  {p.revenda_total > 0 && (
+                    <button
+                      onClick={() => abrirOrcamentoCliente(p, lojista?.store_name || profile?.name || 'Orçamento')}
+                      style={{ marginTop: 16, width: '100%', background: 'transparent', color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 8, padding: '11px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif' }}
+                    >
+                      Orçamento para o cliente (PDF)
+                    </button>
                   )}
 
                   {stKey === 'orcamento' && (
