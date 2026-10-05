@@ -32,7 +32,7 @@ export function EmptyState({ icon, title, description, action, onAction }) {
   return (
     <div style={{ textAlign: 'center', padding: '60px 24px', color: colors.textMuted }}>
       {icon && <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>}
-      <div style={{ fontFamily: fonts.display, fontSize: 28, fontWeight: 600, color: colors.text, marginBottom: 8, lineHeight: 1.15 }}>{title}</div>
+      <div style={{ fontFamily: fonts.display, fontSize: 22, fontWeight: 600, color: colors.text, marginBottom: 8, lineHeight: 1.15 }}>{title}</div>
       {description && <div style={{ fontSize: 14, marginBottom: 22 }}>{description}</div>}
       {action && <button onClick={onAction} style={{ background: 'transparent', color: colors.text, border: `1px solid ${colors.text}`, borderRadius: 999, padding: '11px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{action}</button>}
     </div>

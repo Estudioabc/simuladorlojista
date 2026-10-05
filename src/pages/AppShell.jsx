@@ -34,7 +34,7 @@ export default function AppShell() {
     header: { background: colors.bg + 'F2', backdropFilter: 'blur(8px)', borderBottom: `1px solid ${colors.border}`, position: 'sticky', top: 0, zIndex: 100 },
     headerInner: { maxWidth: 1200, margin: '0 auto', padding: isMobile ? '0 16px' : '0 32px', height: isMobile ? 60 : 72, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 },
     brand: { display: 'flex', flexDirection: 'column', minWidth: 0 },
-    loja: { fontFamily: fonts.display, fontSize: isMobile ? 22 : 26, fontWeight: 600, lineHeight: 1, letterSpacing: -0.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    loja: { fontFamily: fonts.display, fontSize: isMobile ? 22 : 26, fontWeight: 600, lineHeight: 1, letterSpacing: -0.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     sub: { fontSize: 10, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5 },
     nav: { display: 'flex', gap: 28, alignItems: 'stretch', height: '100%' },
     navBtn: (active) => ({ background: 'none', border: 'none', borderBottom: `2px solid ${active ? colors.text : 'transparent'}`, color: active ? colors.text : colors.textMuted, fontSize: 14, fontWeight: active ? 600 : 500, cursor: 'pointer', padding: '0 2px', marginBottom: -1, transition: 'color 0.15s, border-color 0.15s' }),

@@ -18,7 +18,7 @@ const COLORS = {
 }
 
 export const FONTS = {
-  display: "'Cormorant Garamond', Georgia, 'Times New Roman', serif",
+  display: "Archivo, 'Helvetica Neue', Arial, sans-serif",
   body: "Figtree, system-ui, -apple-system, sans-serif",
 }
 

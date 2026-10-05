@@ -206,7 +206,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
   const S = {
     eyebrow: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
-    title: { fontFamily: fonts.display, fontSize: 'clamp(36px, 5vw, 52px)', fontWeight: 500, lineHeight: 1.02, letterSpacing: -0.5, margin: '6px 0 10px', textWrap: 'balance' },
+    title: { fontFamily: fonts.display, fontSize: 'clamp(28px, 3.9vw, 41px)', fontWeight: 600, lineHeight: 1.02, letterSpacing: -1, margin: '6px 0 10px', textWrap: 'balance' },
     lead: { fontSize: 15, color: colors.textMuted, maxWidth: 560, lineHeight: 1.55 },
     toolbar: { position: isMobile ? 'static' : 'sticky', top: 72, zIndex: 20, background: colors.bg, padding: '14px 0 0', margin: '28px 0 8px', borderBottom: `1px solid ${colors.border}` },
     toolRow: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 },
@@ -222,7 +222,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, max(240px, calc((100% - 64px) / 3))), 1fr))', gap: '40px 32px' },
     card: { cursor: 'pointer', position: 'relative' },
     wall: (hovered) => ({ position: 'relative', background: '#F7F5F2', transition: 'box-shadow 0.25s', boxShadow: hovered ? '0 18px 40px -24px rgba(23,21,15,0.35)' : 'none' }),
-    cardTitle: { fontFamily: fonts.display, fontSize: 21, fontWeight: 600, lineHeight: 1.15, marginTop: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    cardTitle: { fontFamily: fonts.display, fontSize: 16, fontWeight: 600, lineHeight: 1.15, marginTop: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
     cardMeta: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 },
     cardCat: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2 },
     usar: { background: 'none', border: 'none', color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 0', whiteSpace: 'nowrap' },
@@ -236,7 +236,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     pLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase' },
     previewImg: { maxWidth: '100%', maxHeight: 'calc(100vh - 220px)', objectFit: 'contain', display: 'block', boxShadow: '0 30px 60px -20px rgba(0,0,0,0.6)' },
     caption: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginTop: 20, width: '100%', maxWidth: 900 },
-    pTitle: { fontFamily: fonts.display, color: '#fff', fontSize: 30, fontWeight: 500, lineHeight: 1.1 },
+    pTitle: { fontFamily: fonts.display, color: '#fff', fontSize: 23, fontWeight: 600, lineHeight: 1.1 },
     pCat: { color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: 600, letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 6 },
     btnPrimary: { background: '#fff', color: colors.text, border: 'none', borderRadius: 999, padding: '12px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
     btnGhost: { background: 'transparent', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 999, padding: '12px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer' },

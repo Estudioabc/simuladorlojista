@@ -29,17 +29,17 @@ function abrirOrcamentoCliente(p, lojaNome) {
     </div>`).join('')
   w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Figtree:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600&family=Figtree:wght@400;600&display=swap">
 <title>Orçamento ${esc(p.numero ?? '')} — ${esc(lojaNome)}</title>
 <style>
   body{font-family:Figtree,system-ui,sans-serif;color:#222;max-width:720px;margin:0 auto;padding:32px 20px;background:#fff}
   header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:12px;margin-bottom:24px;gap:12px;flex-wrap:wrap}
-  h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;font-weight:600;margin:0} .muted{color:#777;font-size:13px}
+  h1{font-family:Archivo,Arial,sans-serif;font-size:28px;font-weight:600;letter-spacing:-0.5px;margin:0} .muted{color:#777;font-size:13px}
   .item{display:flex;gap:20px;padding:16px 0;border-bottom:1px solid #eee;flex-wrap:wrap}
   .item img{width:180px;max-width:100%;object-fit:contain;border:6px solid #1a1a1a;box-shadow:0 4px 12px rgba(0,0,0,.15)}
-  h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:600;margin:0 0 10px} dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:14px} dt{color:#777} dd{margin:0}
+  h2{font-family:Archivo,Arial,sans-serif;font-size:19px;font-weight:600;margin:0 0 10px} dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:14px} dt{color:#777} dd{margin:0}
   .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:20px;font-size:15px}
-  .total strong{font-family:'Cormorant Garamond',Georgia,serif;font-size:36px;font-weight:600}
+  .total strong{font-family:Archivo,Arial,sans-serif;font-size:30px;font-weight:600}
   .acoes{margin-top:28px;display:flex;gap:10px} button{padding:12px 22px;font-size:14px;border-radius:999px;border:1px solid #222;background:#222;color:#fff;cursor:pointer}
   @media print{.acoes{display:none} body{padding:0}}
 </style></head><body>
@@ -158,14 +158,14 @@ export default function PedidosPage({ onNovoPedido }) {
 
   const S = {
     eyebrow:  { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
-    title:    { fontFamily: fonts.display, fontSize: 'clamp(34px, 5vw, 48px)', fontWeight: 500, lineHeight: 1.05, letterSpacing: -0.4, margin: '6px 0 8px' },
+    title:    { fontFamily: fonts.display, fontSize: 'clamp(27px, 3.9vw, 37px)', fontWeight: 600, lineHeight: 1.05, letterSpacing: -0.8, margin: '6px 0 8px' },
     subtitle: { fontSize: 15, color: colors.textMuted },
     novoBtn:  { background: colors.text, color: colors.bg, border: 'none', borderRadius: 999, padding: '12px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' },
     card:     { background: colors.surface, border: `1px solid ${colors.border}`, marginBottom: 12 },
     kpiRow:   { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', borderTop: `1px solid ${colors.text}`, borderBottom: `1px solid ${colors.border}`, margin: '8px 0 36px' },
     kpi:      { padding: '16px 20px 18px 0' },
     kpiLabel: { fontSize: 12, fontWeight: 600, color: colors.textMuted, marginBottom: 6 },
-    kpiValue: { fontFamily: fonts.display, fontSize: 32, fontWeight: 600, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
+    kpiValue: { fontFamily: fonts.display, fontSize: 25, fontWeight: 600, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
     pill:     (active) => ({ padding: '7px 14px', fontSize: 13, borderRadius: 999, border: `1px solid ${active ? colors.text : colors.border}`, cursor: 'pointer', fontWeight: 600, background: active ? colors.text : colors.surface, color: active ? colors.bg : colors.text }),
     cardHeader: (exp) => ({ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', cursor: 'pointer', background: exp ? colors.surfaceAlt : 'transparent', flexWrap: 'wrap' }),
     cardBody: { padding: '4px 20px 22px', borderTop: `1px solid ${colors.border}` },
@@ -275,7 +275,7 @@ export default function PedidosPage({ onNovoPedido }) {
               <div style={S.cardHeader(expanded)} onClick={() => setExpandedId(expanded ? null : p.id)}>
                 {itens[0]?.imagem_url ? <img src={itens[0].imagem_url} alt="" style={S.rowThumb} /> : <div style={S.rowThumb} />}
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <div style={{ fontFamily: fonts.display, fontSize: 20, fontWeight: 600, color: colors.text, lineHeight: 1.15 }}>
+                  <div style={{ fontFamily: fonts.display, fontSize: 16, fontWeight: 600, color: colors.text, lineHeight: 1.15 }}>
                     {itens[0]?.imagem_titulo || (p.cliente_nome ? `Quadro de ${p.cliente_nome}` : 'Quadro sob medida')}
                   </div>
                   <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
@@ -287,7 +287,7 @@ export default function PedidosPage({ onNovoPedido }) {
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 999, border: `1px solid ${st.color}`, color: st.color, whiteSpace: 'nowrap' }}>{st.label}</span>
                 <div style={{ textAlign: 'right', minWidth: 110 }}>
                   {p.revenda_total > 0 && (
-                    <div style={{ fontFamily: fonts.display, fontSize: 22, fontWeight: 600, color: colors.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fmt(p.revenda_total)}</div>
+                    <div style={{ fontFamily: fonts.display, fontSize: 17, fontWeight: 600, color: colors.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fmt(p.revenda_total)}</div>
                   )}
                   {b2b > 0 && (
                     <div style={{ fontSize: 12, color: lucro >= 0 ? colors.success : colors.danger, fontWeight: 600, marginTop: 4 }}>

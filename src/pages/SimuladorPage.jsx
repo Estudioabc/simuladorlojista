@@ -319,7 +319,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   })
 
   const sectionLine = {
-    fontFamily: fonts.display, fontSize: 24, fontWeight: 600, color: colors.text,
+    fontFamily: fonts.display, fontSize: 19, fontWeight: 600, color: colors.text,
     paddingBottom: 12, marginBottom: 16,
     borderBottom: `1px solid ${colors.border}`,
   }
@@ -328,7 +328,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
 
   const Passo = ({ n, titulo, nota, children }) => (
     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-      <h2 style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: 0, fontFamily: fonts.display, fontSize: 26, fontWeight: 600, lineHeight: 1.1 }}>
+      <h2 style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: 0, fontFamily: fonts.display, fontSize: 20, fontWeight: 600, lineHeight: 1.1 }}>
         <span style={{ fontSize: 15, fontFamily: fonts.body, fontWeight: 600, color: gold, fontVariantNumeric: 'tabular-nums' }}>{n}</span>
         {titulo}
         {nota && <span style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: 500, color: colors.textMuted }}>{nota}</span>}
@@ -368,7 +368,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
       {/* Cabeçalho */}
       <div style={{ marginBottom: 36 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 }}>Novo pedido</div>
-        <h1 style={{ fontFamily: fonts.display, fontSize: 'clamp(34px, 5vw, 48px)', fontWeight: 500, color: colors.text, margin: '6px 0 8px', lineHeight: 1.05, letterSpacing: -0.4, textWrap: 'balance' }}>
+        <h1 style={{ fontFamily: fonts.display, fontSize: 'clamp(27px, 3.9vw, 37px)', fontWeight: 600, color: colors.text, margin: '6px 0 8px', lineHeight: 1.05, letterSpacing: -0.8, textWrap: 'balance' }}>
           Monte o quadro do seu cliente
         </h1>
         <p style={{ fontSize: 15, color: colors.textMuted, margin: 0, lineHeight: 1.5 }}>
@@ -422,7 +422,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                 <img src={imagem.img_url} alt={imagem.titulo}
                   style={{ width: 64, height: 64, objectFit: 'contain', background: colors.surfaceAlt, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: fonts.display, fontSize: 20, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{imagem.titulo}</div>
+                  <div style={{ fontFamily: fonts.display, fontSize: 16, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{imagem.titulo}</div>
                   {imagem.kitCount > 1 && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>Kit {imagem.kitCount} quadros</div>}
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -479,13 +479,13 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {canvasMontagens.length > 0 && (
                   <button onClick={() => handleTipoMontagem('canvas')} style={typeBtn(tipoMontagem === 'canvas')}>
-                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 22, fontWeight: 600, marginBottom: 2 }}>Canvas</span>
+                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 17, fontWeight: 600, marginBottom: 2 }}>Canvas</span>
                     <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: colors.textMuted }}>impressão em tela</span>
                   </button>
                 )}
                 {convenMontagens.length > 0 && (
                   <button onClick={() => handleTipoMontagem('convencional')} style={typeBtn(tipoMontagem === 'convencional')}>
-                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 22, fontWeight: 600, marginBottom: 2 }}>Quadro</span>
+                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 17, fontWeight: 600, marginBottom: 2 }}>Quadro</span>
                     <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: colors.textMuted }}>com vidro e moldura</span>
                   </button>
                 )}
@@ -644,7 +644,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             <div style={{ borderTop: `1px solid ${colors.text}`, marginTop: 18, paddingTop: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>Preço para o cliente</span>
-                <span style={{ fontFamily: fonts.display, fontSize: 38, fontWeight: 600, color: colors.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontFamily: fonts.display, fontSize: 30, fontWeight: 600, color: colors.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                   {formatCurrency(preco.totalGeral)}
                 </span>
               </div>
