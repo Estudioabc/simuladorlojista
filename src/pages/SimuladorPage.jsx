@@ -104,7 +104,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
   const [obs, setObs] = useState('')
 
   const [showBanco, setShowBanco] = useState(false)
-  const [enviando, setEnviando] = useState(false)
+  const [enviando, setEnviando] = useState(null) // null | 'novo' | 'orcamento'
   const [sucesso, setSucesso] = useState(false)
   const [erro, setErro] = useState('')
 
@@ -213,17 +213,18 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
     if (onImagemClear) onImagemClear()
   }
 
-  const handleEnviar = async () => {
+  const handleEnviar = async (statusEnvio = 'novo') => {
     if (!largura || !altura) { setErro('Informe o tamanho do quadro.'); return }
     if (!tipoMontagem) { setErro('Selecione o tipo de montagem (Canvas ou Quadro Convencional).'); return }
     if (tipoMontagem === 'convencional' && !tipoVidro) { setErro('Selecione o tipo de vidro.'); return }
     if (frames.length > 0 && !molduraId) { setErro('Selecione uma moldura.'); return }
     setErro('')
-    setEnviando(true)
+    setEnviando(statusEnvio)
     try {
       await callFunction('sim-pedido', {
         method: 'POST',
         body: {
+          status: statusEnvio,
           montagem_id: montagemId || null,
           montagem_nome: montagem?.nome ?? '',
           tipo_montagem: tipoMontagem,
@@ -252,6 +253,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
           imagem_url: imagem?.img_url ?? null,
           preco_unitario: preco?.totalPeca ?? null,
           preco_total: preco?.totalGeral ?? null,
+          preco_b2b: preco?.totalGeral != null ? parseFloat((preco.totalGeral / (1 + (parseFloat(markupPct) || 0) / 100)).toFixed(2)) : null,
           linhas: preco?.lines?.map(l => ({ item: l.label, detail: '', cost: 0, sell: parseFloat((l.valor || 0).toFixed(2)) })) ?? [],
         },
       })
@@ -260,7 +262,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
     } catch (e) {
       setErro(e.message)
     } finally {
-      setEnviando(false)
+      setEnviando(null)
     }
   }
 
@@ -645,20 +647,36 @@ export default function SimuladorPage({ imagemInicial, onImagemClear }) {
             </>
           )}
 
-          <button
-            onClick={handleEnviar}
-            disabled={enviando}
-            style={{
-              width: '100%', marginTop: 18,
-              background: enviando ? colors.textMuted : gold,
-              color: '#fff', border: 'none', borderRadius: 6,
-              padding: '13px', fontSize: 14, fontWeight: 600,
-              cursor: enviando ? 'default' : 'pointer',
-              fontFamily: 'Inter, system-ui, sans-serif',
-              letterSpacing: 0.3, transition: 'background 0.15s',
-            }}>
-            {enviando ? 'Enviando…' : 'Enviar Pedido'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+            <button
+              onClick={() => handleEnviar('orcamento')}
+              disabled={!!enviando}
+              style={{
+                flex: 1,
+                background: enviando === 'orcamento' ? colors.textMuted : colors.surfaceAlt,
+                color: enviando === 'orcamento' ? '#fff' : colors.textMuted,
+                border: `1px solid ${colors.border}`, borderRadius: 6,
+                padding: '13px', fontSize: 13, fontWeight: 600,
+                cursor: enviando ? 'default' : 'pointer',
+                fontFamily: 'Inter, system-ui, sans-serif',
+              }}>
+              {enviando === 'orcamento' ? 'Salvando…' : 'Salvar Orçamento'}
+            </button>
+            <button
+              onClick={() => handleEnviar('novo')}
+              disabled={!!enviando}
+              style={{
+                flex: 2,
+                background: enviando === 'novo' ? colors.textMuted : gold,
+                color: '#fff', border: 'none', borderRadius: 6,
+                padding: '13px', fontSize: 14, fontWeight: 600,
+                cursor: enviando ? 'default' : 'pointer',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                letterSpacing: 0.3, transition: 'background 0.15s',
+              }}>
+              {enviando === 'novo' ? 'Enviando…' : 'Enviar Pedido'}
+            </button>
+          </div>
         </div>
 
       </div>
