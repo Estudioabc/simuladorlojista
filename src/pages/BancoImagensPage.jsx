@@ -277,7 +277,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
           onChange={e => setBusca(e.target.value)}
         />
         <div style={S.tags}>
-          <Tag label="Todas as categorias" active={false} onClick={() => { setCatSelecionada(null); setCatAtiva('todas'); setSoFavoritos(false) }} />
+          <Tag label="Todas as categorias" active={!soFavoritos && catAtiva === 'todas'} onClick={() => { setCatSelecionada('Todas as categorias'); setCatAtiva('todas'); setSoFavoritos(false) }} />
           {categorias.map(c => (
             <Tag key={c} label={c} active={!soFavoritos && catAtiva === c} onClick={() => { setSoFavoritos(false); setCatAtiva(c); setCatSelecionada(c) }} />
           ))}
