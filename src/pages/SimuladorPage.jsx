@@ -844,11 +844,17 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             room={mockupRoom}
             interactive
             tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null}
+            onTamanhoChange={(alt) => {
+              // mantém a proporção escolhida no pedido, mesmo com a proporção livre
+              const f = alt / (parseFloat(altura) || alt)
+              setAltura(String(alt))
+              setLargura(String(um((parseFloat(largura) || 0) * f)))
+            }}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, width: '100%', maxWidth: 1100, marginTop: 12 }}>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
               {parseFloat(altura) > 0
-                ? `Tamanho real: ${multiPeca ? descPecas : `${cm(parseFloat(largura) || 0)} × ${cm(parseFloat(altura))} cm`} · arraste para posicionar`
+                ? `Tamanho real: ${multiPeca ? descPecas : `${cm(parseFloat(largura) || 0)} × ${cm(parseFloat(altura))} cm`}${preco?.totalGeral > 0 && molduraId ? ` · ${formatCurrency(preco.totalGeral)}` : ''} · arraste para posicionar, puxe um canto para mudar o tamanho`
                 : 'Arraste o quadro para posicionar · puxe um canto para redimensionar'}
             </span>
             <button onClick={() => setMockupAberto(false)}

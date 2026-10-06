@@ -322,7 +322,8 @@ export function FramedArtThumb({ src, srcs }) {
 
 // MockupCanvas: modo normal (interactive=false) ou interativo (drag + resize)
 // tamanhoCm = { altura }: desenha o quadro no tamanho real em relação à parede (ambientes com paredeCm)
-export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null }) {
+// onTamanhoChange(alturaCm): com tamanho real, puxar um canto muda o tamanho do pedido
+export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null, onTamanhoChange = null }) {
   const canvasRef = useRef()
   const roomCfg = room || ROOMS[0]
 
@@ -473,7 +474,10 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
       Math.abs(pt.x - cx) < H_SIZE && Math.abs(pt.y - cy) < H_SIZE
     )
 
-    if (onCorner && !tamanhoCm) {
+    if (onCorner && tamanhoCm && onTamanhoChange) {
+      const { cx, cy } = stateRef.current
+      dragRef.current = { mode: 'resizeReal', startDist: Math.hypot(pt.x - cx * W, pt.y - cy * H), startAltura: tamanhoCm.altura }
+    } else if (onCorner && !tamanhoCm) {
       const { cx, cy, scale } = stateRef.current
       const dist = Math.hypot(pt.x - cx * W, pt.y - cy * H)
       dragRef.current = { mode: 'resize', startDist: dist, startScale: scale }
@@ -495,6 +499,12 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     if (d.mode === 'drag') {
       stateRef.current.cx = Math.max(0.02, Math.min(0.98, d.startCx + (pt.x - d.startPt.x) / W))
       stateRef.current.cy = Math.max(0.02, Math.min(0.98, d.startCy + (pt.y - d.startPt.y) / H))
+    } else if (d.mode === 'resizeReal') {
+      const { cx, cy } = stateRef.current
+      const dist = Math.hypot(pt.x - cx * W, pt.y - cy * H)
+      const alt = Math.round(Math.max(10, Math.min(300, d.startAltura * dist / Math.max(1, d.startDist))))
+      if (alt !== tamanhoCm?.altura) onTamanhoChange(alt)
+      return // redesenha quando o novo tamanho volta pela prop
     } else if (d.mode === 'resize') {
       const { cx, cy } = stateRef.current
       const dist = Math.hypot(pt.x - cx * W, pt.y - cy * H)
