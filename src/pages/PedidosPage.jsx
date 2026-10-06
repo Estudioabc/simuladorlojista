@@ -71,9 +71,11 @@ ${p.cliente_nome ? `<p><span class="muted">Cliente:</span> ${esc(p.cliente_nome)
 ${itens}
 <div class="total"><span>Total</span><strong>${esc(fmt(p.revenda_total))}</strong></div>
 ${p.forma_entrega ? `<p class="muted">${p.forma_entrega === 'retirada' ? 'Retirada na loja' : 'Entrega no endereço combinado'}</p>` : ''}
-<div class="acoes"><button onclick="window.print()">Salvar PDF / Imprimir</button></div>
+<div class="acoes"><button id="imprimir">Salvar PDF / Imprimir</button></div>
 </body></html>`)
   w.document.close()
+  // sem onclick inline: a CSP do portal (script-src 'self') vale também para esta janela
+  w.document.getElementById('imprimir')?.addEventListener('click', () => w.print())
 }
 
 // Deriva status de exibição a partir do catalogo_pedido + OS linkada
