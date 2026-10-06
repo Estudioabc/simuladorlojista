@@ -41,35 +41,22 @@ function lerFavoritos(key) {
   try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')) } catch { return new Set() }
 }
 
-function extractKitParte(titulo) {
-  // Retorna { kitName, parte } para qualquer parte >= 0
-  let m = titulo.match(/^(.+?)\s+Parte\s+(\d+)$/i)
-  if (m) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
-  m = titulo.match(/^(.+?)\s*\((\d+)\)$/)
-  if (m) return { kitName: m[1].trim(), parte: parseInt(m[2]) }
-  return null
-}
-
-// Detecta kits: agrupa imagens com "Parte N" ou "(N)" no título
-// (0) = capa do kit; (1+) = partes reais
-// Retorna { kitOf, coverOf }
-function buildKitMap(imagens) {
-  const groups = {}  // kitName → { cover: img|null, parts: [] }
-  imagens.forEach(img => {
-    const info = extractKitParte(img.titulo)
-    if (!info) return
-    if (!groups[info.kitName]) groups[info.kitName] = { cover: null, parts: [] }
-    if (info.parte === 0) groups[info.kitName].cover = img
-    else groups[info.kitName].parts.push({ ...img, _parteNum: info.parte })
-  })
-  const kitOf = {}   // imageId (parte>=1) → { kitName, parts, kitCount, cover }
-  const coverOf = {} // imageId (parte=0)  → kitName (para ocultar do grid)
-  Object.entries(groups).forEach(([kitName, { cover, parts }]) => {
+// Monta os kits a partir de catalogo_kits/catalogo_kit_pecas.
+// kitOf: imagemId da peça → kit; coverOf: imagemId da capa (fica fora do grid)
+function buildKitMap(imagens, kits, pecas) {
+  const porId = Object.fromEntries(imagens.map(i => [i.id, i]))
+  const kitOf = {}
+  const coverOf = {}
+  kits.forEach(k => {
+    const parts = pecas
+      .filter(p => p.kit_id === k.id && porId[p.imagem_id])
+      .sort((a, b) => a.ordem - b.ordem)
+      .map(p => porId[p.imagem_id])
     if (parts.length < 2) return
-    const sorted = [...parts].sort((a, b) => a._parteNum - b._parteNum)
-    const kitInfo = { kitName, parts: sorted, kitCount: sorted.length, cover: cover ?? null }
-    sorted.forEach(p => { kitOf[p.id] = kitInfo })
-    if (cover) coverOf[cover.id] = kitName
+    const cover = k.capa_imagem_id ? porId[k.capa_imagem_id] ?? null : null
+    const info = { kitId: k.id, kitName: k.nome, parts, kitCount: parts.length, cover, emAlta: k.em_alta, categoria: k.categoria }
+    parts.forEach(p => { kitOf[p.id] = info })
+    if (cover) coverOf[cover.id] = true
   })
   return { kitOf, coverOf }
 }
@@ -124,12 +111,16 @@ export default function BancoImagensPage({ onSelectImagem }) {
         if (data.length < PAGE) break
         from += PAGE
       }
+      const [{ data: kits }, { data: pecas }] = await Promise.all([
+        supabase.from('catalogo_kits').select('id, nome, categoria, capa_imagem_id, em_alta').eq('tenant_id', profile.tenant_id).eq('ativo', true),
+        supabase.from('catalogo_kit_pecas').select('kit_id, imagem_id, ordem').eq('tenant_id', profile.tenant_id),
+      ])
       setImagens(all)
-      const { kitOf: ko, coverOf: co } = buildKitMap(all)
+      const { kitOf: ko, coverOf: co } = buildKitMap(all, kits || [], pecas || [])
       setKitOf(ko)
       setCoverOf(co)
       setCategorias([...new Set(all.map(i => i.categoria).filter(Boolean))])
-      if (all.some(i => i.em_alta)) setCatAtiva('em_alta')
+      if (all.some(i => i.em_alta) || (kits || []).some(k => k.em_alta)) setCatAtiva('em_alta')
       setLoading(false)
     }
     fetchAll()
@@ -144,12 +135,13 @@ export default function BancoImagensPage({ onSelectImagem }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [preview])
 
-  const cardKeyOf = (img) => kitOf[img.id] ? `kit-${kitOf[img.id].kitName}` : img.id
+  const cardKeyOf = (img) => kitOf[img.id] ? `kit-${kitOf[img.id].kitId}` : img.id
+  const emAlta = (img) => kitOf[img.id] ? kitOf[img.id].emAlta : img.em_alta
 
   const filtradas = imagens.filter(img => {
     if (coverOf[img.id]) return false
-    const matchCat = catAtiva === 'todas' || (catAtiva === 'em_alta' ? img.em_alta : img.categoria === catAtiva)
-    const matchBusca = !busca || img.titulo.toLowerCase().includes(busca.toLowerCase())
+    const matchCat = catAtiva === 'todas' || (catAtiva === 'em_alta' ? emAlta(img) : img.categoria === catAtiva)
+    const matchBusca = !busca || (kitOf[img.id]?.kitName ?? img.titulo).toLowerCase().includes(busca.toLowerCase())
     const matchFormato = !formato || formatoDe(img.ratio) === formato
     const matchFav = !soFavoritos || favoritos.has(cardKeyOf(img))
     return matchCat && matchBusca && matchFormato && matchFav
@@ -162,9 +154,9 @@ export default function BancoImagensPage({ onSelectImagem }) {
     filtradas.forEach(img => {
       const kit = kitOf[img.id]
       if (kit) {
-        if (seen.has(kit.kitName)) return
-        seen.add(kit.kitName)
-        out.push({ key: `kit-${kit.kitName}`, isKit: true, kit, img: kit.parts[0] })
+        if (seen.has(kit.kitId)) return
+        seen.add(kit.kitId)
+        out.push({ key: `kit-${kit.kitId}`, isKit: true, kit, img: kit.parts[0] })
       } else {
         out.push({ key: img.id, isKit: false, img })
       }
@@ -175,7 +167,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const exibidos = cards.slice(0, visiveis)
   const temMais = visiveis < cards.length
   const contaCat = (cat) => imagens.filter(i => !coverOf[i.id] && i.categoria === cat).length
-  const nEmAlta = imagens.filter(i => !coverOf[i.id] && i.em_alta).length
+  const nEmAlta = new Set(imagens.filter(i => !coverOf[i.id] && emAlta(i)).map(cardKeyOf)).size
 
   async function montarSelecao(img) {
     let ratio = parseFloat(img.ratio)
