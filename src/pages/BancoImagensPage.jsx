@@ -3,7 +3,7 @@ import { supabase, callFunction } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme, useIsMobile } from '../styles/theme'
 import { Spinner, EmptyState } from '../components/UI'
-import MockupCanvas, { KitThumb, FramedArtThumb, ROOMS } from '../components/MockupCanvas'
+import MockupCanvas, { FramedArtThumb, ROOMS } from '../components/MockupCanvas'
 
 const PAGE_SIZE = 48
 
@@ -275,7 +275,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       >
         <div style={S.wall(hovered)}>
           {isKit
-            ? <KitThumb kitUrls={kit.parts.map(p => p.img_url)} frameColor="preto" cardWidth={360} />
+            ? <FramedArtThumb srcs={kit.parts.map(p => p.img_url)} alt={title} />
             : <FramedArtThumb src={img.img_url} alt={title} />
           }
           <button

@@ -244,31 +244,54 @@ const GRID_FRAME_PALETTE = [
   { fill: '#7B5230', stroke: '#5c3a1e' }, // madeira
 ]
 
-// Miniatura de arte com moldura sobre fundo branco — para uso no grid
-export function FramedArtThumb({ src, alt }) {
+// Miniatura de arte com moldura sobre fundo claro — para uso no grid.
+// Com `srcs` (kit), desenha as peças lado a lado com a mesma altura, cada uma na proporção original.
+export function FramedArtThumb({ src, srcs }) {
+  const lista = srcs?.length ? srcs : (src ? [src] : [])
+  const chave = lista.join('|')
   const wrapRef = useRef()
   const canvasRef = useRef()
   const imgCacheRef = useRef(null)
-  const fs = GRID_FRAME_PALETTE[hashStr(src || '') % 3]
+  const fs = GRID_FRAME_PALETTE[hashStr(lista[0] || '') % 3]
 
-  function drawOn(canvas, img, W) {
+  function drawOn(canvas, imgs, W) {
     const H = Math.round(W * 0.95)
     canvas.width = W
     canvas.height = H
     const ctx = canvas.getContext('2d')
     ctx.fillStyle = '#f7f5f2'
     ctx.fillRect(0, 0, W, H)
-    const FRAME_THICK = Math.max(1, Math.round(H * 0.018))
-    const OUTER_PAD = Math.round(H * 0.1)
-    const maxArtW = W - OUTER_PAD * 2
+    const N = imgs.length
+    const OUTER_PAD = Math.round(H * (N > 1 ? 0.08 : 0.1))
+    const gap = N > 1 ? Math.round(W * 0.035) : 0
+    const maxArtW = W - OUTER_PAD * 2 - gap * (N - 1)
     const maxArtH = H - OUTER_PAD * 2
-    const imgRatio = img.naturalWidth / img.naturalHeight
-    const areaRatio = maxArtW / maxArtH
-    let artW, artH
-    if (imgRatio > areaRatio) { artW = maxArtW; artH = artW / imgRatio }
-    else { artH = maxArtH; artW = artH * imgRatio }
-    const artX = (W - artW) / 2
-    const artY = (H - artH) / 2
+    const ratios = imgs.map(im => im.naturalWidth / im.naturalHeight)
+    // 4 a 6 peças: duas fileiras (no card, uma fileira só deixaria cada peça minúscula)
+    const nLinhas = N >= 4 ? 2 : 1
+    const porLinha = Math.ceil(N / nLinhas)
+    const linhas = Array.from({ length: nLinhas }, (_, l) => ratios.map((r, i) => ({ r, i })).slice(l * porLinha, (l + 1) * porLinha))
+    const larguraUtil = W - OUTER_PAD * 2
+    // altura comum: a maior que cabe em todas as fileiras e na altura disponível
+    const artH = Math.min(
+      (maxArtH - gap * (nLinhas - 1)) / nLinhas,
+      ...linhas.map(lin => (larguraUtil - gap * (lin.length - 1)) / lin.reduce((a, b) => a + b.r, 0)),
+    )
+    const FRAME_THICK = Math.max(1, Math.round(artH * 0.018 * (N > 1 ? 1.4 : 1)))
+    const totalH = artH * nLinhas + gap * (nLinhas - 1)
+    let y = (H - totalH) / 2
+    linhas.forEach(lin => {
+      const totalW = artH * lin.reduce((a, b) => a + b.r, 0) + gap * (lin.length - 1)
+      let x = (W - totalW) / 2
+      lin.forEach(({ r, i }) => {
+        desenharQuadro(ctx, imgs[i], x, y, artH * r, artH, FRAME_THICK)
+        x += artH * r + gap
+      })
+      y += artH + gap
+    })
+  }
+
+  function desenharQuadro(ctx, img, artX, artY, artW, artH, FRAME_THICK) {
     ctx.save()
     ctx.shadowColor = 'rgba(0,0,0,0.22)'
     ctx.shadowBlur = 14
@@ -289,25 +312,25 @@ export function FramedArtThumb({ src, alt }) {
     imgCacheRef.current = null
     const wrap = wrapRef.current
     const canvas = canvasRef.current
-    if (!wrap || !canvas || !src) return
+    if (!wrap || !canvas || !lista.length) return
     let ro
     const io = new IntersectionObserver(entries => {
       if (!entries[0].isIntersecting) return
       io.disconnect()
-      loadImg(src).then(img => {
-        imgCacheRef.current = img
+      Promise.all(lista.map(u => loadImg(u))).then(imgs => {
+        imgCacheRef.current = imgs
         const W = wrap.offsetWidth || 320
-        drawOn(canvas, img, W)
+        drawOn(canvas, imgs, W)
         ro = new ResizeObserver(([e]) => {
           const W2 = Math.round(e.contentRect.width)
-          if (W2 > 0) drawOn(canvas, img, W2)
+          if (W2 > 0) drawOn(canvas, imgs, W2)
         })
         ro.observe(wrap)
       }).catch(() => {})
     }, { rootMargin: '300px' })
     io.observe(wrap)
     return () => { io.disconnect(); ro?.disconnect() }
-  }, [src])
+  }, [chave])
 
   return (
     <div ref={wrapRef} style={{ width: '100%' }}>
