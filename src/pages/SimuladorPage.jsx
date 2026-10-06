@@ -3,7 +3,7 @@ import { useTheme, useIsMobile, formatCurrency } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
-import MockupCanvas from '../components/MockupCanvas'
+import MockupCanvas, { ROOMS } from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
 
 // Espelhado em sim-pedido (PrintFramePro), que recalcula no servidor — manter os dois iguais
@@ -90,6 +90,12 @@ function maxFatias(img, ratio) {
   return ratio >= 2 ? 3 : ratio >= 1.5 ? 2 : 1
 }
 
+const FRAME_COLORS = [
+  { id: 'branco', label: 'Branco', swatch: '#f8f6f3', border: '#ccc' },
+  { id: 'preto', label: 'Preto', swatch: '#1a1a1a', border: '#000' },
+  { id: 'madeira', label: 'Madeira', swatch: '#8B5E3C', border: '#6b4828' },
+]
+
 const um = (v) => Math.round(v * 10) / 10
 const cm = (v) => String(um(v)).replace('.', ',')
 
@@ -121,6 +127,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const [obs, setObs] = useState('')
 
   const [showBanco, setShowBanco] = useState(false)
+  const [mockupAberto, setMockupAberto] = useState(false)
+  const [mockupRoom, setMockupRoom] = useState(ROOMS[0])
+  const [mockupCor, setMockupCor] = useState('preto')
   const [enviando, setEnviando] = useState(null) // null | 'novo' | 'orcamento'
   const [sucesso, setSucesso] = useState(null) // null | 'novo' | 'orcamento'
   const [erro, setErro] = useState('')
@@ -400,6 +409,13 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     </div>
   )
 
+  useEffect(() => {
+    if (!mockupAberto) return
+    const onKey = (e) => { if (e.key === 'Escape') setMockupAberto(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mockupAberto])
+
   if (loadingData) return <div style={{ padding: 48, textAlign: 'center' }}><Spinner label="Carregando..." /></div>
   if (erroData) return <div style={{ color: colors.danger, padding: 24 }}>{erroData}</div>
 
@@ -667,11 +683,17 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
           {/* Mockup */}
           {imagem ? (
             <div style={{ marginBottom: 16 }}>
+              <button onClick={() => setMockupAberto(true)} aria-label="Ampliar o quadro no ambiente"
+                style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', position: 'relative' }}>
               <MockupCanvas
                 imgUrl={isKit ? null : imagem.img_url}
                 kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
                 slices={isKit ? 1 : nFatias}
                 ratio={ratio || parseFloat(imagem.ratio) || 1} width={250} />
+                <span style={{ position: 'absolute', right: 8, bottom: 8, background: 'rgba(14,13,10,0.75)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '4px 9px', borderRadius: 999, fontFamily: fonts.body }}>
+                  Ampliar
+                </span>
+              </button>
             </div>
           ) : (
             <div style={{ aspectRatio: '4/3', background: colors.surfaceAlt, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -790,6 +812,48 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
         </div>
 
       </div>
+
+      {mockupAberto && imagem && (
+        <div role="dialog" aria-modal="true" aria-label="Quadro no ambiente" onClick={e => { if (e.target === e.currentTarget) setMockupAberto(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(14,13,10,0.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', zIndex: 1000, padding: '20px 16px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, width: '100%', maxWidth: 1100, marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, minWidth: 0 }}>
+              {ROOMS.map(room => (
+                <button key={room.id} onClick={() => setMockupRoom(room)} title={room.label} aria-label={`Ambiente ${room.label}`} aria-pressed={mockupRoom.id === room.id}
+                  style={{ flexShrink: 0, width: 84, height: 54, overflow: 'hidden', border: 'none', outline: mockupRoom.id === room.id ? '2px solid #fff' : '1px solid rgba(255,255,255,0.15)', outlineOffset: mockupRoom.id === room.id ? 2 : 0, opacity: mockupRoom.id === room.id ? 1 : 0.6, cursor: 'pointer', padding: 0, background: '#000' }}>
+                  <img src={room.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase' }}>Moldura</span>
+              {FRAME_COLORS.map(fc => (
+                <button key={fc.id} title={fc.label} aria-label={`Moldura ${fc.label}`} aria-pressed={mockupCor === fc.id} onClick={() => setMockupCor(fc.id)}
+                  style={{ width: 26, height: 26, borderRadius: '50%', background: fc.swatch, border: `2px solid ${fc.border}`, cursor: 'pointer', outline: mockupCor === fc.id ? '2px solid #fff' : 'none', outlineOffset: 2 }} />
+              ))}
+            </div>
+          </div>
+          <MockupCanvas
+            imgUrl={isKit ? null : imagem.img_url}
+            kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
+            slices={isKit ? 1 : nFatias}
+            ratio={ratio || parseFloat(imagem.ratio) || 1}
+            frameColor={mockupCor}
+            width={1100}
+            room={mockupRoom}
+            interactive
+          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, width: '100%', maxWidth: 1100, marginTop: 12 }}>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+              {multiPeca ? `${descPecas} · ` : ''}Arraste o quadro para posicionar · puxe um canto para redimensionar
+            </span>
+            <button onClick={() => setMockupAberto(false)}
+              style={{ background: '#fff', color: '#14130f', border: 'none', borderRadius: 999, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: fonts.body }}>
+              Voltar ao pedido
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
