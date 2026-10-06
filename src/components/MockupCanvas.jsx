@@ -2,76 +2,42 @@ import { useEffect, useRef, useState } from 'react'
 
 // Ambientes disponíveis — zone define área da parede em % das dimensões da foto
 export const ROOMS = [
+  // zone = área livre da parede (fração da foto); paredeCm = largura real dessa área,
+  // calibrada pelo móvel de referência indicado
   {
-    id: 'amb1',
-    paredeCm: 173, // largura real da área de parede (zone), estimada pelos móveis
-    label: 'Sala Azul',
-    src: '/ambiente-1.jpg',
-    w: 1920, h: 960,
-    zone: { top: 0.04, bottom: 0.60, left: 0.27, right: 0.86 },
+    id: 'sala-clara',
+    label: 'Sala clara',
+    src: '/ambiente-sala-clara.jpg',
+    w: 1920, h: 1536,
+    zone: { top: 0.05, bottom: 0.55, left: 0.16, right: 0.84 },
+    paredeCm: 202, // sofá capitonê 3 lugares ≈ 230 cm ocupa 77,5% da largura
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
-    id: 'amb2',
-    paredeCm: 230, // largura real da área de parede (zone), estimada pelos móveis
+    id: 'sala-escura',
+    label: 'Sala azul-marinho',
+    src: '/ambiente-sala-escura.jpg',
+    w: 1920, h: 1280,
+    zone: { top: 0.05, bottom: 0.50, left: 0.18, right: 0.95 },
+    paredeCm: 222, // poltrona ≈ 75 cm ocupa 26% da largura
+    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
+  },
+  {
+    id: 'quarto',
     label: 'Quarto',
-    src: '/ambiente-2.jpg',
+    src: '/ambiente-quarto.jpg',
     w: 1920, h: 1076,
-    zone: { top: 0.04, bottom: 0.49, left: 0.24, right: 0.76 },
+    zone: { top: 0.04, bottom: 0.48, left: 0.25, right: 0.72 },
+    paredeCm: 166, // cama casal ≈ 170 cm ocupa 48% da largura
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
-    id: 'amb3',
-    paredeCm: 133, // largura real da área de parede (zone), estimada pelos móveis
-    label: 'Minimalista',
-    src: '/ambiente-3.jpg',
-    w: 1433, h: 1920,
-    zone: { top: 0.06, bottom: 0.63, left: 0.12, right: 0.92 },
-    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
-  },
-  {
-    id: 'amb4',
-    paredeCm: 187, // largura real da área de parede (zone), estimada pelos móveis
-    label: 'Sala Cinza',
-    src: '/ambiente-4.jpg',
-    w: 1458, h: 1920,
-    zone: { top: 0.04, bottom: 0.53, left: 0.10, right: 0.88 },
-    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
-  },
-  {
-    id: 'amb5',
-    paredeCm: 160, // largura real da área de parede (zone), estimada pelos móveis
-    label: 'Loft Dark',
-    src: '/ambiente-5.jpg',
-    w: 1920, h: 1280,
-    zone: { top: 0.06, bottom: 0.55, left: 0.31, right: 0.86 },
-    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
-  },
-  {
-    id: 'amb6',
-    paredeCm: 247, // largura real da área de parede (zone), estimada pelos móveis
-    label: 'Terracota',
-    src: '/ambiente-6.jpg',
-    w: 1920, h: 1355,
-    zone: { top: 0.14, bottom: 0.66, left: 0.18, right: 0.76 },
-    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
-  },
-  {
-    id: 'amb7',
-    paredeCm: 175, // largura real da área de parede (zone), estimada pelos móveis
-    label: 'Sala de Jantar',
-    src: '/ambiente-7.jpg',
-    w: 1920, h: 1280,
-    zone: { top: 0.19, bottom: 0.50, left: 0.24, right: 0.74 },
-    thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
-  },
-  {
-    id: 'amb8',
-    paredeCm: 130, // largura real da área de parede (zone), estimada pelos móveis
-    label: 'Café Industrial',
-    src: '/ambiente-8.jpg',
-    w: 1920, h: 1280,
-    zone: { top: 0.31, bottom: 0.68, left: 0.28, right: 0.96 },
+    id: 'jantar',
+    label: 'Sala de jantar',
+    src: '/ambiente-jantar.jpg',
+    w: 1920, h: 1072,
+    zone: { top: 0.06, bottom: 0.56, left: 0.10, right: 0.90 },
+    paredeCm: 349, // mesa redonda ≈ 120 cm ocupa 27,5% da largura
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
 ]
