@@ -102,6 +102,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [cor, setCor] = useState('')
   const [maisPedidas, setMaisPedidas] = useState([]) // [{ imagem_id, pedidos }]
   const [soFavoritos, setSoFavoritos] = useState(false)
+  const [tipo, setTipo] = useState('') // '' | 'avulsa' | 'composicao'
+  const [painelFiltros, setPainelFiltros] = useState(false)
   const favKey = `favoritos:${profile?.id}`
   const [favoritos, setFavoritos] = useState(() => lerFavoritos(favKey))
 
@@ -149,7 +151,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     callFunction('sim-lojista-data?destaques=1').then(d => setMaisPedidas(d?.mais_pedidas ?? [])).catch(() => {})
   }, [])
 
-  useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca, formato, cor, soFavoritos])
+  useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca, formato, cor, tipo, soFavoritos])
 
   useEffect(() => {
     if (!preview) return
@@ -169,11 +171,13 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const filtradas = imagens.filter(img => {
     if (coverOf[img.id]) return false
     const matchCat = catAtiva === 'todas' || (catAtiva === 'em_alta' ? emAlta(img) : img.categoria === catAtiva)
-    const matchBusca = !busca || (kitOf[img.id]?.kitName ?? img.titulo).toLowerCase().includes(busca.toLowerCase())
+    const q = busca.trim().toLowerCase()
+    const matchBusca = !q || `${kitOf[img.id]?.kitName ?? img.titulo} ${img.categoria || ''}`.toLowerCase().includes(q)
+    const matchTipo = !tipo || (tipo === 'composicao' ? !!kitOf[img.id] : !kitOf[img.id])
     const matchFormato = !formato || formatoDe(img.ratio) === formato
     const matchCor = !cor || (img.cores || []).includes(cor)
     const matchFav = !soFavoritos || favoritos.has(cardKeyOf(img))
-    return matchCat && matchBusca && matchFormato && matchCor && matchFav
+    return matchCat && matchBusca && matchFormato && matchCor && matchTipo && matchFav
   })
 
   // Colapsa kits em um único card
@@ -230,7 +234,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       { id: 'novas', titulo: 'Novidades no acervo', nota: 'as últimas obras adicionadas', cards: novidades },
     ].filter(f => f.cards.length >= 4)
   }, [imagens, kitOf, coverOf, maisPedidas])
-  const mostrarFaixas = catAtiva === 'em_alta' && !busca && !formato && !cor && !soFavoritos
+  const mostrarFaixas = catAtiva === 'em_alta' && !busca && !formato && !cor && !tipo && !soFavoritos
 
   const exibidos = cards.slice(0, visiveis)
   const temMais = visiveis < cards.length
@@ -309,23 +313,31 @@ export default function BancoImagensPage({ onSelectImagem }) {
     )
   }
 
-  const limparFiltros = () => { setBusca(''); setFormato(''); setCor(''); setSoFavoritos(false); setCatAtiva(catPadrao) }
-  const temFiltro = busca || formato || cor || soFavoritos || catAtiva !== catPadrao
+  const limparFiltros = () => { setBusca(''); setFormato(''); setCor(''); setTipo(''); setSoFavoritos(false); setCatAtiva(catPadrao) }
+  const nFiltros = [formato, cor, tipo, soFavoritos].filter(Boolean).length
+  const temFiltro = busca || formato || cor || tipo || soFavoritos || catAtiva !== catPadrao
 
   const S = {
     eyebrow: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
     title: { fontFamily: fonts.display, fontSize: 'clamp(28px, 3.9vw, 41px)', fontWeight: 600, lineHeight: 1.02, letterSpacing: -1, margin: '6px 0 10px', textWrap: 'balance' },
     lead: { fontSize: 15, color: colors.textMuted, maxWidth: 560, lineHeight: 1.55 },
     toolbar: { margin: '28px 0 0' },
-    fixo: { position: isMobile ? 'static' : 'sticky', top: 72, zIndex: 20, background: colors.bg, padding: '10px 0 0', marginBottom: 8, borderBottom: `1px solid ${colors.border}` },
+    fixo: { position: 'sticky', top: isMobile ? 0 : 72, zIndex: 20, background: colors.bg, padding: '10px 0', marginBottom: 8, borderBottom: `1px solid ${colors.border}` },
+    barra: { display: 'flex', alignItems: 'center', gap: 10 },
+    filtroBtn: (on) => ({ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8, background: on ? colors.surfaceAlt : colors.surface, border: `1px solid ${on ? colors.text : colors.border}`, color: colors.text, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }),
+    badge: { minWidth: 18, height: 18, borderRadius: 999, background: colors.text, color: colors.bg, fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' },
+    painel: { marginTop: 10, background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr auto', gap: isMobile ? 18 : 32, boxShadow: '0 12px 30px -18px rgba(0,0,0,0.35)' },
+    grupoTit: { fontSize: 11, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.textMuted, marginBottom: 10 },
+    opcao: (on) => ({ display: 'inline-flex', alignItems: 'center', gap: 8, background: on ? colors.text : 'transparent', color: on ? colors.bg : colors.text, border: `1px solid ${on ? colors.text : colors.border}`, borderRadius: 999, padding: '6px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }),
+    chipAtivo: { display: 'inline-flex', alignItems: 'center', gap: 6, background: colors.surfaceAlt, border: 'none', color: colors.text, borderRadius: 999, padding: '5px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
     toolRow: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 },
-    search: { flex: '1 1 240px', minWidth: 0, background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 999, padding: '11px 18px', fontSize: 14, outline: 'none' },
+    search: { flex: '1 1 320px', minWidth: 0, background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 999, padding: '11px 18px', fontSize: 14, outline: 'none' },
     seg: { display: 'inline-flex', border: `1px solid ${colors.border}`, borderRadius: 999, background: colors.surface, padding: 3 },
     segBtn: (on) => ({ background: on ? colors.text : 'transparent', color: on ? colors.bg : colors.textMuted, border: 'none', borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s, color 0.15s' }),
     favToggle: (on) => ({ background: on ? colors.text : colors.surface, color: on ? colors.bg : colors.text, border: `1px solid ${on ? colors.text : colors.border}`, borderRadius: 999, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }),
-    cats: { display: 'flex', gap: 24, overflowX: 'auto', scrollbarWidth: 'none' },
-    catBtn: (on) => ({ flexShrink: 0, background: 'none', border: 'none', borderBottom: `2px solid ${on ? colors.text : 'transparent'}`, color: on ? colors.text : colors.textMuted, padding: '8px 0 10px', fontSize: 14, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap', marginBottom: -1 }),
-    catCount: { fontSize: 11, color: colors.textMuted, marginLeft: 5, fontVariantNumeric: 'tabular-nums' },
+    cats: { display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', padding: '2px 2px 2px' },
+    catBtn: (on) => ({ flexShrink: 0, background: on ? colors.text : colors.surface, border: `1px solid ${on ? colors.text : colors.border}`, color: on ? colors.bg : colors.text, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }),
+    catCount: { fontSize: 11, opacity: 0.6, marginLeft: 6, fontWeight: 500, fontVariantNumeric: 'tabular-nums' },
     meta: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontSize: 13, color: colors.textMuted, margin: '18px 0 22px' },
     linkBtn: { background: 'none', border: 'none', color: colors.text, fontSize: 13, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer', padding: 0 },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, max(240px, calc((100% - 64px) / 3))), 1fr))', gap: '40px 32px' },
@@ -357,23 +369,18 @@ export default function BancoImagensPage({ onSelectImagem }) {
     <div>
       <div style={S.eyebrow}>Acervo</div>
       <h1 style={S.title}>Obras para a parede do seu cliente</h1>
-      <p style={S.lead}>Busque por tema, cor, formato ou nome. Abra uma obra para vê-la num ambiente, ou leve direto para um novo pedido.</p>
+      <p style={S.lead}>Escolha um tema ou use os filtros de formato e cor. Abra uma obra para vê-la num ambiente, ou leve direto para um novo pedido.</p>
 
       <div style={S.toolbar}>
         <div style={S.toolRow}>
           <input
             style={S.search}
             type="search"
-            placeholder="Buscar obra pelo nome"
-            aria-label="Buscar obra pelo nome"
+            placeholder="Buscar por nome, tema ou estilo — ex.: praia, boho, Van Gogh"
+            aria-label="Buscar obras"
             value={busca}
             onChange={e => setBusca(e.target.value)}
           />
-          <div style={S.seg} role="group" aria-label="Formato">
-            {FORMATOS.map(f => (
-              <button key={f.id} onClick={() => setFormato(f.id)} style={S.segBtn(formato === f.id)} aria-pressed={formato === f.id}>{f.label}</button>
-            ))}
-          </div>
           <button onClick={() => setSoFavoritos(v => !v)} style={S.favToggle(soFavoritos)} aria-pressed={soFavoritos}>
             ♥ Favoritos{favoritos.size > 0 ? ` (${favoritos.size})` : ''}
           </button>
@@ -381,35 +388,85 @@ export default function BancoImagensPage({ onSelectImagem }) {
       </div>
 
       <div style={S.fixo}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 8 }} role="group" aria-label="Cor">
-          <span style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, marginRight: 4 }}>Cor</span>
-          {CORES.map(c => {
-            const on = cor === c.id
-            return (
-              <button key={c.id} title={c.id} aria-label={`Cor ${c.id}`} aria-pressed={on}
-                onClick={() => setCor(on ? '' : c.id)}
-                style={{ width: 16, height: 16, borderRadius: '50%', background: c.bg, cursor: 'pointer', padding: 0,
-                  border: `1px solid ${c.id === 'Branco' ? colors.border : 'rgba(0,0,0,0.12)'}`,
-                  outline: on ? `2px solid ${colors.text}` : 'none', outlineOffset: 1 }} />
-            )
-          })}
-          {cor && <span style={{ fontSize: 11, color: colors.text, fontWeight: 600, marginLeft: 4 }}>{cor}</span>}
-        </div>
-        <ScrollRow style={S.cats} colors={colors} step={0.6} role="tablist" aria-label="Temas">
-          {nEmAlta > 0 && (
-            <button role="tab" aria-selected={catAtiva === 'em_alta'} style={{ ...S.catBtn(catAtiva === 'em_alta'), color: catAtiva === 'em_alta' ? colors.text : colors.accent }} onClick={() => setCatAtiva('em_alta')}>
-              ★ Em alta<span style={S.catCount}>{nEmAlta}</span>
-            </button>
-          )}
-          <button role="tab" aria-selected={catAtiva === 'todas'} style={S.catBtn(catAtiva === 'todas')} onClick={() => setCatAtiva('todas')}>
-            Todas
+        <div style={S.barra}>
+          <button onClick={() => setPainelFiltros(v => !v)} style={S.filtroBtn(painelFiltros || nFiltros > 0)} aria-expanded={painelFiltros} aria-controls="painel-filtros">
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+            Filtros
+            {nFiltros > 0 && <span style={S.badge}>{nFiltros}</span>}
           </button>
-          {categorias.map(c => (
-            <button key={c} role="tab" aria-selected={catAtiva === c} style={S.catBtn(catAtiva === c)} onClick={() => setCatAtiva(c)}>
-              {c}<span style={S.catCount}>{contaCat(c)}</span>
-            </button>
-          ))}
-        </ScrollRow>
+          <div style={{ width: 1, alignSelf: 'stretch', background: colors.border, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ScrollRow style={S.cats} colors={colors} step={0.6} role="tablist" aria-label="Temas">
+              {nEmAlta > 0 && (
+                <button role="tab" aria-selected={catAtiva === 'em_alta'} style={{ ...S.catBtn(catAtiva === 'em_alta'), ...(catAtiva === 'em_alta' ? {} : { color: colors.accent, borderColor: colors.accent }) }} onClick={() => setCatAtiva('em_alta')}>
+                  ★ Em alta
+                </button>
+              )}
+              <button role="tab" aria-selected={catAtiva === 'todas'} style={S.catBtn(catAtiva === 'todas')} onClick={() => setCatAtiva('todas')}>
+                Todas
+              </button>
+              {categorias.map(c => (
+                <button key={c} role="tab" aria-selected={catAtiva === c} style={S.catBtn(catAtiva === c)} onClick={() => setCatAtiva(c)}>
+                  {c}<span style={S.catCount}>{contaCat(c)}</span>
+                </button>
+              ))}
+            </ScrollRow>
+          </div>
+        </div>
+
+        {painelFiltros && (
+          <div id="painel-filtros" style={S.painel}>
+            <div>
+              <div style={S.grupoTit}>Formato</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {FORMATOS.filter(f => f.id).map(f => {
+                  const on = formato === f.id
+                  const [w, h] = f.id === 'vertical' ? [9, 13] : f.id === 'horizontal' ? [14, 9] : [11, 11]
+                  return (
+                    <button key={f.id} onClick={() => setFormato(on ? '' : f.id)} style={S.opcao(on)} aria-pressed={on}>
+                      <span aria-hidden="true" style={{ width: w, height: h, border: '1.5px solid currentColor', borderRadius: 2, display: 'inline-block' }} />
+                      {f.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div>
+              <div style={S.grupoTit}>Cor predominante</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {CORES.map(c => {
+                  const on = cor === c.id
+                  return (
+                    <button key={c.id} onClick={() => setCor(on ? '' : c.id)} style={S.opcao(on)} aria-pressed={on}>
+                      <span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: '50%', background: c.bg, border: '1px solid rgba(0,0,0,0.15)', display: 'inline-block' }} />
+                      {c.id}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div>
+              <div style={S.grupoTit}>Tipo</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {[{ id: 'avulsa', label: 'Obra avulsa' }, { id: 'composicao', label: 'Composição' }].map(t => {
+                  const on = tipo === t.id
+                  return <button key={t.id} onClick={() => setTipo(on ? '' : t.id)} style={S.opcao(on)} aria-pressed={on}>{t.label}</button>
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(nFiltros > 0 || busca) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 10 }}>
+            {busca && <button style={S.chipAtivo} onClick={() => setBusca('')}>“{busca}” <span aria-hidden="true">×</span></button>}
+            {formato && <button style={S.chipAtivo} onClick={() => setFormato('')}>{FORMATOS.find(f => f.id === formato)?.label} <span aria-hidden="true">×</span></button>}
+            {cor && <button style={S.chipAtivo} onClick={() => setCor('')}><span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', background: CORES.find(c => c.id === cor)?.bg, display: 'inline-block' }} />{cor} <span aria-hidden="true">×</span></button>}
+            {tipo && <button style={S.chipAtivo} onClick={() => setTipo('')}>{tipo === 'composicao' ? 'Composição' : 'Obra avulsa'} <span aria-hidden="true">×</span></button>}
+            {soFavoritos && <button style={S.chipAtivo} onClick={() => setSoFavoritos(false)}>♥ Favoritos <span aria-hidden="true">×</span></button>}
+            <button style={S.linkBtn} onClick={limparFiltros}>Limpar tudo</button>
+          </div>
+        )}
       </div>
 
       {mostrarFaixas && faixas.map(f => (
@@ -429,7 +486,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
       <div style={S.meta}>
         <span>{cards.length} {cards.length === 1 ? 'obra' : 'obras'}{catAtiva === 'em_alta' ? ' em alta: o que mais está vendendo nas grandes lojas de quadros' : catAtiva !== 'todas' ? ` em ${catAtiva}` : ''}</span>
-        {temFiltro && <button style={S.linkBtn} onClick={limparFiltros}>Limpar filtros</button>}
+        {temFiltro && !nFiltros && !busca && <button style={S.linkBtn} onClick={limparFiltros}>Voltar ao Em alta</button>}
       </div>
 
       {cards.length === 0 ? (
