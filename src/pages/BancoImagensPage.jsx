@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../services/supabase'
+import { supabase, callFunction } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme, useIsMobile } from '../styles/theme'
 import { Spinner, EmptyState } from '../components/UI'
@@ -98,6 +98,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [coverOf, setCoverOf] = useState({})
   const [formato, setFormato] = useState('')
   const [cor, setCor] = useState('')
+  const [maisPedidas, setMaisPedidas] = useState([]) // [{ imagem_id, pedidos }]
   const [soFavoritos, setSoFavoritos] = useState(false)
   const favKey = `favoritos:${profile?.id}`
   const [favoritos, setFavoritos] = useState(() => lerFavoritos(favKey))
@@ -143,6 +144,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       setLoading(false)
     }
     fetchAll()
+    callFunction('sim-lojista-data?destaques=1').then(d => setMaisPedidas(d?.mais_pedidas ?? [])).catch(() => {})
   }, [])
 
   useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca, formato, cor, soFavoritos])
@@ -184,6 +186,45 @@ export default function BancoImagensPage({ onSelectImagem }) {
     return out
   }, [filtradas, kitOf])
 
+  // Faixas do topo do "Em alta": kits, novidades e mais pedidas (preenchidas sozinhas)
+  const faixas = useMemo(() => {
+    const porId = Object.fromEntries(imagens.map(i => [i.id, i]))
+    const cardDe = (img) => {
+      const kit = kitOf[img.id]
+      return kit ? { key: `kit-${kit.kitId}`, isKit: true, kit, img: kit.parts[0] } : { key: img.id, isKit: false, img }
+    }
+    const unicos = (lista) => {
+      const vistos = new Set(); const out = []
+      for (const img of lista) {
+        if (!img || coverOf[img.id]) continue
+        const c = cardDe(img)
+        if (vistos.has(c.key)) continue
+        vistos.add(c.key); out.push(c)
+        if (out.length >= 12) break
+      }
+      return out
+    }
+    // kits alternando o estilo (primeira palavra depois de "Kit") para a faixa não repetir o mesmo tipo
+    const kitsPorEstilo = {}
+    imagens.filter(i => kitOf[i.id] && kitOf[i.id].parts[0].id === i.id).forEach(i => {
+      const k = kitOf[i.id]
+      const estilo = (k.kitName.replace(/^Kit\s+/i, '').split(' ')[0] || '').toLowerCase()
+      ;(kitsPorEstilo[estilo] ||= []).push(i)
+    })
+    const grupos = Object.values(kitsPorEstilo).map(g => g.sort((a, b) => (kitOf[b.id].emAlta ? 1 : 0) - (kitOf[a.id].emAlta ? 1 : 0)))
+    const intercalados = []
+    for (let r = 0; grupos.some(g => g[r]); r++) grupos.forEach(g => g[r] && intercalados.push(g[r]))
+    const kitsLista = unicos(intercalados)
+    const novidades = unicos([...imagens].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))))
+    const pedidas = unicos(maisPedidas.map(m => porId[m.imagem_id]))
+    return [
+      { id: 'kits', titulo: 'Kits e composições', nota: 'conjuntos prontos de 2 a 6 peças', cards: kitsLista },
+      { id: 'pedidas', titulo: 'Mais pedidas pelos lojistas', nota: 'últimos 6 meses', cards: pedidas },
+      { id: 'novas', titulo: 'Novidades no acervo', nota: 'as últimas obras adicionadas', cards: novidades },
+    ].filter(f => f.cards.length >= 4)
+  }, [imagens, kitOf, coverOf, maisPedidas])
+  const mostrarFaixas = catAtiva === 'em_alta' && !busca && !formato && !cor && !soFavoritos
+
   const exibidos = cards.slice(0, visiveis)
   const temMais = visiveis < cards.length
   const contaCat = (cat) => imagens.filter(i => !coverOf[i.id] && i.categoria === cat).length
@@ -218,6 +259,46 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
   async function usarNoSimulador(img) {
     onSelectImagem(await montarSelecao(img))
+  }
+
+  const renderCard = ({ key, img, isKit, kit }) => {
+    const title = isKit ? kit.kitName : img.titulo
+    const hovered = hoveredId === key
+    const fav = favoritos.has(key)
+    return (
+      <article
+        key={key}
+        style={S.card}
+        onMouseEnter={() => setHoveredId(key)}
+        onMouseLeave={() => setHoveredId(null)}
+        onClick={() => openPreview(img)}
+      >
+        <div style={S.wall(hovered)}>
+          {isKit
+            ? <KitThumb kitUrls={kit.parts.map(p => p.img_url)} frameColor="preto" cardWidth={360} />
+            : <FramedArtThumb src={img.img_url} alt={title} />
+          }
+          <button
+            onClick={e => { e.stopPropagation(); toggleFavorito(key) }}
+            aria-label={fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+            aria-pressed={fav}
+            style={S.fav(fav, hovered)}
+          >
+            {fav ? '♥' : '♡'}
+          </button>
+          {isKit && <span style={S.kitTag}>Kit · {kit.kitCount} peças</span>}
+        </div>
+        <div style={S.cardTitle} title={title}>{title}</div>
+        <div style={S.cardMeta}>
+          <span style={S.cardCat}>{img.categoria}</span>
+          {onSelectImagem && (
+            <button style={S.usar} onClick={e => { e.stopPropagation(); usarNoSimulador(img) }}>
+              Usar no pedido →
+            </button>
+          )}
+        </div>
+      </article>
+    )
   }
 
   const limparFiltros = () => { setBusca(''); setFormato(''); setCor(''); setSoFavoritos(false); setCatAtiva(catPadrao) }
@@ -319,6 +400,21 @@ export default function BancoImagensPage({ onSelectImagem }) {
         </div>
       </div>
 
+      {mostrarFaixas && faixas.map(f => (
+        <section key={f.id} style={{ margin: '28px 0 8px' }} aria-label={f.titulo}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+            <h2 style={{ margin: 0, fontFamily: fonts.display, fontSize: 19, fontWeight: 600, color: colors.text }}>{f.titulo}</h2>
+            <span style={{ fontSize: 12, color: colors.textMuted }}>{f.nota}</span>
+          </div>
+          <div style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: isMobile ? '70%' : 'minmax(220px, 260px)', gap: 24, overflowX: 'auto', paddingBottom: 12, scrollSnapType: 'x mandatory' }}>
+            {f.cards.map(c => <div key={c.key} style={{ scrollSnapAlign: 'start', minWidth: 0 }}>{renderCard(c)}</div>)}
+          </div>
+        </section>
+      ))}
+      {mostrarFaixas && faixas.length > 0 && (
+        <h2 style={{ margin: '28px 0 0', fontFamily: fonts.display, fontSize: 19, fontWeight: 600, color: colors.text }}>★ Em alta</h2>
+      )}
+
       <div style={S.meta}>
         <span>{cards.length} {cards.length === 1 ? 'obra' : 'obras'}{catAtiva === 'em_alta' ? ' em alta: o que mais está vendendo nas grandes lojas de quadros' : catAtiva !== 'todas' ? ` em ${catAtiva}` : ''}</span>
         {temFiltro && <button style={S.linkBtn} onClick={limparFiltros}>Limpar filtros</button>}
@@ -334,45 +430,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       ) : (
         <>
           <div style={S.grid}>
-            {exibidos.map(({ key, img, isKit, kit }) => {
-              const title = isKit ? kit.kitName : img.titulo
-              const hovered = hoveredId === key
-              const fav = favoritos.has(key)
-              return (
-                <article
-                  key={key}
-                  style={S.card}
-                  onMouseEnter={() => setHoveredId(key)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  onClick={() => openPreview(img)}
-                >
-                  <div style={S.wall(hovered)}>
-                    {isKit
-                      ? <KitThumb kitUrls={kit.parts.map(p => p.img_url)} frameColor="preto" cardWidth={360} />
-                      : <FramedArtThumb src={img.img_url} alt={title} />
-                    }
-                    <button
-                      onClick={e => { e.stopPropagation(); toggleFavorito(key) }}
-                      aria-label={fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-                      aria-pressed={fav}
-                      style={S.fav(fav, hovered)}
-                    >
-                      {fav ? '♥' : '♡'}
-                    </button>
-                    {isKit && <span style={S.kitTag}>Kit · {kit.kitCount} peças</span>}
-                  </div>
-                  <div style={S.cardTitle} title={title}>{title}</div>
-                  <div style={S.cardMeta}>
-                    <span style={S.cardCat}>{img.categoria}</span>
-                    {onSelectImagem && (
-                      <button style={S.usar} onClick={e => { e.stopPropagation(); usarNoSimulador(img) }}>
-                        Usar no pedido →
-                      </button>
-                    )}
-                  </div>
-                </article>
-              )
-            })}
+            {exibidos.map(renderCard)}
           </div>
           {temMais && (
             <button style={S.mais} onClick={() => setVisiveis(v => v + PAGE_SIZE)}>
