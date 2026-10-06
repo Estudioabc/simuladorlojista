@@ -238,7 +238,6 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
   const exibidos = cards.slice(0, visiveis)
   const temMais = visiveis < cards.length
-  const contaCat = (cat) => imagens.filter(i => !coverOf[i.id] && i.categoria === cat).length
   const nEmAlta = new Set(imagens.filter(i => !coverOf[i.id] && emAlta(i)).map(cardKeyOf)).size
 
   async function montarSelecao(img) {
@@ -314,6 +313,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   }
 
   const limparFiltros = () => { setBusca(''); setFormato(''); setCor(''); setTipo(''); setSoFavoritos(false); setCatAtiva(catPadrao) }
+  const CatsWrap = isMobile ? ScrollRow : ({ children, style, colors: _c, step: _s, ...rest }) => <div style={style} {...rest}>{children}</div>
   const nFiltros = [formato, cor, tipo, soFavoritos].filter(Boolean).length
   const temFiltro = busca || formato || cor || tipo || soFavoritos || catAtiva !== catPadrao
 
@@ -323,7 +323,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     lead: { fontSize: 15, color: colors.textMuted, maxWidth: 560, lineHeight: 1.55 },
     toolbar: { margin: '28px 0 0' },
     fixo: { position: 'sticky', top: isMobile ? 0 : 72, zIndex: 20, background: colors.bg, padding: '10px 0', marginBottom: 8, borderBottom: `1px solid ${colors.border}` },
-    barra: { display: 'flex', alignItems: 'center', gap: 10 },
+    barra: { display: 'flex', alignItems: 'flex-start', gap: 10 },
     filtroBtn: (on) => ({ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8, background: on ? colors.surfaceAlt : colors.surface, border: `1px solid ${on ? colors.text : colors.border}`, color: colors.text, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }),
     badge: { minWidth: 18, height: 18, borderRadius: 999, background: colors.text, color: colors.bg, fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' },
     painel: { marginTop: 10, background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 18, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr auto', gap: isMobile ? 18 : 32, boxShadow: '0 12px 30px -18px rgba(0,0,0,0.35)' },
@@ -335,8 +335,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
     seg: { display: 'inline-flex', border: `1px solid ${colors.border}`, borderRadius: 999, background: colors.surface, padding: 3 },
     segBtn: (on) => ({ background: on ? colors.text : 'transparent', color: on ? colors.bg : colors.textMuted, border: 'none', borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s, color 0.15s' }),
     favToggle: (on) => ({ background: on ? colors.text : colors.surface, color: on ? colors.bg : colors.text, border: `1px solid ${on ? colors.text : colors.border}`, borderRadius: 999, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }),
-    cats: { display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', padding: '2px 2px 2px' },
-    catBtn: (on) => ({ flexShrink: 0, background: on ? colors.text : colors.surface, border: `1px solid ${on ? colors.text : colors.border}`, color: on ? colors.bg : colors.text, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }),
+    cats: { display: 'flex', flexWrap: isMobile ? 'nowrap' : 'wrap', gap: '2px 2px', overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'none', padding: 2 },
+    catBtn: (on) => ({ flexShrink: 0, background: on ? colors.text : 'transparent', border: 'none', color: on ? colors.bg : colors.text, borderRadius: 999, padding: '6px 12px', fontSize: 14, fontWeight: on ? 600 : 500, cursor: 'pointer', whiteSpace: 'nowrap' }),
     catCount: { fontSize: 11, opacity: 0.6, marginLeft: 6, fontWeight: 500, fontVariantNumeric: 'tabular-nums' },
     meta: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontSize: 13, color: colors.textMuted, margin: '18px 0 22px' },
     linkBtn: { background: 'none', border: 'none', color: colors.text, fontSize: 13, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer', padding: 0 },
@@ -396,9 +396,9 @@ export default function BancoImagensPage({ onSelectImagem }) {
           </button>
           <div style={{ width: 1, alignSelf: 'stretch', background: colors.border, flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <ScrollRow style={S.cats} colors={colors} step={0.6} role="tablist" aria-label="Temas">
+            <CatsWrap style={S.cats} colors={colors} step={0.6} role="tablist" aria-label="Temas">
               {nEmAlta > 0 && (
-                <button role="tab" aria-selected={catAtiva === 'em_alta'} style={{ ...S.catBtn(catAtiva === 'em_alta'), ...(catAtiva === 'em_alta' ? {} : { color: colors.accent, borderColor: colors.accent }) }} onClick={() => setCatAtiva('em_alta')}>
+                <button role="tab" aria-selected={catAtiva === 'em_alta'} style={{ ...S.catBtn(catAtiva === 'em_alta'), ...(catAtiva === 'em_alta' ? {} : { color: colors.accent, fontWeight: 600 }) }} onClick={() => setCatAtiva('em_alta')}>
                   ★ Em alta
                 </button>
               )}
@@ -407,10 +407,10 @@ export default function BancoImagensPage({ onSelectImagem }) {
               </button>
               {categorias.map(c => (
                 <button key={c} role="tab" aria-selected={catAtiva === c} style={S.catBtn(catAtiva === c)} onClick={() => setCatAtiva(c)}>
-                  {c}<span style={S.catCount}>{contaCat(c)}</span>
+                  {c}
                 </button>
               ))}
-            </ScrollRow>
+            </CatsWrap>
           </div>
         </div>
 
