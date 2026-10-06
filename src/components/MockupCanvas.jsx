@@ -93,7 +93,21 @@ function loadRoomImg(src) {
 
 const PAD_RATIO = 0.018  // espessura da moldura como fração da altura do quadro
 
-async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = false) {
+// Uma imagem vendida fatiada vira N "peças", cada uma com o recorte da sua faixa
+function expandSlices(artImgs, slices) {
+  if (!(slices > 1) || artImgs.length !== 1 || !artImgs[0]) return artImgs
+  const img = artImgs[0]
+  const sw = img.naturalWidth / slices
+  return Array.from({ length: slices }, (_, i) => ({ img, sx: sw * i, sy: 0, sw, sh: img.naturalHeight }))
+}
+
+function artRatio(a) {
+  if (!a) return 1
+  if (a.img) return a.sw / a.sh
+  return a.naturalWidth / a.naturalHeight
+}
+
+async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = false, slices = 1) {
   const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
   const W = canvas.width
   const H = canvas.height
@@ -127,11 +141,10 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = fa
   const zW = zR - zL
   const zH = zB - zT
 
-  const N = kitUrls.length
+  const artImgs = expandSlices(await Promise.all(kitUrls.map(u => loadImg(u).catch(() => null))), slices)
+  const ratios = artImgs.map(artRatio)
+  const N = artImgs.length
   const gap = N > 1 ? Math.round(W * 0.03) : 0
-
-  const artImgs = await Promise.all(kitUrls.map(u => loadImg(u).catch(() => null)))
-  const ratios = artImgs.map(a => a ? (a.naturalWidth / a.naturalHeight) : 1)
 
   let fh = zH * 0.55
   let fws = ratios.map(r => fh * r)
@@ -173,8 +186,10 @@ function drawFrames(ctx, frames, artImgs, fs, pad, thumbMode = false) {
     ctx.strokeRect(fx - pad, fy - pad, fw + pad * 2, fh + pad * 2)
   })
   frames.forEach(({ fx, fy, fw, fh }, i) => {
-    if (artImgs[i]) {
-      ctx.drawImage(artImgs[i], fx, fy, fw, fh)
+    const a = artImgs[i]
+    if (a) {
+      if (a.img) ctx.drawImage(a.img, a.sx, a.sy, a.sw, a.sh, fx, fy, fw, fh)
+      else ctx.drawImage(a, fx, fy, fw, fh)
       ctx.strokeStyle = fs.inner
       ctx.lineWidth = 0.5
       ctx.strokeRect(fx, fy, fw, fh)
@@ -302,7 +317,7 @@ export function FramedArtThumb({ src, alt }) {
 }
 
 // MockupCanvas: modo normal (interactive=false) ou interativo (drag + resize)
-export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false }) {
+export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1 }) {
   const canvasRef = useRef()
   const roomCfg = room || ROOMS[0]
 
@@ -318,8 +333,8 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     if (!urls.length) return
     canvas.width = W
     canvas.height = H
-    drawKitOnCanvas(canvas, urls, frameColor, roomCfg, false).catch(() => {})
-  }, [imgUrl, kitUrls, ratio, frameColor, W, H, roomCfg, interactive])
+    drawKitOnCanvas(canvas, urls, frameColor, roomCfg, false, slices).catch(() => {})
+  }, [imgUrl, kitUrls, ratio, frameColor, W, H, roomCfg, interactive, slices])
 
   // ── Modo interativo ───────────────────────────────────────────────────────
   // cx, cy = centro do kit como fração do canvas; scale = fator de escala
@@ -407,15 +422,12 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     Promise.all([
       loadRoomImg(roomCfg.src),
       Promise.all(urls.map(u => loadImg(u).catch(() => null))),
-    ]).then(([roomImg, artImgs]) => {
-      loadedRef.current = {
-        roomImg,
-        artImgs,
-        ratios: artImgs.map(a => (a ? a.naturalWidth / a.naturalHeight : 1)),
-      }
+    ]).then(([roomImg, loaded]) => {
+      const artImgs = expandSlices(loaded, slices)
+      loadedRef.current = { roomImg, artImgs, ratios: artImgs.map(artRatio) }
       redraw()
     })
-  }, [imgUrl, JSON.stringify(kitUrls), roomCfg.id, interactive, W, H])
+  }, [imgUrl, JSON.stringify(kitUrls), roomCfg.id, interactive, W, H, slices])
 
   // Redesenha quando frameColor muda
   useEffect(() => {

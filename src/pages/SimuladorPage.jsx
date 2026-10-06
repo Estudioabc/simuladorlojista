@@ -68,6 +68,31 @@ function calcPreco({ montagem, moldura, w, h, qty, materials, substrates, tipoVi
   return { lines, totalPeca, totalGeral: totalPeca * q, qty: q }
 }
 
+// Soma o preço de cada peça (kit ou obra fatiada). Linhas iguais são agrupadas.
+function calcPrecoPecas({ pecas, qty, ...cfg }) {
+  if (!pecas.length) return null
+  const porPeca = pecas.map(p => calcPreco({ ...cfg, w: p.largura_cm, h: p.altura_cm, qty: 1 }))
+  if (porPeca.some(r => !r)) return null
+  const porLabel = new Map()
+  porPeca.forEach(r => r.lines.forEach(l => porLabel.set(l.label, (porLabel.get(l.label) || 0) + l.valor)))
+  const lines = [...porLabel].map(([label, valor]) => ({ label, valor }))
+  const totalPeca = porPeca.reduce((s, r) => s + r.totalPeca, 0)
+  const q = parseInt(qty) || 1
+  return { lines, totalPeca, totalGeral: totalPeca * q, qty: q }
+}
+
+// Mesma regra do Anexo (PrintFramePro): categoria libera, `fatiavel` do cadastro decide se preenchido
+const CATEGORIAS_FATIAVEIS = ['Abstrato', 'Dourado', 'Paisagens e natureza', 'Pinturas', 'Cidade']
+function maxFatias(img, ratio) {
+  if (!img || img.kitCount > 1 || !ratio) return 1
+  const permitido = img.fatiavel ?? CATEGORIAS_FATIAVEIS.includes(img.categoria)
+  if (!permitido) return 1
+  return ratio >= 2 ? 3 : ratio >= 1.5 ? 2 : 1
+}
+
+const um = (v) => Math.round(v * 10) / 10
+const cm = (v) => String(um(v)).replace('.', ',')
+
 export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedidos }) {
   const { colors, fonts } = useTheme()
   const isMobile = useIsMobile()
@@ -83,6 +108,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const [largura, setLargura] = useState('')
   const [altura, setAltura] = useState('')
   const [quantidade, setQuantidade] = useState('1')
+  const [fatias, setFatias] = useState(1)
   const [tipoMontagem, setTipoMontagem] = useState('') // 'canvas' | 'convencional'
   const [montagemId, setMontagemId] = useState('')
   const [tipoVidro, setTipoVidro] = useState('')
@@ -106,11 +132,14 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
       .finally(() => setLoadingData(false))
   }, [])
 
+  const isKit = imagem?.kitCount > 1 && imagem?.kitParts?.length > 1
+
   useEffect(() => {
     if (!ratio || largura || altura) return
-    if (ratio >= 1) { setLargura('60'); setAltura(String(Math.round(60 / ratio))) }
+    if (isKit) { setAltura('50'); setLargura(String(um(50 * ratio))) }
+    else if (ratio >= 1) { setLargura('60'); setAltura(String(Math.round(60 / ratio))) }
     else { setAltura('60'); setLargura(String(Math.round(60 * ratio))) }
-  }, [ratio])
+  }, [ratio, imagem])
 
   useEffect(() => {
     if (imagemInicial) {
@@ -121,6 +150,11 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
 
   const detectRatio = (img) => {
     if (!img?.img_url) return
+    // Kit: peças com a mesma altura, cada uma na proporção original → a largura total é altura × Σ proporções
+    if (img.kitCount > 1 && img.kitParts?.length > 1) {
+      setRatio(img.kitParts.reduce((s, p) => s + (parseFloat(p.ratio) || 1), 0))
+      return
+    }
     // Usa ratio salvo no banco se disponível
     if (img.ratio && parseFloat(img.ratio) > 0) {
       setRatio(parseFloat(img.ratio))
@@ -148,10 +182,37 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
 
   const markupPct = lojista?.markup_pct ?? 0
 
+  const fatiasMax = maxFatias(imagem, ratio)
+  const nFatias = Math.min(fatias, fatiasMax)
+
+  // Cada peça que vai para produção. Kit: mesma altura, largura pela proporção original (sem corte).
+  // Fatiada: a obra inteira dividida em faixas iguais.
+  const pecas = useMemo(() => {
+    const w = parseFloat(largura), h = parseFloat(altura)
+    if (!(w > 0 && h > 0)) return []
+    if (isKit) {
+      return imagem.kitParts.map(p => ({
+        largura_cm: um(h * (parseFloat(p.ratio) || 1)), altura_cm: h,
+        imagem_id: p.id, imagem_titulo: p.titulo, imagem_url: p.img_url,
+      }))
+    }
+    if (nFatias > 1) return Array.from({ length: nFatias }, () => ({ largura_cm: um(w / nFatias), altura_cm: h }))
+    return [{ largura_cm: w, altura_cm: h }]
+  }, [largura, altura, isKit, imagem, nFatias])
+  const multiPeca = pecas.length > 1
+
   const preco = useMemo(() =>
-    calcPreco({ montagem, moldura, w: parseFloat(largura), h: parseFloat(altura), qty: quantidade, materials, substrates, tipoVidro, markupPct }),
-    [montagem, moldura, largura, altura, quantidade, materials, substrates, tipoVidro, markupPct]
+    calcPrecoPecas({ pecas, qty: quantidade, montagem, moldura, materials, substrates, tipoVidro, markupPct }),
+    [pecas, montagem, moldura, quantidade, materials, substrates, tipoVidro, markupPct]
   )
+
+  // "40 × 60 + 30 × 60 + 40 × 60 cm" ou "3 peças de 40 × 60 cm"
+  const descPecas = (() => {
+    if (!pecas.length) return ''
+    const iguais = pecas.every(p => p.largura_cm === pecas[0].largura_cm)
+    if (iguais) return `${pecas.length > 1 ? `${pecas.length} peças de ` : ''}${cm(pecas[0].largura_cm)} × ${cm(pecas[0].altura_cm)} cm`
+    return pecas.map(p => `${cm(p.largura_cm)} × ${cm(p.altura_cm)}`).join(' + ') + ' cm'
+  })()
 
   const framesPorCat = frames.reduce((acc, f) => {
     const cat = f.categoria ?? 'Outras'
@@ -164,13 +225,13 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
 
   const handleLargura = (val) => {
     setLargura(val)
-    if (travarRatio && ratio && val) {
+    if ((travarRatio || isKit) && ratio && val) {
       setAltura((parseFloat(val) / ratio).toFixed(1))
     }
   }
   const handleAltura = (val) => {
     setAltura(val)
-    if (travarRatio && ratio && val) {
+    if ((travarRatio || isKit) && ratio && val) {
       setLargura((parseFloat(val) * ratio).toFixed(1))
     }
   }
@@ -200,7 +261,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   }
 
   const resetForm = () => {
-    setImagem(null); setLargura(''); setAltura(''); setQuantidade('1')
+    setImagem(null); setLargura(''); setAltura(''); setQuantidade('1'); setFatias(1)
     setTipoMontagem(''); setMontagemId(''); setTipoVidro('')
     setSubstratoId(''); setMolduraId(''); setObs('')
     setClienteNome(''); setClienteContato(''); setFormaEntrega(''); setEnderecoEntrega('')
@@ -238,6 +299,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
           largura_cm: parseFloat(largura),
           altura_cm: parseFloat(altura),
           quantidade: parseInt(quantidade) || 1,
+          modo: isKit ? 'kit' : multiPeca ? 'fatiado' : null,
+          pecas,
           obs,
           cliente_nome: clienteNome || null,
           cliente_contato: clienteContato || null,
@@ -352,8 +415,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
         </div>
         <BancoImagensPage onSelectImagem={(img) => {
           setImagem(img)
+          setLargura(''); setAltura(''); setFatias(1); setQuantidade('1')
           detectRatio(img)
-          if (img.kitCount > 1) setQuantidade(String(img.kitCount))
           setShowBanco(false)
         }} />
       </div>
@@ -430,7 +493,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                     style={{ background: 'none', border: `1px solid ${colors.border}`, color: colors.textMuted, borderRadius: 5, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body }}>
                     Trocar
                   </button>
-                  <button onClick={() => { setImagem(null); setRatio(null); if (onImagemClear) onImagemClear() }}
+                  <button onClick={() => { setImagem(null); setRatio(null); setFatias(1); if (onImagemClear) onImagemClear() }}
                     style={{ background: 'none', border: 'none', color: colors.textMuted, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '4px 6px' }}>
                     ×
                   </button>
@@ -442,16 +505,28 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
           {/* Tamanho */}
           <div style={secao}>
             <Passo n="2" titulo="Tamanho">
-              {ratio && (
+              {ratio && !isKit && (
                 <button onClick={() => setTravarRatio(t => !t)}
                   style={{ background: 'none', border: `1px solid ${travarRatio ? ink : colors.border}`, color: travarRatio ? ink : colors.textMuted, borderRadius: 999, padding: '4px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body, transition: 'all 0.15s' }}>
                   {travarRatio ? 'Proporção da obra: travada' : 'Proporção livre'}
                 </button>
               )}
             </Passo>
+            {fatiasMax > 1 && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={lbl}>Vender como</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[1, 2, 3].filter(n => n <= fatiasMax).map(n => (
+                    <button key={n} onClick={() => { setFatias(n); setTravarRatio(true); if (ratio && largura) setAltura((parseFloat(largura) / ratio).toFixed(1)) }} style={chipBtn(nFatias === n)}>
+                      {n === 1 ? 'Quadro único' : `${n} peças`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 96px', gap: 12 }}>
               <div>
-                <label style={lbl}>Largura (cm)</label>
+                <label style={lbl}>{multiPeca ? 'Largura total (cm)' : 'Largura (cm)'}</label>
                 <input style={inp} type="number" min="1" step="0.5" placeholder="ex.: 60" value={largura} onChange={e => handleLargura(e.target.value)} />
               </div>
               <div>
@@ -459,13 +534,22 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                 <input style={inp} type="number" min="1" step="0.5" placeholder="ex.: 40" value={altura} onChange={e => handleAltura(e.target.value)} />
               </div>
               <div>
-                <label style={lbl}>Quantidade</label>
+                <label style={lbl}>{multiPeca ? 'Conjuntos' : 'Quantidade'}</label>
                 <input style={inp} type="number" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
               </div>
             </div>
-            {hasDims && (
+            {hasDims && !multiPeca && (
               <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 8, letterSpacing: 0.2 }}>
                 {parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm &nbsp;·&nbsp; {((parseFloat(largura) * parseFloat(altura)) / 10000).toFixed(4)} m²
+              </div>
+            )}
+            {hasDims && multiPeca && (
+              <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 10, lineHeight: 1.5 }}>
+                <span style={{ color: colors.text, fontWeight: 600 }}>{descPecas}</span>
+                <br />
+                {isKit
+                  ? 'Todas com a mesma altura; cada peça mantém a proporção original da obra, sem corte.'
+                  : `A obra inteira é dividida em ${pecas.length} faixas iguais, lado a lado.`}
               </div>
             )}
           </div>
@@ -583,7 +667,11 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
           {/* Mockup */}
           {imagem ? (
             <div style={{ marginBottom: 16 }}>
-              <MockupCanvas imgUrl={imagem.img_url} ratio={ratio || parseFloat(imagem.ratio) || 1} width={250} />
+              <MockupCanvas
+                imgUrl={isKit ? null : imagem.img_url}
+                kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
+                slices={isKit ? 1 : nFatias}
+                ratio={ratio || parseFloat(imagem.ratio) || 1} width={250} />
             </div>
           ) : (
             <div style={{ aspectRatio: '4/3', background: colors.surfaceAlt, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -597,7 +685,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
                 <span style={{ color: colors.textMuted, flexShrink: 0 }}>Tamanho</span>
                 <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>
-                  {parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm{parseInt(quantidade) > 1 ? ` · ${quantidade} un.` : ''}
+                  {multiPeca ? descPecas : `${parseFloat(largura).toFixed(0)} × ${parseFloat(altura).toFixed(0)} cm`}
+                  {parseInt(quantidade) > 1 ? ` · ${quantidade} ${multiPeca ? 'conjuntos' : 'un.'}` : ''}
                 </span>
               </div>
             )}
@@ -650,7 +739,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
               </div>
               {preco.qty > 1 && (
                 <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {formatCurrency(preco.totalPeca)} por unidade
+                  {formatCurrency(preco.totalPeca)} por {multiPeca ? 'conjunto' : 'unidade'}
                 </div>
               )}
               {markupPct > 0 && (

@@ -8,6 +8,22 @@ const fmt = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFract
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
+const cmFmt = (v) => String(Math.round(Number(v) * 10) / 10).replace('.', ',')
+
+// Kit ou obra fatiada: várias peças por conjunto
+function pecasDe(it) {
+  return Array.isArray(it.pecas) && it.pecas.length > 1 && (it.modo === 'kit' || it.modo === 'fatiado') ? it.pecas : null
+}
+
+function tamanhoTexto(it) {
+  const pecas = pecasDe(it)
+  if (!pecas) return it.largura_cm && it.altura_cm ? `${cmFmt(it.largura_cm)} × ${cmFmt(it.altura_cm)} cm` : ''
+  if (pecas.every(p => p.largura_cm === pecas[0].largura_cm)) {
+    return `${pecas.length} peças de ${cmFmt(pecas[0].largura_cm)} × ${cmFmt(pecas[0].altura_cm)} cm`
+  }
+  return `${pecas.length} peças: ${pecas.map(p => `${cmFmt(p.largura_cm)} × ${cmFmt(p.altura_cm)}`).join(' + ')} cm`
+}
+
 function abrirOrcamentoCliente(p, lojaNome) {
   const w = window.open('', '_blank')
   if (!w) { alert('Permita pop-ups para abrir o orçamento.'); return }
@@ -16,14 +32,16 @@ function abrirOrcamentoCliente(p, lojaNome) {
   const data = (d) => d.toLocaleDateString('pt-BR')
   const itens = (p.itens ?? []).map(it => `
     <div class="item">
-      ${it.imagem_url ? `<img src="${esc(it.imagem_url)}" alt="">` : ''}
+      ${it.modo === 'kit' && pecasDe(it)?.every(pc => pc.imagem_url)
+        ? `<div class="kit">${pecasDe(it).map(pc => `<img src="${esc(pc.imagem_url)}" alt="">`).join('')}</div>`
+        : it.imagem_url ? `<img src="${esc(it.imagem_url)}" alt="">` : ''}
       <div>
         <h2>${esc(it.imagem_titulo || 'Quadro sob medida')}</h2>
         <dl>
-          ${it.largura_cm && it.altura_cm ? `<dt>Tamanho</dt><dd>${esc(it.largura_cm)} × ${esc(it.altura_cm)} cm</dd>` : ''}
+          ${tamanhoTexto(it) ? `<dt>Tamanho</dt><dd>${esc(tamanhoTexto(it))}</dd>` : ''}
           ${it.montagem_nome ? `<dt>Acabamento</dt><dd>${esc(it.montagem_nome)}</dd>` : ''}
           ${it.moldura_nome ? `<dt>Moldura</dt><dd>${esc(it.moldura_nome)}</dd>` : ''}
-          <dt>Quantidade</dt><dd>${esc(it.quantidade || 1)}</dd>
+          <dt>${pecasDe(it) ? 'Conjuntos' : 'Quantidade'}</dt><dd>${esc(it.quantidade || 1)}</dd>
         </dl>
       </div>
     </div>`).join('')
@@ -37,6 +55,8 @@ function abrirOrcamentoCliente(p, lojaNome) {
   h1{font-family:Archivo,Arial,sans-serif;font-size:28px;font-weight:600;letter-spacing:-0.5px;margin:0} .muted{color:#777;font-size:13px}
   .item{display:flex;gap:20px;padding:16px 0;border-bottom:1px solid #eee;flex-wrap:wrap}
   .item img{width:180px;max-width:100%;object-fit:contain;border:6px solid #1a1a1a;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+  .kit{display:flex;gap:8px;align-items:center;max-width:100%}
+  .kit img{width:auto;height:110px;max-width:none}
   h2{font-family:Archivo,Arial,sans-serif;font-size:19px;font-weight:600;margin:0 0 10px} dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:14px} dt{color:#777} dd{margin:0}
   .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:20px;font-size:15px}
   .total strong{font-family:Archivo,Arial,sans-serif;font-size:30px;font-weight:600}
@@ -342,8 +362,8 @@ export default function PedidosPage({ onNovoPedido }) {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px' }}>
                           {item.montagem_nome && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Montagem:</strong> {item.montagem_nome}</div>}
                           {item.moldura_nome  && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Moldura:</strong> {item.moldura_nome}</div>}
-                          {item.largura_cm && item.altura_cm && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Tamanho:</strong> {item.largura_cm}×{item.altura_cm} cm</div>}
-                          {item.quantidade > 1 && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Quantidade:</strong> {item.quantidade}</div>}
+                          {tamanhoTexto(item) && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Tamanho:</strong> {tamanhoTexto(item)}{item.modo === 'fatiado' ? ` (obra fatiada, total ${cmFmt(item.largura_cm)} × ${cmFmt(item.altura_cm)} cm)` : ''}</div>}
+                          {item.quantidade > 1 && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>{pecasDe(item) ? 'Conjuntos' : 'Quantidade'}:</strong> {item.quantidade}</div>}
                         </div>
                       </div>
                     </div>

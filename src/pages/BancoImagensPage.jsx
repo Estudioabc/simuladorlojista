@@ -176,12 +176,17 @@ export default function BancoImagensPage({ onSelectImagem }) {
     }
     const kit = kitOf[img.id]
     const coverImg = kit?.cover ?? null
+    // Proporção original de cada peça: no pedido elas têm a mesma altura e largura própria, sem corte
+    const kitParts = kit
+      ? await Promise.all(kit.parts.map(async p => ({ ...p, ratio: parseFloat(p.ratio) || await detectImageRatio(p.img_url) })))
+      : null
     return {
       ...img,
       titulo: kit ? kit.kitName : img.titulo,
       img_url: coverImg ? coverImg.img_url : img.img_url,
       ratio: coverImg ? (parseFloat(coverImg.ratio) || ratio) : ratio,
-      kitParts: kit?.parts ?? null,
+      categoria: kit ? (kit.categoria ?? img.categoria) : img.categoria,
+      kitParts,
       kitCount: kit?.kitCount ?? 1,
     }
   }
