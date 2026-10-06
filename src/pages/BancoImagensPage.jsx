@@ -90,6 +90,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
   const [previewMode, setPreviewMode] = useState('arte')
+  const [pecaIdx, setPecaIdx] = useState(0) // composição: 0 = completa, 1..N = quadro a quadro
   const [frameColor, setFrameColor] = useState('preto')
   const [selectedRoom, setSelectedRoom] = useState(ROOMS[0])
   const [hoveredId, setHoveredId] = useState(null)
@@ -151,10 +152,15 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
   useEffect(() => {
     if (!preview) return
-    const onKey = (e) => { if (e.key === 'Escape') setPreview(null) }
+    const n = preview.kitParts?.length || 0
+    const onKey = (e) => {
+      if (e.key === 'Escape') setPreview(null)
+      if (n > 1 && previewMode === 'arte' && e.key === 'ArrowRight') setPecaIdx(i => (i + 1) % (n + 1))
+      if (n > 1 && previewMode === 'arte' && e.key === 'ArrowLeft') setPecaIdx(i => (i + n) % (n + 1))
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [preview])
+  }, [preview, previewMode])
 
   const cardKeyOf = (img) => kitOf[img.id] ? `kit-${kitOf[img.id].kitId}` : img.id
   const emAlta = (img) => kitOf[img.id] ? kitOf[img.id].emAlta : img.em_alta
@@ -204,11 +210,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
       }
       return out
     }
-    // kits alternando o estilo (primeira palavra depois de "Kit") para a faixa não repetir o mesmo tipo
+    // composições alternando o estilo (primeira palavra depois de "Composição") para a faixa não repetir o mesmo tipo
     const kitsPorEstilo = {}
     imagens.filter(i => kitOf[i.id] && kitOf[i.id].parts[0].id === i.id).forEach(i => {
       const k = kitOf[i.id]
-      const estilo = (k.kitName.replace(/^Kit\s+/i, '').split(' ')[0] || '').toLowerCase()
+      const estilo = (k.kitName.replace(/^(Kit|Composição)\s+/i, '').split(' ')[0] || '').toLowerCase()
       ;(kitsPorEstilo[estilo] ||= []).push(i)
     })
     const grupos = Object.values(kitsPorEstilo).map(g => g.sort((a, b) => (kitOf[b.id].emAlta ? 1 : 0) - (kitOf[a.id].emAlta ? 1 : 0)))
@@ -218,7 +224,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     const novidades = unicos([...imagens].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))))
     const pedidas = unicos(maisPedidas.map(m => porId[m.imagem_id]))
     return [
-      { id: 'kits', titulo: 'Kits e composições', nota: 'conjuntos prontos de 2 a 6 peças', cards: kitsLista },
+      { id: 'kits', titulo: 'Composições', nota: 'conjuntos prontos de 2 a 4 quadros', cards: kitsLista },
       { id: 'pedidas', titulo: 'Mais pedidas pelos lojistas', nota: 'últimos 6 meses', cards: pedidas },
       { id: 'novas', titulo: 'Novidades no acervo', nota: 'as últimas obras adicionadas', cards: novidades },
     ].filter(f => f.cards.length >= 4)
@@ -255,6 +261,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   async function openPreview(img) {
     setPreview(await montarSelecao(img))
     setPreviewMode('arte')
+    setPecaIdx(0)
   }
 
   async function usarNoSimulador(img) {
@@ -286,7 +293,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
           >
             {fav ? '♥' : '♡'}
           </button>
-          {isKit && <span style={S.kitTag}>Kit · {kit.kitCount} peças</span>}
+          {isKit && <span style={S.kitTag}>Composição · {kit.kitCount} quadros</span>}
         </div>
         <div style={S.cardTitle} title={title}>{title}</div>
         <div style={S.cardMeta}>
@@ -486,7 +493,45 @@ export default function BancoImagensPage({ onSelectImagem }) {
               </div>
             )}
 
-            {previewMode === 'arte'
+            {previewMode === 'arte' && preview.kitParts?.length > 1 ? (() => {
+              const partes = preview.kitParts
+              const soma = partes.reduce((a, p) => a + (parseFloat(p.ratio) || 1), 0)
+              const seta = (lado) => ({
+                position: 'absolute', top: '50%', [lado]: 0, transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%',
+                border: 'none', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 22, cursor: 'pointer', lineHeight: 1,
+              })
+              const ir = (d) => setPecaIdx(i => (i + d + partes.length + 1) % (partes.length + 1))
+              return (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                  <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', padding: '0 56px', boxSizing: 'border-box' }}>
+                    {pecaIdx === 0 ? (
+                      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', width: '100%', maxWidth: `min(100%, calc((100vh - 330px) * ${soma.toFixed(3)} + ${(partes.length - 1) * 14}px))` }}>
+                        {partes.map((p, i) => (
+                          <img key={p.id} src={p.img_url} alt={`${preview.titulo}, quadro ${i + 1}`} onClick={() => setPecaIdx(i + 1)}
+                            style={{ flex: `${parseFloat(p.ratio) || 1} 1 0`, minWidth: 0, width: 0, height: 'auto', display: 'block', cursor: 'zoom-in', boxShadow: '0 24px 50px -18px rgba(0,0,0,0.6)' }} />
+                        ))}
+                      </div>
+                    ) : (
+                      <img src={partes[pecaIdx - 1].img_url} alt={`${preview.titulo}, quadro ${pecaIdx}`} style={{ ...S.previewImg, maxHeight: 'calc(100vh - 300px)' }} />
+                    )}
+                    <button aria-label="Anterior" style={seta('left')} onClick={() => ir(-1)}>‹</button>
+                    <button aria-label="Próximo" style={seta('right')} onClick={() => ir(1)}>›</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }} role="tablist" aria-label="Quadros da composição">
+                    {[{ id: 0, label: 'Completa' }, ...partes.map((p, i) => ({ id: i + 1, label: String(i + 1), src: p.img_url }))].map(t => (
+                      <button key={t.id} role="tab" aria-selected={pecaIdx === t.id} onClick={() => setPecaIdx(t.id)}
+                        style={{ height: 46, minWidth: 46, padding: t.src ? 0 : '0 12px', borderRadius: 4, overflow: 'hidden', cursor: 'pointer', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: 12, fontWeight: 600,
+                          border: 'none', outline: pecaIdx === t.id ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)', outlineOffset: pecaIdx === t.id ? 2 : 0, opacity: pecaIdx === t.id ? 1 : 0.65 }}>
+                        {t.src ? <img src={t.src} alt={`Quadro ${t.label}`} style={{ height: 46, display: 'block' }} /> : t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+                    {pecaIdx === 0 ? `Composição de ${partes.length} quadros · clique num quadro para ampliar` : `Quadro ${pecaIdx} de ${partes.length}`}
+                  </div>
+                </div>
+              )
+            })() : previewMode === 'arte'
               ? <img src={preview.img_url} alt={preview.titulo} style={S.previewImg} />
               : <>
                   <MockupCanvas
@@ -505,7 +550,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
             <div style={S.caption}>
               <div>
                 <div style={S.pTitle}>{preview.titulo}</div>
-                <div style={S.pCat}>{preview.categoria}{preview.kitCount > 1 ? ` · Kit com ${preview.kitCount} peças` : ''}</div>
+                <div style={S.pCat}>{preview.categoria}{preview.kitCount > 1 ? ` · Composição de ${preview.kitCount} quadros` : ''}</div>
               </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button style={S.btnGhost} onClick={() => setPreview(null)}>Fechar</button>

@@ -502,7 +502,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                   style={{ width: 64, height: 64, objectFit: 'contain', background: colors.surfaceAlt, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: fonts.display, fontSize: 16, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{imagem.titulo}</div>
-                  {imagem.kitCount > 1 && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>Kit {imagem.kitCount} quadros</div>}
+                  {imagem.kitCount > 1 && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>Composição de {imagem.kitCount} quadros</div>}
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <button onClick={() => setShowBanco(true)}
