@@ -3,6 +3,7 @@ import { supabase, callFunction } from '../services/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme, useIsMobile } from '../styles/theme'
 import { Spinner, EmptyState } from '../components/UI'
+import ScrollRow from '../components/ScrollRow'
 import MockupCanvas, { FramedArtThumb, ROOMS } from '../components/MockupCanvas'
 
 const PAGE_SIZE = 48
@@ -394,7 +395,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
           })}
           {cor && <span style={{ fontSize: 11, color: colors.text, fontWeight: 600, marginLeft: 4 }}>{cor}</span>}
         </div>
-        <div style={S.cats} role="tablist" aria-label="Temas">
+        <ScrollRow style={S.cats} colors={colors} step={0.6} role="tablist" aria-label="Temas">
           {nEmAlta > 0 && (
             <button role="tab" aria-selected={catAtiva === 'em_alta'} style={{ ...S.catBtn(catAtiva === 'em_alta'), color: catAtiva === 'em_alta' ? colors.text : colors.accent }} onClick={() => setCatAtiva('em_alta')}>
               ★ Em alta<span style={S.catCount}>{nEmAlta}</span>
@@ -408,7 +409,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
               {c}<span style={S.catCount}>{contaCat(c)}</span>
             </button>
           ))}
-        </div>
+        </ScrollRow>
       </div>
 
       {mostrarFaixas && faixas.map(f => (
@@ -417,9 +418,9 @@ export default function BancoImagensPage({ onSelectImagem }) {
             <h2 style={{ margin: 0, fontFamily: fonts.display, fontSize: 19, fontWeight: 600, color: colors.text }}>{f.titulo}</h2>
             <span style={{ fontSize: 12, color: colors.textMuted }}>{f.nota}</span>
           </div>
-          <div style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: isMobile ? '70%' : 'minmax(220px, 260px)', gap: 24, overflowX: 'auto', paddingBottom: 12, scrollSnapType: 'x mandatory' }}>
+          <ScrollRow colors={colors} style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: isMobile ? '70%' : 'minmax(220px, 260px)', gap: 24, paddingBottom: 12, scrollSnapType: 'x mandatory' }}>
             {f.cards.map(c => <div key={c.key} style={{ scrollSnapAlign: 'start', minWidth: 0 }}>{renderCard(c)}</div>)}
-          </div>
+          </ScrollRow>
         </section>
       ))}
       {mostrarFaixas && faixas.length > 0 && (

@@ -263,7 +263,7 @@ export function FramedArtThumb({ src, srcs }) {
     ctx.fillRect(0, 0, W, H)
     const N = imgs.length
     const OUTER_PAD = Math.round(H * (N > 1 ? 0.08 : 0.1))
-    const gap = N > 1 ? Math.round(W * 0.035) : 0
+    const gap = N > 1 ? Math.round(W * 0.075) : 0 // inclui as molduras, desenhadas por fora de cada arte
     const maxArtW = W - OUTER_PAD * 2 - gap * (N - 1)
     const maxArtH = H - OUTER_PAD * 2
     const ratios = imgs.map(im => im.naturalWidth / im.naturalHeight)
