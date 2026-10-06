@@ -29,6 +29,23 @@ const FORMATOS = [
   { id: 'quadrado', label: 'Quadrado' },
 ]
 
+// Cores medidas na imagem (coluna catalogo_imagens.cores)
+const CORES = [
+  { id: 'Preto', bg: '#1a1a1a' },
+  { id: 'Branco', bg: '#ffffff' },
+  { id: 'Cinza', bg: '#9a9a9a' },
+  { id: 'Bege', bg: '#e6d5b8' },
+  { id: 'Marrom', bg: '#7a4e2d' },
+  { id: 'Laranja', bg: '#e8792b' },
+  { id: 'Amarelo', bg: '#f2c230' },
+  { id: 'Dourado', bg: 'linear-gradient(135deg,#f7e08a,#b8862b 55%,#f3d77a)' },
+  { id: 'Verde', bg: '#3f8f4f' },
+  { id: 'Azul', bg: '#2f6db5' },
+  { id: 'Roxo', bg: '#7b4bb3' },
+  { id: 'Rosa', bg: '#ec8fb5' },
+  { id: 'Vermelho', bg: '#d0312d' },
+]
+
 function formatoDe(ratio) {
   const r = parseFloat(ratio)
   if (!r || r <= 0) return null
@@ -79,6 +96,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [kitOf, setKitOf] = useState({})
   const [coverOf, setCoverOf] = useState({})
   const [formato, setFormato] = useState('')
+  const [cor, setCor] = useState('')
   const [soFavoritos, setSoFavoritos] = useState(false)
   const favKey = `favoritos:${profile?.id}`
   const [favoritos, setFavoritos] = useState(() => lerFavoritos(favKey))
@@ -126,7 +144,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     fetchAll()
   }, [])
 
-  useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca, formato, soFavoritos])
+  useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca, formato, cor, soFavoritos])
 
   useEffect(() => {
     if (!preview) return
@@ -143,8 +161,9 @@ export default function BancoImagensPage({ onSelectImagem }) {
     const matchCat = catAtiva === 'todas' || (catAtiva === 'em_alta' ? emAlta(img) : img.categoria === catAtiva)
     const matchBusca = !busca || (kitOf[img.id]?.kitName ?? img.titulo).toLowerCase().includes(busca.toLowerCase())
     const matchFormato = !formato || formatoDe(img.ratio) === formato
+    const matchCor = !cor || (img.cores || []).includes(cor)
     const matchFav = !soFavoritos || favoritos.has(cardKeyOf(img))
-    return matchCat && matchBusca && matchFormato && matchFav
+    return matchCat && matchBusca && matchFormato && matchCor && matchFav
   })
 
   // Colapsa kits em um único card
@@ -200,8 +219,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
     onSelectImagem(await montarSelecao(img))
   }
 
-  const limparFiltros = () => { setBusca(''); setFormato(''); setSoFavoritos(false); setCatAtiva('todas') }
-  const temFiltro = busca || formato || soFavoritos || catAtiva !== 'todas'
+  const limparFiltros = () => { setBusca(''); setFormato(''); setCor(''); setSoFavoritos(false); setCatAtiva('todas') }
+  const temFiltro = busca || formato || cor || soFavoritos || catAtiva !== 'todas'
 
   const S = {
     eyebrow: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
@@ -247,7 +266,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     <div>
       <div style={S.eyebrow}>Acervo</div>
       <h1 style={S.title}>Obras para a parede do seu cliente</h1>
-      <p style={S.lead}>Busque por tema, formato ou nome. Abra uma obra para vê-la num ambiente, ou leve direto para um novo pedido.</p>
+      <p style={S.lead}>Busque por tema, cor, formato ou nome. Abra uma obra para vê-la num ambiente, ou leve direto para um novo pedido.</p>
 
       <div style={S.toolbar}>
         <div style={S.toolRow}>
@@ -267,6 +286,20 @@ export default function BancoImagensPage({ onSelectImagem }) {
           <button onClick={() => setSoFavoritos(v => !v)} style={S.favToggle(soFavoritos)} aria-pressed={soFavoritos}>
             ♥ Favoritos{favoritos.size > 0 ? ` (${favoritos.size})` : ''}
           </button>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }} role="group" aria-label="Cor">
+          <span style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted, marginRight: 4 }}>Cor</span>
+          {CORES.map(c => {
+            const on = cor === c.id
+            return (
+              <button key={c.id} title={c.id} aria-label={`Cor ${c.id}`} aria-pressed={on}
+                onClick={() => setCor(on ? '' : c.id)}
+                style={{ width: 24, height: 24, borderRadius: '50%', background: c.bg, cursor: 'pointer', padding: 0,
+                  border: `1px solid ${c.id === 'Branco' ? colors.border : 'rgba(0,0,0,0.12)'}`,
+                  outline: on ? `2px solid ${colors.text}` : 'none', outlineOffset: 2 }} />
+            )
+          })}
+          {cor && <span style={{ fontSize: 12, color: colors.text, fontWeight: 600, marginLeft: 4 }}>{cor}</span>}
         </div>
         <div style={S.cats} role="tablist" aria-label="Temas">
           {nEmAlta > 0 && (
@@ -293,7 +326,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       {cards.length === 0 ? (
         <EmptyState
           title={soFavoritos && favoritos.size === 0 ? 'Você ainda não favoritou nenhuma obra' : 'Nenhuma obra encontrada'}
-          description={soFavoritos && favoritos.size === 0 ? 'Toque no coração de uma obra para guardá-la aqui.' : 'Tente outro nome, formato ou tema.'}
+          description={soFavoritos && favoritos.size === 0 ? 'Toque no coração de uma obra para guardá-la aqui.' : 'Tente outro nome, cor, formato ou tema.'}
           action="Limpar filtros"
           onAction={limparFiltros}
         />
