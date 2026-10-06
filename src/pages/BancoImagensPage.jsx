@@ -224,7 +224,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     kitTag: { position: 'absolute', top: 12, left: 12, background: colors.text, color: colors.bg, fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', padding: '4px 8px' },
     mais: { display: 'block', margin: '48px auto 0', background: 'transparent', border: `1px solid ${colors.text}`, borderRadius: 999, padding: '12px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
     // preview — "sala de exibição"
-    overlay: { position: 'fixed', inset: 0, background: 'rgba(14,13,10,0.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px 16px', overflowY: 'auto' },
+    overlay: { position: 'fixed', inset: 0, background: 'rgba(14,13,10,0.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', zIndex: 1000, padding: '20px 16px', overflowY: 'auto' },
     pTabs: { display: 'flex', gap: 24, borderBottom: '1px solid rgba(255,255,255,0.15)' },
     pTab: (on) => ({ background: 'none', border: 'none', borderBottom: `2px solid ${on ? '#fff' : 'transparent'}`, color: on ? '#fff' : 'rgba(255,255,255,0.55)', padding: '8px 2px 10px', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: -1 }),
     pLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase' },

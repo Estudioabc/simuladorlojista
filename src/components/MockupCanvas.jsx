@@ -489,7 +489,7 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
 
   const canvasStyle = {
     maxWidth: '100%',
-    maxHeight: 'calc(100vh - 160px)',
+    maxHeight: 'calc(100vh - 320px)',
     width: 'auto',
     height: 'auto',
     borderRadius: 8,
