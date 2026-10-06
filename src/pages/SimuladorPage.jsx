@@ -689,6 +689,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                 imgUrl={isKit ? null : imagem.img_url}
                 kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
                 slices={isKit ? 1 : nFatias}
+                tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null}
                 ratio={ratio || parseFloat(imagem.ratio) || 1} width={250} />
                 <span style={{ position: 'absolute', right: 8, bottom: 8, background: 'rgba(14,13,10,0.75)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '4px 9px', borderRadius: 999, fontFamily: fonts.body }}>
                   Ampliar
@@ -842,10 +843,13 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             width={1100}
             room={mockupRoom}
             interactive
+            tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, width: '100%', maxWidth: 1100, marginTop: 12 }}>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-              {multiPeca ? `${descPecas} · ` : ''}Arraste o quadro para posicionar · puxe um canto para redimensionar
+              {parseFloat(altura) > 0
+                ? `Tamanho real: ${multiPeca ? descPecas : `${cm(parseFloat(largura) || 0)} × ${cm(parseFloat(altura))} cm`} · arraste para posicionar`
+                : 'Arraste o quadro para posicionar · puxe um canto para redimensionar'}
             </span>
             <button onClick={() => setMockupAberto(false)}
               style={{ background: '#fff', color: '#14130f', border: 'none', borderRadius: 999, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: fonts.body }}>

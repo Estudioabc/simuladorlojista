@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 export const ROOMS = [
   {
     id: 'amb1',
+    paredeCm: 173, // largura real da área de parede (zone), estimada pelos móveis
     label: 'Sala Azul',
     src: '/ambiente-1.jpg',
     w: 1920, h: 960,
@@ -12,6 +13,7 @@ export const ROOMS = [
   },
   {
     id: 'amb2',
+    paredeCm: 230, // largura real da área de parede (zone), estimada pelos móveis
     label: 'Quarto',
     src: '/ambiente-2.jpg',
     w: 1920, h: 1076,
@@ -20,6 +22,7 @@ export const ROOMS = [
   },
   {
     id: 'amb3',
+    paredeCm: 133, // largura real da área de parede (zone), estimada pelos móveis
     label: 'Minimalista',
     src: '/ambiente-3.jpg',
     w: 1433, h: 1920,
@@ -28,6 +31,7 @@ export const ROOMS = [
   },
   {
     id: 'amb4',
+    paredeCm: 187, // largura real da área de parede (zone), estimada pelos móveis
     label: 'Sala Cinza',
     src: '/ambiente-4.jpg',
     w: 1458, h: 1920,
@@ -36,6 +40,7 @@ export const ROOMS = [
   },
   {
     id: 'amb5',
+    paredeCm: 160, // largura real da área de parede (zone), estimada pelos móveis
     label: 'Loft Dark',
     src: '/ambiente-5.jpg',
     w: 1920, h: 1280,
@@ -44,6 +49,7 @@ export const ROOMS = [
   },
   {
     id: 'amb6',
+    paredeCm: 247, // largura real da área de parede (zone), estimada pelos móveis
     label: 'Terracota',
     src: '/ambiente-6.jpg',
     w: 1920, h: 1355,
@@ -52,6 +58,7 @@ export const ROOMS = [
   },
   {
     id: 'amb7',
+    paredeCm: 175, // largura real da área de parede (zone), estimada pelos móveis
     label: 'Sala de Jantar',
     src: '/ambiente-7.jpg',
     w: 1920, h: 1280,
@@ -60,6 +67,7 @@ export const ROOMS = [
   },
   {
     id: 'amb8',
+    paredeCm: 130, // largura real da área de parede (zone), estimada pelos móveis
     label: 'Café Industrial',
     src: '/ambiente-8.jpg',
     w: 1920, h: 1280,
@@ -92,6 +100,12 @@ function loadRoomImg(src) {
 }
 
 const PAD_RATIO = 0.018  // espessura da moldura como fração da altura do quadro
+const GAP_CM = 5         // espaço real entre quadros de uma composição
+
+// Escala real: px por cm na parede do ambiente (null quando não há medida)
+function pxPorCm(room, zW, tamanhoCm) {
+  return room?.paredeCm && tamanhoCm?.altura > 0 ? zW / room.paredeCm : null
+}
 
 // Uma imagem vendida fatiada vira N "peças", cada uma com o recorte da sua faixa
 function expandSlices(artImgs, slices) {
@@ -107,7 +121,7 @@ function artRatio(a) {
   return a.naturalWidth / a.naturalHeight
 }
 
-async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = false, slices = 1) {
+async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = false, slices = 1, tamanhoCm = null) {
   const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
   const W = canvas.width
   const H = canvas.height
@@ -144,12 +158,13 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = fa
   const artImgs = expandSlices(await Promise.all(kitUrls.map(u => loadImg(u).catch(() => null))), slices)
   const ratios = artImgs.map(artRatio)
   const N = artImgs.length
-  const gap = N > 1 ? Math.round(W * 0.03) : 0
+  const escala = thumbMode ? null : pxPorCm(room, zW, tamanhoCm)
+  const gap = N > 1 ? Math.round(escala ? GAP_CM * escala : W * 0.03) : 0
 
-  let fh = zH * 0.55
+  let fh = escala ? tamanhoCm.altura * escala : zH * 0.55
   let fws = ratios.map(r => fh * r)
   const totalW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
-  if (totalW > zW * 0.75) {
+  if (!escala && totalW > zW * 0.75) {
     const scale = (zW * 0.75) / totalW
     fh *= scale
     fws = fws.map(w => w * scale)
@@ -340,7 +355,8 @@ export function FramedArtThumb({ src, srcs }) {
 }
 
 // MockupCanvas: modo normal (interactive=false) ou interativo (drag + resize)
-export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1 }) {
+// tamanhoCm = { altura }: desenha o quadro no tamanho real em relação à parede (ambientes com paredeCm)
+export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null }) {
   const canvasRef = useRef()
   const roomCfg = room || ROOMS[0]
 
@@ -356,8 +372,8 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     if (!urls.length) return
     canvas.width = W
     canvas.height = H
-    drawKitOnCanvas(canvas, urls, frameColor, roomCfg, false, slices).catch(() => {})
-  }, [imgUrl, kitUrls, ratio, frameColor, W, H, roomCfg, interactive, slices])
+    drawKitOnCanvas(canvas, urls, frameColor, roomCfg, false, slices, tamanhoCm).catch(() => {})
+  }, [imgUrl, kitUrls, ratio, frameColor, W, H, roomCfg, interactive, slices, tamanhoCm?.altura])
 
   // ── Modo interativo ───────────────────────────────────────────────────────
   // cx, cy = centro do kit como fração do canvas; scale = fator de escala
@@ -377,15 +393,17 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     if (!ratios) return null
     const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
     const N = ratios.length
-    const gap = N > 1 ? Math.round(W * 0.03) : 0
     const FRAME_ZONE = roomCfg.zone
     const zH = (FRAME_ZONE.bottom - FRAME_ZONE.top) * H
     const zW = (FRAME_ZONE.right - FRAME_ZONE.left) * W
+    const escala = pxPorCm(roomCfg, zW, tamanhoCm)
+    const gap = N > 1 ? Math.round(escala ? GAP_CM * escala : W * 0.03) : 0
 
-    let fh = zH * 0.55 * scale
+    // tamanho real: altura fixa pelo pedido, sem redimensionar
+    let fh = escala ? tamanhoCm.altura * escala : zH * 0.55 * scale
     let fws = ratios.map(r => fh * r)
     const totalW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
-    if (totalW > zW * 0.9) {
+    if (!escala && totalW > zW * 0.9) {
       const sc = (zW * 0.9) / totalW
       fh *= sc; fws = fws.map(w => w * sc)
     }
@@ -452,11 +470,11 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     })
   }, [imgUrl, JSON.stringify(kitUrls), roomCfg.id, interactive, W, H, slices])
 
-  // Redesenha quando frameColor muda
+  // Redesenha quando a cor da moldura ou o tamanho do pedido mudam
   useEffect(() => {
     if (!interactive || !loadedRef.current.roomImg) return
     redraw()
-  }, [frameColor])
+  }, [frameColor, tamanhoCm?.altura])
 
   // Converte evento de mouse/touch para coordenadas internas do canvas
   const getCanvasPt = (e) => {
@@ -489,7 +507,7 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
       Math.abs(pt.x - cx) < H_SIZE && Math.abs(pt.y - cy) < H_SIZE
     )
 
-    if (onCorner) {
+    if (onCorner && !tamanhoCm) {
       const { cx, cy, scale } = stateRef.current
       const dist = Math.hypot(pt.x - cx * W, pt.y - cy * H)
       dragRef.current = { mode: 'resize', startDist: dist, startScale: scale }
