@@ -85,6 +85,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [imagens, setImagens] = useState([])
   const [categorias, setCategorias] = useState([])
   const [catAtiva, setCatAtiva] = useState('todas')
+  const [catPadrao, setCatPadrao] = useState('todas') // abre em "Em alta" quando houver
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
@@ -138,7 +139,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       setKitOf(ko)
       setCoverOf(co)
       setCategorias([...new Set(all.map(i => i.categoria).filter(Boolean))])
-      if (all.some(i => i.em_alta) || (kits || []).some(k => k.em_alta)) setCatAtiva('em_alta')
+      if (all.some(i => i.em_alta) || (kits || []).some(k => k.em_alta)) { setCatAtiva('em_alta'); setCatPadrao('em_alta') }
       setLoading(false)
     }
     fetchAll()
@@ -219,8 +220,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
     onSelectImagem(await montarSelecao(img))
   }
 
-  const limparFiltros = () => { setBusca(''); setFormato(''); setCor(''); setSoFavoritos(false); setCatAtiva('todas') }
-  const temFiltro = busca || formato || cor || soFavoritos || catAtiva !== 'todas'
+  const limparFiltros = () => { setBusca(''); setFormato(''); setCor(''); setSoFavoritos(false); setCatAtiva(catPadrao) }
+  const temFiltro = busca || formato || cor || soFavoritos || catAtiva !== catPadrao
 
   const S = {
     eyebrow: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
