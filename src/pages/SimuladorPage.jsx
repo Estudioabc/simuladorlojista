@@ -82,7 +82,7 @@ function calcPrecoPecas({ pecas, qty, ...cfg }) {
 }
 
 // Mesma regra do Anexo (PrintFramePro): categoria libera, `fatiavel` do cadastro decide se preenchido
-const CATEGORIAS_FATIAVEIS = ['Abstrato', 'Dourado', 'Paisagens e natureza', 'Pinturas', 'Cidade']
+const CATEGORIAS_FATIAVEIS = ['Abstrato', 'Dourado', 'Paisagens e natureza', 'Pinturas', 'Cidades', 'Cidade']
 function maxFatias(img, ratio) {
   if (!img || img.kitCount > 1 || !ratio) return 1
   const permitido = img.fatiavel ?? CATEGORIAS_FATIAVEIS.includes(img.categoria)
