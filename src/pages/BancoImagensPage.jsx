@@ -315,7 +315,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
     eyebrow: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
     title: { fontFamily: fonts.display, fontSize: 'clamp(28px, 3.9vw, 41px)', fontWeight: 600, lineHeight: 1.02, letterSpacing: -1, margin: '6px 0 10px', textWrap: 'balance' },
     lead: { fontSize: 15, color: colors.textMuted, maxWidth: 560, lineHeight: 1.55 },
-    toolbar: { position: isMobile ? 'static' : 'sticky', top: 72, zIndex: 20, background: colors.bg, padding: '14px 0 0', margin: '28px 0 8px', borderBottom: `1px solid ${colors.border}` },
+    toolbar: { margin: '28px 0 0' },
+    fixo: { position: isMobile ? 'static' : 'sticky', top: 72, zIndex: 20, background: colors.bg, padding: '10px 0 0', marginBottom: 8, borderBottom: `1px solid ${colors.border}` },
     toolRow: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 },
     search: { flex: '1 1 240px', minWidth: 0, background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 999, padding: '11px 18px', fontSize: 14, outline: 'none' },
     seg: { display: 'inline-flex', border: `1px solid ${colors.border}`, borderRadius: 999, background: colors.surface, padding: 3 },
@@ -376,19 +377,22 @@ export default function BancoImagensPage({ onSelectImagem }) {
             ♥ Favoritos{favoritos.size > 0 ? ` (${favoritos.size})` : ''}
           </button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }} role="group" aria-label="Cor">
-          <span style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted, marginRight: 4 }}>Cor</span>
+      </div>
+
+      <div style={S.fixo}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 8 }} role="group" aria-label="Cor">
+          <span style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, marginRight: 4 }}>Cor</span>
           {CORES.map(c => {
             const on = cor === c.id
             return (
               <button key={c.id} title={c.id} aria-label={`Cor ${c.id}`} aria-pressed={on}
                 onClick={() => setCor(on ? '' : c.id)}
-                style={{ width: 24, height: 24, borderRadius: '50%', background: c.bg, cursor: 'pointer', padding: 0,
+                style={{ width: 16, height: 16, borderRadius: '50%', background: c.bg, cursor: 'pointer', padding: 0,
                   border: `1px solid ${c.id === 'Branco' ? colors.border : 'rgba(0,0,0,0.12)'}`,
-                  outline: on ? `2px solid ${colors.text}` : 'none', outlineOffset: 2 }} />
+                  outline: on ? `2px solid ${colors.text}` : 'none', outlineOffset: 1 }} />
             )
           })}
-          {cor && <span style={{ fontSize: 12, color: colors.text, fontWeight: 600, marginLeft: 4 }}>{cor}</span>}
+          {cor && <span style={{ fontSize: 11, color: colors.text, fontWeight: 600, marginLeft: 4 }}>{cor}</span>}
         </div>
         <div style={S.cats} role="tablist" aria-label="Temas">
           {nEmAlta > 0 && (
