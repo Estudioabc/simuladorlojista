@@ -5,6 +5,7 @@ import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
 import MockupCanvas, { ROOMS } from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
+import { infoMoldura } from '../utils/molduras'
 
 // Espelhado em sim-pedido (PrintFramePro), que recalcula no servidor — manter os dois iguais
 function calcPreco({ montagem, moldura, w, h, qty, materials, substrates, tipoVidro, markupPct }) {
@@ -60,7 +61,7 @@ function calcPreco({ montagem, moldura, w, h, qty, materials, substrates, tipoVi
 
   if (moldura) {
     const base = perimComMolduraM * (parseFloat(moldura.sell_price) || 0)
-    if (base > 0) lines.push({ label: `Moldura ${moldura.name}`, valor: base * markup })
+    if (base > 0) lines.push({ label: `Moldura ${infoMoldura(moldura).rotulo}`, valor: base * markup })
   }
 
   const totalPeca = lines.reduce((s, l) => s + l.valor, 0)
@@ -223,14 +224,11 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     return pecas.map(p => `${cm(p.largura_cm)} × ${cm(p.altura_cm)}`).join(' + ') + ' cm'
   })()
 
-  const framesPorCat = frames.reduce((acc, f) => {
-    const cat = f.categoria ?? 'Outras'
-    if (!acc[cat]) acc[cat] = []
-    acc[cat].push(f)
-    return acc
-  }, {})
-  const catOrder = ['A', 'B', 'C', 'Outras']
-  const catLabels = { A: 'Premium', B: 'Intermediária', C: 'Econômica', Outras: 'Outras' }
+  // Canvas só vê molduras CANVAS, papel só CONVENCIONAL (ver utils/molduras.js)
+  const framesDoTipo = frames
+    .map(f => ({ ...f, ...infoMoldura(f) }))
+    .filter(f => !f.tipo || f.tipo === tipoMontagem)
+    .sort((a, b) => (!a.tipo - !b.tipo) || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
 
   const handleLargura = (val) => {
     setLargura(val)
@@ -264,6 +262,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const handleTipoMontagem = (tipo) => {
     setTipoMontagem(tipo)
     setTipoVidro('')
+    setMolduraId('') // categorias de canvas e de papel são molduras diferentes
     // Auto-seleciona o único mount_type do tipo, se houver só 1
     const lista = tipo === 'canvas' ? canvasMontagens : convenMontagens
     setMontagemId(lista.length === 1 ? lista[0].id : '')
@@ -282,7 +281,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     if (!largura || !altura) { setErro('Informe o tamanho do quadro.'); return }
     if (!tipoMontagem) { setErro('Selecione o tipo de montagem (Canvas ou Quadro Convencional).'); return }
     if (tipoMontagem === 'convencional' && !tipoVidro) { setErro('Selecione o tipo de vidro.'); return }
-    if (frames.length > 0 && !molduraId) { setErro('Selecione uma moldura.'); return }
+    if (framesDoTipo.length > 0 && !molduraId) { setErro('Selecione a categoria da moldura.'); return }
     setErro('')
     setEnviando(statusEnvio)
     try {
@@ -605,16 +604,12 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
           </div>
 
           {/* Moldura — antes do vidro */}
-          {frames.length > 0 && tipoMontagem && (
+          {framesDoTipo.length > 0 && tipoMontagem && (
             <div style={tipoMontagem === 'convencional' && molduraId ? { marginBottom: 20 } : secao}>
               <label style={lbl}>Moldura</label>
               <select style={inp} value={molduraId} onChange={e => setMolduraId(e.target.value)}>
-                <option value="">— selecione a moldura —</option>
-                {catOrder.filter(c => framesPorCat[c]).map(cat => (
-                  <optgroup key={cat} label={catLabels[cat]}>
-                    {framesPorCat[cat].map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                  </optgroup>
-                ))}
+                <option value="">— selecione a categoria —</option>
+                {framesDoTipo.map(f => <option key={f.id} value={f.id}>{f.rotulo}</option>)}
               </select>
             </div>
           )}
@@ -733,7 +728,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
                 <span style={{ color: colors.textMuted, flexShrink: 0 }}>Moldura</span>
                 <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>
-                  {moldura.name}
+                  {infoMoldura(moldura).rotulo}
                 </span>
               </div>
             )}

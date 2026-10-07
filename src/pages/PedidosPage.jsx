@@ -3,6 +3,7 @@ import { callFunction } from '../services/supabase'
 import { useTheme } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { Spinner, EmptyState } from '../components/UI'
+import { infoMoldura } from '../utils/molduras'
 
 const fmt = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -40,7 +41,7 @@ function abrirOrcamentoCliente(p, lojaNome) {
         <dl>
           ${tamanhoTexto(it) ? `<dt>Tamanho</dt><dd>${esc(tamanhoTexto(it))}</dd>` : ''}
           ${it.montagem_nome ? `<dt>Acabamento</dt><dd>${esc(it.montagem_nome)}</dd>` : ''}
-          ${it.moldura_nome ? `<dt>Moldura</dt><dd>${esc(it.moldura_nome)}</dd>` : ''}
+          ${it.moldura_nome ? `<dt>Moldura</dt><dd>${esc(infoMoldura(it.moldura_nome).rotulo)}</dd>` : ''}
           <dt>${pecasDe(it) ? 'Conjuntos' : 'Quantidade'}</dt><dd>${esc(it.quantidade || 1)}</dd>
         </dl>
       </div>
@@ -363,7 +364,7 @@ export default function PedidosPage({ onNovoPedido }) {
                         {item.imagem_titulo && <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: colors.text }}>{item.imagem_titulo}</div>}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px' }}>
                           {item.montagem_nome && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Montagem:</strong> {item.montagem_nome}</div>}
-                          {item.moldura_nome  && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Moldura:</strong> {item.moldura_nome}</div>}
+                          {item.moldura_nome  && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Moldura:</strong> {infoMoldura(item.moldura_nome).rotulo}</div>}
                           {tamanhoTexto(item) && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Tamanho:</strong> {tamanhoTexto(item)}{item.modo === 'fatiado' ? ` (obra fatiada, total ${cmFmt(item.largura_cm)} × ${cmFmt(item.altura_cm)} cm)` : ''}</div>}
                           {item.quantidade > 1 && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>{pecasDe(item) ? 'Conjuntos' : 'Quantidade'}:</strong> {item.quantidade}</div>}
                         </div>
