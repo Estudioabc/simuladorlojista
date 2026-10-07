@@ -579,12 +579,14 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {canvasMontagens.length > 0 && (
                   <button onClick={() => handleTipoMontagem('canvas')} style={typeBtn(tipoMontagem === 'canvas')}>
-                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 17, fontWeight: 600, marginBottom: 2 }}>Impressão em canvas</span>
+                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 17, fontWeight: 600, marginBottom: 2 }}>Canvas</span>
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: colors.textMuted }}>impressão em canvas</span>
                   </button>
                 )}
                 {convenMontagens.length > 0 && (
                   <button onClick={() => handleTipoMontagem('convencional')} style={typeBtn(tipoMontagem === 'convencional')}>
-                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 17, fontWeight: 600, marginBottom: 2 }}>Impressão em papel</span>
+                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 17, fontWeight: 600, marginBottom: 2 }}>Papel</span>
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: colors.textMuted }}>impressão em papel</span>
                   </button>
                 )}
               </div>
@@ -715,7 +717,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
                 <span style={{ color: colors.textMuted, flexShrink: 0 }}>Montagem</span>
                 <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>
-                  {tipoMontagem === 'canvas' ? 'Impressão em canvas' : 'Impressão em papel'}{montagem ? ` · ${montagem.nome}` : ''}
+                  {tipoMontagem === 'canvas' ? 'Canvas' : 'Papel'}{montagem ? ` · ${montagem.nome}` : ''}
                 </span>
               </div>
             )}
