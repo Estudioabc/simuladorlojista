@@ -586,7 +586,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                 {convenMontagens.length > 0 && (
                   <button onClick={() => handleTipoMontagem('convencional')} style={typeBtn(tipoMontagem === 'convencional')}>
                     <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 17, fontWeight: 600, marginBottom: 2 }}>Quadro</span>
-                    <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: colors.textMuted }}>com vidro e moldura</span>
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: colors.textMuted }}>impressão em papel</span>
                   </button>
                 )}
               </div>
