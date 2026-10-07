@@ -361,20 +361,35 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     display: 'block', marginBottom: 6,
   }
 
-  // Botão tipo toggle: canvas / convencional
-  const typeBtn = (on) => ({
-    flex: 1, minWidth: 120,
-    padding: '14px 12px',
-    borderRadius: 4,
+  // Cartão de opção (acabamento, moldura): marcador redondo + título + subtítulo
+  const opcao = (on) => ({
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '14px 16px',
+    borderRadius: 8,
     border: `1px solid ${on ? ink : colors.border}`,
     boxShadow: on ? `inset 0 0 0 1px ${ink}` : 'none',
-    background: colors.surface,
+    background: on ? colors.surfaceAlt : colors.surface,
     color: colors.text,
-    fontWeight: 600, fontSize: 13,
     fontFamily: fonts.body,
-    cursor: 'pointer', transition: 'all 0.15s',
-    textAlign: 'center', lineHeight: 1.3,
+    cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
+    textAlign: 'left', lineHeight: 1.3, width: '100%',
   })
+  const opcaoBtn = ({ key, on, onClick, titulo, sub }) => (
+    <button key={key} type="button" onClick={onClick} style={opcao(on)} aria-pressed={on}>
+      <span style={{
+        width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+        border: `1.5px solid ${on ? ink : colors.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {on && <span style={{ width: 8, height: 8, borderRadius: '50%', background: ink }} />}
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 16, fontWeight: 600 }}>{titulo}</span>
+        {sub && <span style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginTop: 2 }}>{sub}</span>}
+      </span>
+    </button>
+  )
+  const gradeOpcoes = (min) => ({ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${min}px, 1fr))`, gap: 10 })
 
   // Botão pequeno: vidro / entrega
   const chipBtn = (on) => ({
@@ -575,18 +590,12 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             {montagems.length === 0 ? (
               <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>Nenhuma montagem disponível.</p>
             ) : (
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={gradeOpcoes(200)}>
                 {canvasMontagens.length > 0 && (
-                  <button onClick={() => handleTipoMontagem('canvas')} style={typeBtn(tipoMontagem === 'canvas')}>
-                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 17, fontWeight: 600, marginBottom: 2 }}>Canvas</span>
-                    <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: colors.textMuted }}>impressão em canvas</span>
-                  </button>
+                  opcaoBtn({ on: tipoMontagem === 'canvas', onClick: () => handleTipoMontagem('canvas'), titulo: 'Canvas', sub: 'impressão em canvas' })
                 )}
                 {convenMontagens.length > 0 && (
-                  <button onClick={() => handleTipoMontagem('convencional')} style={typeBtn(tipoMontagem === 'convencional')}>
-                    <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 17, fontWeight: 600, marginBottom: 2 }}>Papel</span>
-                    <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: colors.textMuted }}>impressão em papel</span>
-                  </button>
+                  opcaoBtn({ on: tipoMontagem === 'convencional', onClick: () => handleTipoMontagem('convencional'), titulo: 'Papel', sub: 'impressão em papel' })
                 )}
               </div>
             )}
@@ -607,10 +616,12 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
           {framesDoTipo.length > 0 && tipoMontagem && (
             <div style={tipoMontagem === 'convencional' && molduraId ? { marginBottom: 20 } : secao}>
               <label style={lbl}>Moldura</label>
-              <select style={inp} value={molduraId} onChange={e => setMolduraId(e.target.value)}>
-                <option value="">— selecione a categoria —</option>
-                {framesDoTipo.map(f => <option key={f.id} value={f.id}>{f.rotulo}</option>)}
-              </select>
+              <div style={gradeOpcoes(160)}>
+                {framesDoTipo.map(f => opcaoBtn({
+                  key: f.id, on: molduraId === f.id, onClick: () => setMolduraId(f.id),
+                  titulo: f.rotulo, sub: f.width_cm ? `perfil de ${String(f.width_cm).replace('.', ',')} cm` : null,
+                }))}
+              </div>
             </div>
           )}
 
