@@ -5,7 +5,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-export const functionsUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_URL
+export const functionsUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || `${supabaseUrl}/functions/v1`
 
 export async function callFunction(name, options = {}) {
   const { data: { session } } = await supabase.auth.getSession()
