@@ -701,7 +701,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 24 : 32, marginTop: 14 }}>
           {[
             { img: 'material-canvas', titulo: 'Canvas de algodão 360 g/m²', texto: 'Tela de algodão encorpada, com a trama aparente que dá textura de pintura. Esticada no chassi e acabada com moldura canaleta, que deixa um respiro entre a tela e a moldura.' },
-            { img: 'material-papel', titulo: 'Papel sintético', texto: 'Superfície lisa, que reproduz detalhes finos e cores vivas. Resistente à umidade e a rasgos. Vai em moldura caixa, com ou sem vidro.' },
+            { img: 'material-papel', titulo: 'Papel fotográfico sintético', texto: 'Superfície lisa com acabamento fotográfico, que reproduz detalhes finos e cores vivas. Resistente à umidade e a rasgos. Vai em moldura caixa, com ou sem vidro.' },
           ].map(m => (
             <figure key={m.img} style={{ margin: 0 }}>
               <img src={`/molduras/${m.img}.jpg`} alt={m.titulo} loading="lazy"
