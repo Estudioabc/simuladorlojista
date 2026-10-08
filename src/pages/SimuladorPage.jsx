@@ -361,46 +361,43 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     display: 'block', marginBottom: 6,
   }
 
-  // Cartão de opção (acabamento, moldura): marcador redondo + título + subtítulo
+  // Opção compacta (acabamento, moldura): retângulo do tamanho do texto, escolhida = borda preta grossa.
+  // A borda de 2px é compensada no padding para o botão não "pular" ao selecionar.
   const opcao = (on) => ({
-    display: 'flex', alignItems: 'center', gap: 12,
-    padding: '14px 16px',
-    borderRadius: 8,
-    border: `1px solid ${on ? ink : colors.border}`,
-    boxShadow: on ? `inset 0 0 0 1px ${ink}` : 'none',
-    background: on ? colors.surfaceAlt : colors.surface,
+    padding: on ? '9px 17px' : '10px 18px',
+    minWidth: 128,
+    borderRadius: 3,
+    border: `${on ? 2 : 1}px solid ${on ? ink : colors.border}`,
+    background: colors.surface,
     color: colors.text,
     fontFamily: fonts.body,
-    cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
-    textAlign: 'left', lineHeight: 1.3, width: '100%',
+    cursor: 'pointer', transition: 'border-color 0.15s',
+    textAlign: 'center', lineHeight: 1.25,
   })
   const opcaoBtn = ({ key, on, onClick, titulo, sub }) => (
     <button key={key} type="button" onClick={onClick} style={opcao(on)} aria-pressed={on}>
-      <span style={{
-        width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-        border: `1.5px solid ${on ? ink : colors.border}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {on && <span style={{ width: 8, height: 8, borderRadius: '50%', background: ink }} />}
-      </span>
-      <span style={{ minWidth: 0 }}>
-        <span style={{ display: 'block', fontFamily: fonts.display, fontSize: 16, fontWeight: 600 }}>{titulo}</span>
-        {sub && <span style={{ display: 'block', fontSize: 12, color: colors.textMuted, marginTop: 2 }}>{sub}</span>}
-      </span>
+      <span style={{ display: 'block', fontSize: 14, fontWeight: 600 }}>{titulo}</span>
+      {sub && <span style={{ display: 'block', fontSize: 11, color: colors.textMuted, marginTop: 2 }}>{sub}</span>}
     </button>
   )
-  const gradeOpcoes = (min) => ({ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${min}px, 1fr))`, gap: 10 })
+  const gradeOpcoes = { display: 'flex', flexWrap: 'wrap', gap: 8 }
+  // Rótulo de grupo no estilo de loja: "MOLDURA  Categoria B"
+  const grupoLbl = (texto, valor) => (
+    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.textMuted, marginBottom: 8 }}>
+      {texto}{valor && <span style={{ textTransform: 'none', letterSpacing: 0, color: colors.text, fontWeight: 500, fontSize: 12, marginLeft: 8 }}>{valor}</span>}
+    </div>
+  )
 
   // Botão pequeno: vidro / entrega
   const chipBtn = (on) => ({
-    padding: '8px 14px',
-    borderRadius: 999,
-    border: `1px solid ${on ? ink : colors.border}`,
-    background: on ? ink : colors.surface,
-    color: on ? colors.bg : colors.text,
-    fontWeight: 600, fontSize: 12,
+    padding: on ? '7px 15px' : '8px 16px',
+    borderRadius: 3,
+    border: `${on ? 2 : 1}px solid ${on ? ink : colors.border}`,
+    background: colors.surface,
+    color: colors.text,
+    fontWeight: 600, fontSize: 13,
     fontFamily: fonts.body,
-    cursor: 'pointer', transition: 'all 0.15s',
+    cursor: 'pointer', transition: 'border-color 0.15s',
     whiteSpace: 'nowrap',
   })
 
@@ -590,7 +587,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             {montagems.length === 0 ? (
               <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>Nenhuma montagem disponível.</p>
             ) : (
-              <div style={gradeOpcoes(200)}>
+              <div style={gradeOpcoes}>
                 {canvasMontagens.length > 0 && (
                   opcaoBtn({ on: tipoMontagem === 'canvas', onClick: () => handleTipoMontagem('canvas'), titulo: 'Canvas', sub: 'impressão em canvas' })
                 )}
@@ -615,8 +612,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
           {/* Moldura — antes do vidro */}
           {framesDoTipo.length > 0 && tipoMontagem && (
             <div style={tipoMontagem === 'convencional' && molduraId ? { marginBottom: 20 } : secao}>
-              <label style={lbl}>Moldura</label>
-              <div style={gradeOpcoes(160)}>
+              {grupoLbl('Moldura', moldura ? infoMoldura(moldura).rotulo : null)}
+              <div style={gradeOpcoes}>
                 {framesDoTipo.map(f => opcaoBtn({
                   key: f.id, on: molduraId === f.id, onClick: () => setMolduraId(f.id),
                   titulo: f.rotulo, sub: f.width_cm ? `perfil de ${String(f.width_cm).replace('.', ',')} cm` : null,
@@ -628,7 +625,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
           {/* Vidro — após moldura */}
           {tipoMontagem === 'convencional' && molduraId && glassOptions.length > 0 && (
             <div style={secao}>
-              <label style={lbl}>Vidro</label>
+              {grupoLbl('Vidro', glassOptions.find(g => g.id === tipoVidro)?.label)}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {glassOptions.map(g => (
                   <button key={g.id} onClick={() => setTipoVidro(g.id)} style={chipBtn(tipoVidro === g.id)}>
