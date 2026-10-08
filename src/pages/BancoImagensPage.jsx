@@ -582,9 +582,9 @@ export default function BancoImagensPage({ onSelectImagem }) {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }} role="tablist" aria-label="Quadros da composição">
                     {[{ id: 0, label: 'Completa' }, ...partes.map((p, i) => ({ id: i + 1, label: String(i + 1), src: p.img_url }))].map(t => (
                       <button key={t.id} role="tab" aria-selected={pecaIdx === t.id} onClick={() => setPecaIdx(t.id)}
-                        style={{ height: 46, minWidth: 46, padding: t.src ? 0 : '0 12px', borderRadius: 4, overflow: 'hidden', cursor: 'pointer', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: 12, fontWeight: 600,
+                        style={{ height: 46, minWidth: 46, ...(t.src ? { width: 46 } : {}), padding: t.src ? 0 : '0 12px', borderRadius: 4, overflow: 'hidden', cursor: 'pointer', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: 12, fontWeight: 600,
                           border: 'none', outline: pecaIdx === t.id ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)', outlineOffset: pecaIdx === t.id ? 2 : 0, opacity: pecaIdx === t.id ? 1 : 0.65 }}>
-                        {t.src ? <img src={t.src} alt={`Quadro ${t.label}`} style={{ height: 46, display: 'block' }} /> : t.label}
+                        {t.src ? <img src={t.src} alt={`Quadro ${t.label}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : t.label}
                       </button>
                     ))}
                   </div>

@@ -323,7 +323,7 @@ export function FramedArtThumb({ src, srcs }) {
 // MockupCanvas: modo normal (interactive=false) ou interativo (drag + resize)
 // tamanhoCm = { altura }: desenha o quadro no tamanho real em relação à parede (ambientes com paredeCm)
 // onTamanhoChange(alturaCm): com tamanho real, puxar um canto muda o tamanho do pedido
-export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null, onTamanhoChange = null, inline = false }) {
+export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null, onTamanhoChange = null, inline = false, aspect = null }) {
   const canvasRef = useRef()
   const roomCfg = room || ROOMS[0]
 
@@ -447,9 +447,16 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
   const getCanvasPt = (e) => {
     const canvas = canvasRef.current
     const rect = canvas.getBoundingClientRect()
+    const src = e.touches ? e.touches[0] : e
+    if (crop) {
+      // object-fit: cover — a imagem é escalada para cobrir e deslocada pelo object-position
+      const k = Math.max(rect.width / W, rect.height / H)
+      const offX = (rect.width - W * k) * crop.x
+      const offY = (rect.height - H * k) * crop.y
+      return { x: (src.clientX - rect.left - offX) / k, y: (src.clientY - rect.top - offY) / k }
+    }
     const sx = W / rect.width
     const sy = H / rect.height
-    const src = e.touches ? e.touches[0] : e
     return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy }
   }
 
@@ -516,10 +523,26 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
 
   const handleUp = () => { dragRef.current = null }
 
+  // aspect: moldura fixa (ex.: 3/2) para todos os ambientes terem o mesmo tamanho na tela.
+  // A foto é recortada (object-fit: cover) centrada na zona da parede, sem sair da imagem.
+  const crop = (() => {
+    if (!aspect) return null
+    const z = roomCfg.zone, imgA = W / H
+    const centro = (ini, fim, visivel) => {           // posição do recorte (0..1) para centrar a zona
+      if (visivel >= 1) return 0.5
+      const start = Math.min(Math.max((ini + fim) / 2 - visivel / 2, 0), 1 - visivel)
+      return start / (1 - visivel)
+    }
+    return aspect < imgA
+      ? { x: centro(z.left, z.right, aspect / imgA), y: 0.5 }
+      : { x: 0.5, y: centro(z.top, z.bottom, imgA / aspect) }
+  })()
+
   // inline: ocupa a largura da coluna (tela do pedido); senão cabe na tela (modal ampliado)
   const canvasStyle = {
     ...(inline
-      ? { width: '100%', height: 'auto', aspectRatio: `${W}/${H}`, borderRadius: 0, background: '#e9e6e0' }
+      ? { width: '100%', height: 'auto', aspectRatio: crop ? String(aspect) : `${W}/${H}`, borderRadius: 0, background: '#e9e6e0',
+          ...(crop ? { objectFit: 'cover', objectPosition: `${crop.x * 100}% ${crop.y * 100}%` } : {}) }
       : { maxWidth: '100%', maxHeight: 'calc(100vh - 320px)', width: 'auto', height: 'auto', borderRadius: 8 }),
     display: 'block',
     margin: '0 auto',

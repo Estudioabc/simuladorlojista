@@ -458,7 +458,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
               {isMobile ? (
                 <button onClick={() => setMockupAberto(true)} aria-label="Ampliar o quadro no ambiente"
                   style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'zoom-in' }}>
-                  <MockupCanvas inline
+                  <MockupCanvas inline aspect={3 / 2}
                     imgUrl={isKit ? null : imagem.img_url}
                     kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
                     slices={isKit ? 1 : nFatias}
@@ -467,7 +467,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                     tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null} />
                 </button>
               ) : (
-                <MockupCanvas inline interactive
+                <MockupCanvas inline aspect={3 / 2} interactive
                   imgUrl={isKit ? null : imagem.img_url}
                   kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
                   slices={isKit ? 1 : nFatias}
@@ -486,7 +486,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
               </button>
             </div>
           ) : (
-            <div style={{ aspectRatio: `${mockupRoom.w}/${mockupRoom.h}`, background: colors.surfaceAlt, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24, textAlign: 'center' }}>
+            <div style={{ aspectRatio: '3 / 2', background: colors.surfaceAlt, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24, textAlign: 'center' }}>
               <button onClick={() => setShowBanco(true)}
                 style={{ background: colors.text, color: colors.bg, border: 'none', borderRadius: 2, padding: '13px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body }}>
                 Escolher obra no acervo
