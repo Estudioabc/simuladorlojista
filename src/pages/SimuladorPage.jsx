@@ -227,6 +227,13 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     .filter(f => !f.tipo || f.tipo === tipoMontagem)
     .sort((a, b) => (!a.tipo - !b.tipo) || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
 
+  // Uma moldura por tipo: o lojista não escolhe categoria, vai direto para a cor.
+  // Se houver mais de uma liberada, usa a primeira da lista (Categoria A).
+  useEffect(() => {
+    if (!tipoMontagem || !framesDoTipo.length) return
+    if (!framesDoTipo.some(f => f.id === molduraId)) setMolduraId(framesDoTipo[0].id)
+  }, [tipoMontagem, framesDoTipo.map(f => f.id).join(), molduraId])
+
   const handleLargura = (val) => {
     setLargura(val)
     if ((travarRatio || isKit) && ratio && val) {
@@ -240,10 +247,10 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     }
   }
 
+  // Papel: sem vidro ou com vidro (vidro comum). Antirreflexo saiu do portal.
   const GLASS_TYPES = [
-    { id: 'sem_vidro', label: 'Sem Vidro' },
-    { id: 'vidro_comum', label: 'Vidro Comum' },
-    { id: 'antirreflexo', label: 'Antirreflexo' },
+    { id: 'sem_vidro', label: 'Sem vidro' },
+    { id: 'vidro_comum', label: 'Com vidro' },
   ]
 
   const canvasMontagens = montagems.filter(m => m.is_canvas)
@@ -259,9 +266,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const handleTipoMontagem = (tipo) => {
     setTipoMontagem(tipo)
     setTipoVidro('')
-    // categorias de canvas e de papel são molduras diferentes; se o tipo tem uma só, já vem escolhida
-    const doTipo = frames.filter(f => { const t = infoMoldura(f).tipo; return !t || t === tipo })
-    setMolduraId(doTipo.length === 1 ? doTipo[0].id : '')
+    setMolduraId('') // a moldura do tipo é escolhida sozinha (efeito abaixo)
     // Auto-seleciona o único mount_type do tipo, se houver só 1
     const lista = tipo === 'canvas' ? canvasMontagens : convenMontagens
     setMontagemId(lista.length === 1 ? lista[0].id : '')
@@ -579,18 +584,6 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
               </div>
             )}
           </div>
-
-          {/* Moldura (categoria) — só aparece se o tipo tiver mais de uma */}
-          {framesDoTipo.length > 1 && tipoMontagem && (
-            <div style={grupo}>
-              {grupoLbl('Moldura')}
-              <div style={gradeOpcoes}>
-                {framesDoTipo.map(f => (
-                  <button key={f.id} onClick={() => setMolduraId(f.id)} style={chipBtn(molduraId === f.id)} aria-pressed={molduraId === f.id}>{f.rotulo}</button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Cor da moldura — mesmo preço; vai no pedido e pinta o mockup */}
           {framesDoTipo.length > 0 && tipoMontagem && (
