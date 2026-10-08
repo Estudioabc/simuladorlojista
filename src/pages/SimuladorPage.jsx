@@ -134,6 +134,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const [enviando, setEnviando] = useState(null) // null | 'novo' | 'orcamento'
   const [sucesso, setSucesso] = useState(null) // null | 'novo' | 'orcamento'
   const [erro, setErro] = useState('')
+  const [maisAberto, setMaisAberto] = useState(false) // observações
+  const [verCusto, setVerCusto] = useState(false)
 
   useEffect(() => {
     callFunction('sim-lojista-data')
@@ -282,6 +284,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     if (!tipoMontagem) { setErro('Selecione o tipo de montagem (Canvas ou Quadro Convencional).'); return }
     if (tipoMontagem === 'convencional' && !tipoVidro) { setErro('Selecione o tipo de vidro.'); return }
     if (framesDoTipo.length > 0 && !molduraId) { setErro('Selecione a categoria da moldura.'); return }
+    if (!clienteNome.trim() || !clienteContato.trim()) { setErro('Informe o nome e o contato do cliente.'); return }
+    if (!formaEntrega) { setErro('Escolha a forma de entrega.'); return }
+    if (formaEntrega === 'entrega' && !enderecoEntrega.trim()) { setErro('Informe o endereço de entrega.'); return }
     setErro('')
     setEnviando(statusEnvio)
     try {
@@ -356,69 +361,27 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     transition: 'border-color 0.15s',
   }
 
-  const lbl = {
-    fontSize: 12, fontWeight: 600, color: colors.textMuted,
-    display: 'block', marginBottom: 6,
-  }
-
-  // Opção compacta (acabamento, moldura): retângulo do tamanho do texto, escolhida = borda preta grossa.
-  // A borda de 2px é compensada no padding para o botão não "pular" ao selecionar.
-  const opcao = (on) => ({
-    padding: on ? '9px 17px' : '10px 18px',
-    minWidth: 128,
-    borderRadius: 3,
-    border: `${on ? 2 : 1}px solid ${on ? ink : colors.border}`,
-    background: colors.surface,
-    color: colors.text,
-    fontFamily: fonts.body,
-    cursor: 'pointer', transition: 'border-color 0.15s',
-    textAlign: 'center', lineHeight: 1.25,
-  })
-  const opcaoBtn = ({ key, on, onClick, titulo, sub }) => (
-    <button key={key} type="button" onClick={onClick} style={opcao(on)} aria-pressed={on}>
-      <span style={{ display: 'block', fontSize: 14, fontWeight: 600 }}>{titulo}</span>
-      {sub && <span style={{ display: 'block', fontSize: 11, color: colors.textMuted, marginTop: 2 }}>{sub}</span>}
-    </button>
-  )
   const gradeOpcoes = { display: 'flex', flexWrap: 'wrap', gap: 8 }
-  // Rótulo de grupo no estilo de loja: "MOLDURA  Categoria B"
+  // Rótulo de grupo no estilo de loja (caixa alta pequena)
   const grupoLbl = (texto, valor) => (
     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.textMuted, marginBottom: 8 }}>
       {texto}{valor && <span style={{ textTransform: 'none', letterSpacing: 0, color: colors.text, fontWeight: 500, fontSize: 12, marginLeft: 8 }}>{valor}</span>}
     </div>
   )
 
-  // Botão pequeno: vidro / entrega
+  // Opção (acabamento, moldura, vidro, peças, entrega): retângulo compacto, escolhida = borda preta.
+  // A borda de 2px é compensada no padding para o botão não "pular" ao selecionar.
   const chipBtn = (on) => ({
-    padding: on ? '7px 15px' : '8px 16px',
-    borderRadius: 3,
+    padding: on ? '8px 15px' : '9px 16px',
+    borderRadius: 2,
     border: `${on ? 2 : 1}px solid ${on ? ink : colors.border}`,
     background: colors.surface,
     color: colors.text,
-    fontWeight: 600, fontSize: 13,
+    fontWeight: on ? 600 : 500, fontSize: 13,
     fontFamily: fonts.body,
     cursor: 'pointer', transition: 'border-color 0.15s',
     whiteSpace: 'nowrap',
   })
-
-  const sectionLine = {
-    fontFamily: fonts.display, fontSize: 19, fontWeight: 600, color: colors.text,
-    paddingBottom: 12, marginBottom: 16,
-    borderBottom: `1px solid ${colors.border}`,
-  }
-
-  const secao = { paddingBottom: 28, marginBottom: 28, borderBottom: `1px solid ${colors.border}` }
-
-  const Passo = ({ n, titulo, nota, children }) => (
-    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-      <h2 style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: 0, fontFamily: fonts.display, fontSize: 20, fontWeight: 600, lineHeight: 1.1 }}>
-        <span style={{ fontSize: 15, fontFamily: fonts.body, fontWeight: 600, color: gold, fontVariantNumeric: 'tabular-nums' }}>{n}</span>
-        {titulo}
-        {nota && <span style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: 500, color: colors.textMuted }}>{nota}</span>}
-      </h2>
-      {children}
-    </div>
-  )
 
   useEffect(() => {
     if (!mockupAberto) return
@@ -451,20 +414,15 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   }
 
   const hasDims = parseFloat(largura) > 0 && parseFloat(altura) > 0
+  const precoPronto = preco && preco.totalGeral > 0 && (molduraId || framesDoTipo.length === 0) && tipoMontagem
+  const precoB2b = precoPronto ? preco.totalGeral / (1 + (parseFloat(markupPct) || 0) / 100) : 0
+
+  const grupo = { marginTop: 26 }
+  const linkBtn = { background: 'none', border: 'none', padding: 0, color: colors.text, fontSize: 13, fontFamily: fonts.body, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }
+  const inpTam = { ...inp, width: 76, padding: '9px 8px', textAlign: 'center', fontSize: 14 }
 
   return (
-    <div style={{ maxWidth: 1040, margin: '0 auto', fontFamily: fonts.body }}>
-
-      {/* Cabeçalho */}
-      <div style={{ marginBottom: 36 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 }}>Novo pedido</div>
-        <h1 style={{ fontFamily: fonts.display, fontSize: 'clamp(27px, 3.9vw, 37px)', fontWeight: 600, color: colors.text, margin: '6px 0 8px', lineHeight: 1.05, letterSpacing: -0.8, textWrap: 'balance' }}>
-          Monte o quadro do seu cliente
-        </h1>
-        <p style={{ fontSize: 15, color: colors.textMuted, margin: 0, lineHeight: 1.5 }}>
-          Escolha a obra, o tamanho e o acabamento. O preço aparece ao lado assim que tudo estiver definido.
-        </p>
-      </div>
+    <div style={{ fontFamily: fonts.body }}>
 
       {sucesso && (
         <div style={{ background: colors.success + '12', border: `1px solid ${colors.success}40`, borderRadius: 4, padding: '16px 20px', marginBottom: 28, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
@@ -491,292 +449,223 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
         </div>
       )}
 
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) 360px', gap: isMobile ? 24 : 56, alignItems: 'start' }} className="sim-layout">
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) 340px', gap: isMobile ? 28 : 56, alignItems: 'start' }} className="sim-layout">
-
-        {/* ─── Coluna esquerda: formulário ─── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-
-          {/* Imagem */}
-          <div style={secao}>
-            <Passo n="1" titulo="Obra" nota="opcional" />
-            {!imagem && (
-              <button onClick={() => setShowBanco(true)}
-                style={{ width: '100%', background: colors.surface, border: `1px dashed ${colors.textMuted}`, color: colors.text, borderRadius: 4, padding: '22px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body }}>
-                Escolher uma obra do acervo
-                <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: colors.textMuted, marginTop: 4 }}>ou siga sem obra se o cliente trouxer a própria imagem</span>
+        {/* ─── Esquerda: o quadro na parede ─── */}
+        <div style={{ position: isMobile ? 'static' : 'sticky', top: 96, minWidth: 0 }}>
+          {imagem ? (
+            <div style={{ position: 'relative' }}>
+              {isMobile ? (
+                <button onClick={() => setMockupAberto(true)} aria-label="Ampliar o quadro no ambiente"
+                  style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'zoom-in' }}>
+                  <MockupCanvas inline
+                    imgUrl={isKit ? null : imagem.img_url}
+                    kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
+                    slices={isKit ? 1 : nFatias}
+                    ratio={ratio || parseFloat(imagem.ratio) || 1}
+                    frameColor={mockupCor} room={mockupRoom} width={900}
+                    tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null} />
+                </button>
+              ) : (
+                <MockupCanvas inline interactive
+                  imgUrl={isKit ? null : imagem.img_url}
+                  kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
+                  slices={isKit ? 1 : nFatias}
+                  ratio={ratio || parseFloat(imagem.ratio) || 1}
+                  frameColor={mockupCor} room={mockupRoom} width={1200}
+                  tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null}
+                  onTamanhoChange={(alt) => {
+                    const f = alt / (parseFloat(altura) || alt)
+                    setAltura(String(alt))
+                    setLargura(String(um((parseFloat(largura) || 0) * f)))
+                  }} />
+              )}
+              <button onClick={() => setMockupAberto(true)}
+                style={{ position: 'absolute', right: 10, bottom: 10, background: 'rgba(14,13,10,0.72)', color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 2, fontFamily: fonts.body, cursor: 'pointer' }}>
+                Ampliar
               </button>
-            )}
-            {imagem && (
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 4, padding: 12 }}>
-                <img src={imagem.img_url} alt={imagem.titulo}
-                  style={{ width: 64, height: 64, objectFit: 'contain', background: colors.surfaceAlt, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: fonts.display, fontSize: 16, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{imagem.titulo}</div>
-                  {imagem.kitCount > 1 && <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>Composição de {imagem.kitCount} quadros</div>}
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <button onClick={() => setShowBanco(true)}
-                    style={{ background: 'none', border: `1px solid ${colors.border}`, color: colors.textMuted, borderRadius: 5, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body }}>
-                    Trocar
+            </div>
+          ) : (
+            <div style={{ aspectRatio: `${mockupRoom.w}/${mockupRoom.h}`, background: colors.surfaceAlt, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24, textAlign: 'center' }}>
+              <button onClick={() => setShowBanco(true)}
+                style={{ background: colors.text, color: colors.bg, border: 'none', borderRadius: 2, padding: '13px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body }}>
+                Escolher obra no acervo
+              </button>
+              <span style={{ fontSize: 12, color: colors.textMuted }}>ou siga sem obra, se o cliente trouxer a própria imagem</span>
+            </div>
+          )}
+
+          {imagem && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+                {ROOMS.map(room => (
+                  <button key={room.id} onClick={() => setMockupRoom(room)} aria-pressed={mockupRoom.id === room.id}
+                    style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, fontFamily: fonts.body, cursor: 'pointer', color: mockupRoom.id === room.id ? colors.text : colors.textMuted, fontWeight: mockupRoom.id === room.id ? 600 : 400 }}>
+                    {room.label}
                   </button>
-                  <button onClick={() => { setImagem(null); setRatio(null); setFatias(1); if (onImagemClear) onImagemClear() }}
-                    style={{ background: 'none', border: 'none', color: colors.textMuted, fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '4px 6px' }}>
-                    ×
-                  </button>
-                </div>
+                ))}
               </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {FRAME_COLORS.map(fc => (
+                  <button key={fc.id} title={`Moldura ${fc.label.toLowerCase()} no ambiente`} aria-label={`Moldura ${fc.label} no ambiente`} aria-pressed={mockupCor === fc.id} onClick={() => setMockupCor(fc.id)}
+                    style={{ width: 18, height: 18, borderRadius: '50%', background: fc.swatch, border: `1px solid ${fc.border}`, cursor: 'pointer', padding: 0, outline: mockupCor === fc.id ? `1.5px solid ${ink}` : 'none', outlineOffset: 2 }} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ─── Direita: as escolhas ─── */}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: colors.textMuted }}>
+            {imagem ? (isKit ? `Composição de ${imagem.kitCount} quadros` : (imagem.categoria || 'Obra do acervo')) : 'Novo pedido'}
+          </div>
+          <h1 style={{ fontFamily: fonts.display, fontSize: 24, fontWeight: 600, lineHeight: 1.2, margin: '6px 0 6px', textWrap: 'balance' }}>
+            {imagem ? imagem.titulo : 'Quadro sem obra do acervo'}
+          </h1>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <button onClick={() => setShowBanco(true)} style={{ ...linkBtn, color: colors.textMuted }}>{imagem ? 'Trocar obra' : 'Escolher obra'}</button>
+            {imagem && (
+              <button onClick={() => { setImagem(null); setRatio(null); setFatias(1); if (onImagemClear) onImagemClear() }} style={{ ...linkBtn, color: colors.textMuted }}>Remover</button>
             )}
           </div>
 
           {/* Tamanho */}
-          <div style={secao}>
-            <Passo n="2" titulo="Tamanho">
+          <div style={grupo}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+              {grupoLbl(multiPeca ? 'Tamanho total (cm)' : 'Tamanho (cm)')}
               {ratio && !isKit && (
-                <button onClick={() => setTravarRatio(t => !t)}
-                  style={{ background: 'none', border: `1px solid ${travarRatio ? ink : colors.border}`, color: travarRatio ? ink : colors.textMuted, borderRadius: 999, padding: '4px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body, transition: 'all 0.15s' }}>
-                  {travarRatio ? 'Proporção da obra: travada' : 'Proporção livre'}
+                <button onClick={() => setTravarRatio(t => !t)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted, marginBottom: 8 }}>
+                  {travarRatio ? 'Destravar proporção' : 'Travar proporção'}
                 </button>
               )}
-            </Passo>
-            {fatiasMax > 1 && (
-              <div style={{ marginBottom: 14 }}>
-                <label style={lbl}>Vender como</label>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {[1, 2, 3].filter(n => n <= fatiasMax).map(n => (
-                    <button key={n} onClick={() => { setFatias(n); setTravarRatio(true); if (ratio && largura) setAltura((parseFloat(largura) / ratio).toFixed(1)) }} style={chipBtn(nFatias === n)}>
-                      {n === 1 ? 'Quadro único' : `${n} peças`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 96px', gap: 12 }}>
-              <div>
-                <label style={lbl}>{multiPeca ? 'Largura total (cm)' : 'Largura (cm)'}</label>
-                <input style={inp} type="number" min="1" step="0.5" placeholder="ex.: 60" value={largura} onChange={e => handleLargura(e.target.value)} />
-              </div>
-              <div>
-                <label style={lbl}>Altura (cm)</label>
-                <input style={inp} type="number" min="1" step="0.5" placeholder="ex.: 40" value={altura} onChange={e => handleAltura(e.target.value)} />
-              </div>
-              <div>
-                <label style={lbl}>{multiPeca ? 'Conjuntos' : 'Quantidade'}</label>
-                <input style={inp} type="number" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
-              </div>
             </div>
-            {hasDims && !multiPeca && (
-              <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 8, letterSpacing: 0.2 }}>
-                {parseFloat(largura).toFixed(0)} × {parseFloat(altura).toFixed(0)} cm &nbsp;·&nbsp; {((parseFloat(largura) * parseFloat(altura)) / 10000).toFixed(4)} m²
+            {fatiasMax > 1 && (
+              <div style={{ ...gradeOpcoes, marginBottom: 12 }}>
+                {[1, 2, 3].filter(n => n <= fatiasMax).map(n => (
+                  <button key={n} onClick={() => { setFatias(n); setTravarRatio(true); if (ratio && largura) setAltura((parseFloat(largura) / ratio).toFixed(1)) }} style={chipBtn(nFatias === n)}>
+                    {n === 1 ? 'Quadro único' : `${n} peças`}
+                  </button>
+                ))}
               </div>
             )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: colors.textMuted }}>
+              <input style={inpTam} type="number" min="1" step="0.5" placeholder="larg." aria-label="Largura em cm" value={largura} onChange={e => handleLargura(e.target.value)} />
+              ×
+              <input style={inpTam} type="number" min="1" step="0.5" placeholder="alt." aria-label="Altura em cm" value={altura} onChange={e => handleAltura(e.target.value)} />
+              <span style={{ marginLeft: 'auto', fontSize: 13 }}>{multiPeca ? 'Conj.' : 'Qtd.'}</span>
+              <input style={{ ...inpTam, width: 56 }} type="number" min="1" aria-label="Quantidade" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+            </div>
             {hasDims && multiPeca && (
-              <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 10, lineHeight: 1.5 }}>
-                <span style={{ color: colors.text, fontWeight: 600 }}>{descPecas}</span>
-                <br />
-                {isKit
-                  ? 'Todas com a mesma altura; cada peça mantém a proporção original da obra, sem corte.'
-                  : `A obra inteira é dividida em ${pecas.length} faixas iguais, lado a lado.`}
+              <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 8, lineHeight: 1.5 }}>
+                {descPecas} · {isKit ? 'mesma altura, cada peça na proporção original' : 'a obra dividida em faixas iguais'}
               </div>
             )}
           </div>
 
-          {/* Montagem + Vidro */}
-          <div style={tipoMontagem ? { marginBottom: 20 } : secao}>
-            <Passo n="3" titulo="Acabamento" />
+          {/* Acabamento */}
+          <div style={grupo}>
+            {grupoLbl('Acabamento')}
             {montagems.length === 0 ? (
               <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>Nenhuma montagem disponível.</p>
             ) : (
               <div style={gradeOpcoes}>
                 {canvasMontagens.length > 0 && (
-                  opcaoBtn({ on: tipoMontagem === 'canvas', onClick: () => handleTipoMontagem('canvas'), titulo: 'Canvas', sub: 'impressão em canvas' })
+                  <button onClick={() => handleTipoMontagem('canvas')} style={chipBtn(tipoMontagem === 'canvas')} aria-pressed={tipoMontagem === 'canvas'}>Canvas</button>
                 )}
                 {convenMontagens.length > 0 && (
-                  opcaoBtn({ on: tipoMontagem === 'convencional', onClick: () => handleTipoMontagem('convencional'), titulo: 'Papel', sub: 'impressão em papel' })
+                  <button onClick={() => handleTipoMontagem('convencional')} style={chipBtn(tipoMontagem === 'convencional')} aria-pressed={tipoMontagem === 'convencional'}>Papel</button>
                 )}
               </div>
             )}
-
             {tipoMontagem && montagensDoTipo.length > 1 && (
-              <div style={{ marginTop: 12 }}>
-                <label style={lbl}>Especificação</label>
-                <select style={inp} value={montagemId} onChange={e => setMontagemId(e.target.value)}>
-                  <option value="">Selecione...</option>
-                  {montagensDoTipo.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                </select>
+              <div style={{ ...gradeOpcoes, marginTop: 8 }}>
+                {montagensDoTipo.map(m => (
+                  <button key={m.id} onClick={() => setMontagemId(m.id)} style={chipBtn(montagemId === m.id)} aria-pressed={montagemId === m.id}>{m.nome}</button>
+                ))}
               </div>
             )}
-
           </div>
 
-          {/* Moldura — antes do vidro */}
+          {/* Moldura */}
           {framesDoTipo.length > 0 && tipoMontagem && (
-            <div style={tipoMontagem === 'convencional' && molduraId ? { marginBottom: 20 } : secao}>
-              {grupoLbl('Moldura', moldura ? infoMoldura(moldura).rotulo : null)}
+            <div style={grupo}>
+              {grupoLbl('Moldura')}
               <div style={gradeOpcoes}>
-                {framesDoTipo.map(f => opcaoBtn({
-                  key: f.id, on: molduraId === f.id, onClick: () => setMolduraId(f.id),
-                  titulo: f.rotulo, sub: f.width_cm ? `perfil de ${String(f.width_cm).replace('.', ',')} cm` : null,
-                }))}
-              </div>
-            </div>
-          )}
-
-          {/* Vidro — após moldura */}
-          {tipoMontagem === 'convencional' && molduraId && glassOptions.length > 0 && (
-            <div style={secao}>
-              {grupoLbl('Vidro', glassOptions.find(g => g.id === tipoVidro)?.label)}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {glassOptions.map(g => (
-                  <button key={g.id} onClick={() => setTipoVidro(g.id)} style={chipBtn(tipoVidro === g.id)}>
-                    {g.label}
-                  </button>
+                {framesDoTipo.map(f => (
+                  <button key={f.id} onClick={() => setMolduraId(f.id)} style={chipBtn(molduraId === f.id)} aria-pressed={molduraId === f.id}>{f.rotulo}</button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Cliente */}
-          <div style={secao}>
-            <Passo n="4" titulo="Cliente e entrega" nota="opcional" />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-              <div>
-                <label style={lbl}>Nome</label>
-                <input style={inp} placeholder="Nome do cliente" value={clienteNome} onChange={e => setClienteNome(e.target.value)} />
-              </div>
-              <div>
-                <label style={lbl}>Contato</label>
-                <input style={inp} placeholder="(11) 99999-9999" value={clienteContato} onChange={e => setClienteContato(e.target.value)} />
+          {/* Vidro */}
+          {tipoMontagem === 'convencional' && molduraId && glassOptions.length > 0 && (
+            <div style={grupo}>
+              {grupoLbl('Vidro')}
+              <div style={gradeOpcoes}>
+                {glassOptions.map(g => (
+                  <button key={g.id} onClick={() => setTipoVidro(g.id)} style={chipBtn(tipoVidro === g.id)} aria-pressed={tipoVidro === g.id}>{g.label}</button>
+                ))}
               </div>
             </div>
-            <label style={lbl}>Forma de entrega</label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: formaEntrega === 'entrega' ? 12 : 0 }}>
+          )}
+
+          {/* Cliente e entrega (obrigatório) */}
+          <div style={grupo}>
+            {grupoLbl('Cliente')}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+              <input style={{ ...inp, fontSize: 14, padding: '10px 12px' }} placeholder="Nome do cliente" aria-label="Nome do cliente" required value={clienteNome} onChange={e => setClienteNome(e.target.value)} />
+              <input style={{ ...inp, fontSize: 14, padding: '10px 12px' }} placeholder="Telefone ou e-mail" aria-label="Contato do cliente" required value={clienteContato} onChange={e => setClienteContato(e.target.value)} />
+            </div>
+            <div style={{ ...gradeOpcoes, marginBottom: formaEntrega === 'entrega' ? 10 : 0 }}>
               {[{ id: 'retirada', label: 'Retira na loja' }, { id: 'entrega', label: 'Entrega no endereço' }].map(f => (
-                <button key={f.id} onClick={() => setFormaEntrega(f.id)} style={chipBtn(formaEntrega === f.id)}>
-                  {f.label}
-                </button>
+                <button key={f.id} onClick={() => setFormaEntrega(f.id)} style={chipBtn(formaEntrega === f.id)} aria-pressed={formaEntrega === f.id}>{f.label}</button>
               ))}
             </div>
             {formaEntrega === 'entrega' && (
-              <div>
-                <label style={lbl}>Endereço de entrega</label>
-                <input style={inp} placeholder="Rua, número, bairro, cidade..." value={enderecoEntrega} onChange={e => setEnderecoEntrega(e.target.value)} />
+              <input style={{ ...inp, fontSize: 14, padding: '10px 12px' }} placeholder="Rua, número, bairro, cidade..." aria-label="Endereço de entrega" required value={enderecoEntrega} onChange={e => setEnderecoEntrega(e.target.value)} />
+            )}
+            {(maisAberto || obs) ? (
+              <div style={{ marginTop: 14 }}>
+                <textarea style={{ ...inp, fontSize: 14, resize: 'vertical', minHeight: 64 }} aria-label="Observações para o estúdio"
+                  placeholder="Observações para o estúdio: prazo, acabamento especial..."
+                  value={obs} onChange={e => setObs(e.target.value)} />
               </div>
+            ) : (
+              <button onClick={() => setMaisAberto(true)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted, marginTop: 12 }}>+ Observações para o estúdio</button>
             )}
           </div>
 
-          {/* Observações */}
-          <div>
-            <label style={lbl}>Observações para o estúdio (opcional)</label>
-            <textarea
-              style={{ ...inp, resize: 'vertical', minHeight: 64 }}
-              placeholder="Prazo, acabamento especial, instruções de produção..."
-              value={obs}
-              onChange={e => setObs(e.target.value)}
-            />
-          </div>
-
-        </div>
-
-        {/* ─── Painel direito: resumo ─── */}
-        <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, padding: 24, position: isMobile ? 'static' : 'sticky', top: 96 }}>
-
-          <div style={sectionLine}>Ficha do quadro</div>
-
-          {/* Mockup */}
-          {imagem ? (
-            <div style={{ marginBottom: 16 }}>
-              <button onClick={() => setMockupAberto(true)} aria-label="Ampliar o quadro no ambiente"
-                style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', position: 'relative' }}>
-              <MockupCanvas
-                imgUrl={isKit ? null : imagem.img_url}
-                kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
-                slices={isKit ? 1 : nFatias}
-                tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null}
-                ratio={ratio || parseFloat(imagem.ratio) || 1} width={250} />
-                <span style={{ position: 'absolute', right: 8, bottom: 8, background: 'rgba(14,13,10,0.75)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '4px 9px', borderRadius: 999, fontFamily: fonts.body }}>
-                  Ampliar
-                </span>
-              </button>
-            </div>
-          ) : (
-            <div style={{ aspectRatio: '4/3', background: colors.surfaceAlt, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 13, color: colors.textMuted }}>A obra escolhida aparece aqui</span>
-            </div>
-          )}
-
-          {/* Itens do resumo */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
-            {hasDims && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
-                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Tamanho</span>
-                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>
-                  {multiPeca ? descPecas : `${parseFloat(largura).toFixed(0)} × ${parseFloat(altura).toFixed(0)} cm`}
-                  {parseInt(quantidade) > 1 ? ` · ${quantidade} ${multiPeca ? 'conjuntos' : 'un.'}` : ''}
-                </span>
-              </div>
-            )}
-            {tipoMontagem && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
-                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Montagem</span>
-                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>
-                  {tipoMontagem === 'canvas' ? 'Canvas' : 'Papel'}{montagem ? ` · ${montagem.nome}` : ''}
-                </span>
-              </div>
-            )}
-            {tipoVidro && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
-                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Vidro</span>
-                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right' }}>
-                  {GLASS_TYPES.find(g => g.id === tipoVidro)?.label}
-                </span>
-              </div>
-            )}
-            {moldura && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
-                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Moldura</span>
-                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>
-                  {infoMoldura(moldura).rotulo}
-                </span>
-              </div>
-            )}
-            {clienteNome && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
-                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Cliente</span>
-                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right', wordBreak: 'break-word' }}>{clienteNome}</span>
-              </div>
-            )}
-            {formaEntrega && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
-                <span style={{ color: colors.textMuted, flexShrink: 0 }}>Entrega</span>
-                <span style={{ color: colors.text, fontWeight: 500, textAlign: 'right' }}>{formaEntrega === 'retirada' ? 'Retira na loja' : 'Entrega'}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Total — só aparece com moldura selecionada */}
-          {preco && preco.totalGeral > 0 && molduraId ? (
-            <div style={{ borderTop: `1px solid ${colors.text}`, marginTop: 18, paddingTop: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>Preço para o cliente</span>
-                <span style={{ fontFamily: fonts.display, fontSize: 30, fontWeight: 600, color: colors.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                  {formatCurrency(preco.totalGeral)}
-                </span>
-              </div>
-              {preco.qty > 1 && (
-                <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {formatCurrency(preco.totalPeca)} por {multiPeca ? 'conjunto' : 'unidade'}
+          {/* Total */}
+          <div style={{ borderTop: `1px solid ${colors.border}`, marginTop: 30, paddingTop: 18 }}>
+            {precoPronto ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                  <span style={{ fontSize: 13, color: colors.textMuted }}>Total</span>
+                  <span style={{ fontFamily: fonts.display, fontSize: 30, fontWeight: 600, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                    {formatCurrency(preco.totalGeral)}
+                  </span>
                 </div>
-              )}
-              {markupPct > 0 && (
-                <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 8 }}>Já inclui o seu markup de {markupPct}%.</div>
-              )}
-            </div>
-          ) : (
-            <div style={{ borderTop: `1px solid ${colors.border}`, marginTop: 18, paddingTop: 16, fontSize: 13, color: colors.textMuted, lineHeight: 1.5 }}>
-              Defina o tamanho, o acabamento e a moldura para ver o preço.
-            </div>
-          )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6, fontSize: 12, color: colors.textMuted }}>
+                  <span>{preco.qty > 1 ? `${formatCurrency(preco.totalPeca)} por ${multiPeca ? 'conjunto' : 'unidade'}` : ''}</span>
+                  <button onClick={() => setVerCusto(v => !v)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted }}>
+                    {verCusto ? 'ocultar custo e lucro' : 'ver custo e lucro'}
+                  </button>
+                </div>
+                {verCusto && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ color: colors.textMuted }}>Custo do estúdio {formatCurrency(precoB2b)}</span>
+                    <span style={{ color: colors.success, fontWeight: 600 }}>Seu lucro {formatCurrency(preco.totalGeral - precoB2b)}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ fontSize: 13, color: colors.textMuted, lineHeight: 1.5 }}>
+                Defina o tamanho, o acabamento e a moldura para ver o preço.
+              </div>
+            )}
+          </div>
 
           {erro && (
             <div role="alert" style={{ marginTop: 16, background: colors.danger + '10', borderLeft: `3px solid ${colors.danger}`, padding: '10px 12px', fontSize: 13, color: colors.danger, lineHeight: 1.45 }}>
@@ -784,35 +673,16 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
-            <button
-              onClick={() => handleEnviar('novo')}
-              disabled={!!enviando}
-              style={{
-                background: enviando === 'novo' ? colors.textMuted : colors.text,
-                color: colors.bg, border: 'none', borderRadius: 999,
-                padding: '15px', fontSize: 15, fontWeight: 700,
-                cursor: enviando ? 'default' : 'pointer',
-                fontFamily: fonts.body, transition: 'background 0.15s',
-              }}>
-              {enviando === 'novo' ? 'Enviando…' : 'Enviar pedido ao estúdio'}
-            </button>
-            <button
-              onClick={() => handleEnviar('orcamento')}
-              disabled={!!enviando}
-              style={{
-                background: 'transparent', color: colors.text,
-                border: `1px solid ${colors.text}`, borderRadius: 999,
-                padding: '13px', fontSize: 14, fontWeight: 600,
-                cursor: enviando ? 'default' : 'pointer',
-                fontFamily: fonts.body, opacity: enviando === 'orcamento' ? 0.6 : 1,
-              }}>
+          <button onClick={() => handleEnviar('novo')} disabled={!!enviando}
+            style={{ marginTop: 18, width: '100%', background: enviando === 'novo' ? colors.textMuted : colors.text, color: colors.bg, border: 'none', borderRadius: 2, padding: 15, fontSize: 15, fontWeight: 600, cursor: enviando ? 'default' : 'pointer', fontFamily: fonts.body }}>
+            {enviando === 'novo' ? 'Enviando…' : 'Enviar pedido ao estúdio'}
+          </button>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+            <button onClick={() => handleEnviar('orcamento')} disabled={!!enviando} title="Fica em Meus pedidos para você mandar ao cliente e confirmar depois" style={{ ...linkBtn, opacity: enviando === 'orcamento' ? 0.6 : 1 }}>
               {enviando === 'orcamento' ? 'Salvando…' : 'Salvar como orçamento'}
             </button>
-            <div style={{ fontSize: 12, color: colors.textMuted, textAlign: 'center', lineHeight: 1.45 }}>
-              O orçamento fica guardado para você mandar ao cliente e confirmar depois.
-            </div>
           </div>
+
         </div>
 
       </div>

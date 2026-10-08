@@ -28,7 +28,7 @@ export const ROOMS = [
     src: '/ambiente-quarto.jpg',
     w: 1920, h: 1076,
     zone: { top: 0.04, bottom: 0.48, left: 0.25, right: 0.72 },
-    paredeCm: 166, // cama casal ≈ 170 cm ocupa 48% da largura
+    paredeCm: 255, // travesseiros de 70 cm junto à parede ≈ 1,85 px/cm a 1000 px → zona de 47% ≈ 255 cm (cama queen ≈ 158 cm)
     thumb: { top: 0.0, bottom: 1.0, left: 0.0, right: 1.0 },
   },
   {
@@ -323,7 +323,7 @@ export function FramedArtThumb({ src, srcs }) {
 // MockupCanvas: modo normal (interactive=false) ou interativo (drag + resize)
 // tamanhoCm = { altura }: desenha o quadro no tamanho real em relação à parede (ambientes com paredeCm)
 // onTamanhoChange(alturaCm): com tamanho real, puxar um canto muda o tamanho do pedido
-export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null, onTamanhoChange = null }) {
+export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null, onTamanhoChange = null, inline = false }) {
   const canvasRef = useRef()
   const roomCfg = room || ROOMS[0]
 
@@ -424,13 +424,13 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     stateRef.current = zoneCenter()
     loadedRef.current = { roomImg: null, artImgs: null, ratios: null }
 
-    const canvas = canvasRef.current
-    if (canvas) { canvas.width = W; canvas.height = H }
-
+    // Só redimensiona o canvas quando o ambiente novo carregou: evita a tela em branco e o "pulo" da página
     Promise.all([
       loadRoomImg(roomCfg.src),
       Promise.all(urls.map(u => loadImg(u).catch(() => null))),
     ]).then(([roomImg, loaded]) => {
+      const canvas = canvasRef.current
+      if (canvas) { canvas.width = W; canvas.height = H }
       const artImgs = expandSlices(loaded, slices)
       loadedRef.current = { roomImg, artImgs, ratios: artImgs.map(artRatio) }
       redraw()
@@ -516,12 +516,11 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
 
   const handleUp = () => { dragRef.current = null }
 
+  // inline: ocupa a largura da coluna (tela do pedido); senão cabe na tela (modal ampliado)
   const canvasStyle = {
-    maxWidth: '100%',
-    maxHeight: 'calc(100vh - 320px)',
-    width: 'auto',
-    height: 'auto',
-    borderRadius: 8,
+    ...(inline
+      ? { width: '100%', height: 'auto', aspectRatio: `${W}/${H}`, borderRadius: 0, background: '#e9e6e0' }
+      : { maxWidth: '100%', maxHeight: 'calc(100vh - 320px)', width: 'auto', height: 'auto', borderRadius: 8 }),
     display: 'block',
     margin: '0 auto',
     ...(interactive ? { cursor: 'grab', touchAction: 'none' } : {}),
