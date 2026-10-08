@@ -37,6 +37,12 @@ function calcPreco({ montagem, moldura, w, h, qty, materials, substrates, tipoVi
         const base = areaM2 * (parseFloat(mat.sell_price) || 0)
         if (base > 0) lines.push({ label: mat.name, valor: base * markup })
 
+      } else if (role === 'custo_fixo') {
+        // valor próprio da montagem: por unidade, metro linear (perímetro externo) ou m² (área da arte)
+        const q = item.unidade === 'metro_linear' ? perimComMolduraM : item.unidade === 'm2' ? areaM2 : 1
+        const base = q * (parseFloat(item.valor) || 0)
+        if (base > 0) lines.push({ label: item.descricao || 'Custo fixo', valor: base * markup })
+
       } else if (role === 'verniz_opcional' || role === 'acabamento_fixo') {
         // ignorado no simulador lojista (sem config de valor fixo)
         continue
