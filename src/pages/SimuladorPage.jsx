@@ -700,8 +700,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
         {grupoLbl('Materiais de impressão')}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 24 : 32, marginTop: 14 }}>
           {[
-            { img: 'material-canvas', titulo: 'Canvas de algodão 360 g/m²', texto: 'Tela de algodão encorpada, com a trama aparente que dá textura de pintura. Esticada no chassi e acabada com moldura canaleta, que deixa um respiro entre a tela e a moldura.' },
-            { img: 'material-papel', titulo: 'Papel fotográfico fosco 180 g/m²', texto: 'Acabamento fosco, sem brilho, que reproduz detalhes finos e cores fiéis. Vai em moldura caixa, com ou sem vidro.' },
+            { img: 'material-canvas', titulo: 'Canvas algodão 360 gsm', texto: 'Tela de algodão encorpada, com a trama aparente que dá textura de pintura. Esticada no chassi e acabada com moldura canaleta, que deixa um respiro entre a tela e a moldura.' },
+            { img: 'material-papel', titulo: 'Papel fotográfico fosco 180 gsm', texto: 'Acabamento fosco, sem brilho, que reproduz detalhes finos e cores fiéis. Vai em moldura caixa, com ou sem vidro.' },
           ].map(m => (
             <figure key={m.img} style={{ margin: 0 }}>
               <img src={`/molduras/${m.img}.jpg`} alt={m.titulo} loading="lazy"
