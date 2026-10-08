@@ -19,10 +19,16 @@ export default function LoginPage() {
 
   const S = {
     page: { minHeight: '100vh', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', background: colors.bg, fontFamily: fonts.body, color: colors.text },
-    side: { background: colors.text, color: colors.bg, padding: 'clamp(32px, 6vw, 72px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 40, minHeight: 280 },
-    sideBrand: { fontSize: 11, fontWeight: 600, letterSpacing: 1.8, textTransform: 'uppercase', opacity: 0.7 },
+    // Foto: obra do acervo na parede (public/login-ambiente.jpg). Degradês garantem a leitura do texto por cima.
+    side: {
+      backgroundColor: colors.text, color: '#fff',
+      backgroundImage: 'linear-gradient(to bottom, rgba(14,13,10,0.45) 0%, rgba(14,13,10,0) 22%, rgba(14,13,10,0) 45%, rgba(14,13,10,0.88) 82%), url(/login-ambiente.jpg)',
+      backgroundSize: 'cover', backgroundPosition: 'center 12%',
+      padding: 'clamp(32px, 6vw, 72px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 40, minHeight: 420,
+    },
+    sideBrand: { fontSize: 11, fontWeight: 600, letterSpacing: 1.8, textTransform: 'uppercase', opacity: 0.9 },
     sideTitle: { fontFamily: fonts.display, fontSize: 'clamp(31px, 4.7vw, 53px)', fontWeight: 600, lineHeight: 1, letterSpacing: -1, textWrap: 'balance' },
-    sideText: { fontSize: 15, lineHeight: 1.55, opacity: 0.75, maxWidth: 380, marginTop: 18 },
+    sideText: { fontSize: 15, lineHeight: 1.55, opacity: 0.85, maxWidth: 380, marginTop: 18 },
     main: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(32px, 6vw, 72px) 24px' },
     form: { width: '100%', maxWidth: 360 },
     title: { fontFamily: fonts.display, fontSize: 27, fontWeight: 600, lineHeight: 1.1 },
@@ -38,15 +44,15 @@ export default function LoginPage() {
       <aside style={S.side}>
         <div style={S.sideBrand}>Estúdio ABC · Portal do lojista</div>
         <div>
-          <div style={S.sideTitle}>Arte emoldurada para vender na sua loja.</div>
-          <p style={S.sideText}>Escolha obras do acervo, veja o quadro na parede do cliente e envie o pedido direto para a produção.</p>
+          <div style={S.sideTitle}>Seu cliente escolhe.<br />A gente produz.</div>
+          <p style={S.sideText}>Mais de mil obras, simulação na parede e preço na hora. O Estúdio ABC imprime e emoldura.</p>
         </div>
       </aside>
 
       <main style={S.main}>
         <form onSubmit={handleSubmit} style={S.form}>
           <h1 style={S.title}>Entrar</h1>
-          <p style={S.subtitle}>Use o e-mail e a senha que o Estúdio ABC cadastrou para você.</p>
+          <p style={S.subtitle}>Entre com o e-mail cadastrado pelo Estúdio ABC.</p>
 
           {error && (
             <div style={S.error} role="alert">
@@ -87,7 +93,7 @@ export default function LoginPage() {
           </div>
 
           <p style={{ fontSize: 13, color: colors.textMuted, marginTop: 24, lineHeight: 1.5 }}>
-            Esqueceu a senha ou ainda não tem acesso? Fale com o Estúdio ABC.
+            Esqueceu a senha? Fale com o Estúdio ABC.
           </p>
         </form>
       </main>
