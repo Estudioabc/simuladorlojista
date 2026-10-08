@@ -5,7 +5,7 @@ import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
 import MockupCanvas, { ROOMS } from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
-import { infoMoldura } from '../utils/molduras'
+import { infoMoldura, CORES_MOLDURA } from '../utils/molduras'
 
 // Espelhado em sim-pedido (PrintFramePro), que recalcula no servidor — manter os dois iguais
 function calcPreco({ montagem, moldura, w, h, qty, materials, substrates, tipoVidro, markupPct }) {
@@ -91,11 +91,6 @@ function maxFatias(img, ratio) {
   return ratio >= 2 ? 3 : ratio >= 1.5 ? 2 : 1
 }
 
-const FRAME_COLORS = [
-  { id: 'branco', label: 'Branco', swatch: '#f8f6f3', border: '#ccc' },
-  { id: 'preto', label: 'Preto', swatch: '#1a1a1a', border: '#000' },
-  { id: 'madeira', label: 'Madeira', swatch: '#8B5E3C', border: '#6b4828' },
-]
 
 const um = (v) => Math.round(v * 10) / 10
 const cm = (v) => String(um(v)).replace('.', ',')
@@ -130,7 +125,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const [showBanco, setShowBanco] = useState(false)
   const [mockupAberto, setMockupAberto] = useState(false)
   const [mockupRoom, setMockupRoom] = useState(ROOMS[0])
-  const [mockupCor, setMockupCor] = useState('preto')
+  const [molduraCor, setMolduraCor] = useState('') // id em CORES_MOLDURA; vai no pedido e pinta o mockup
   const [enviando, setEnviando] = useState(null) // null | 'novo' | 'orcamento'
   const [sucesso, setSucesso] = useState(null) // null | 'novo' | 'orcamento'
   const [erro, setErro] = useState('')
@@ -264,7 +259,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const handleTipoMontagem = (tipo) => {
     setTipoMontagem(tipo)
     setTipoVidro('')
-    setMolduraId('') // categorias de canvas e de papel são molduras diferentes
+    // categorias de canvas e de papel são molduras diferentes; se o tipo tem uma só, já vem escolhida
+    const doTipo = frames.filter(f => { const t = infoMoldura(f).tipo; return !t || t === tipo })
+    setMolduraId(doTipo.length === 1 ? doTipo[0].id : '')
     // Auto-seleciona o único mount_type do tipo, se houver só 1
     const lista = tipo === 'canvas' ? canvasMontagens : convenMontagens
     setMontagemId(lista.length === 1 ? lista[0].id : '')
@@ -273,7 +270,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const resetForm = () => {
     setImagem(null); setLargura(''); setAltura(''); setQuantidade('1'); setFatias(1)
     setTipoMontagem(''); setMontagemId(''); setTipoVidro('')
-    setSubstratoId(''); setMolduraId(''); setObs('')
+    setSubstratoId(''); setMolduraId(''); setMolduraCor(''); setObs('')
     setClienteNome(''); setClienteContato(''); setFormaEntrega(''); setEnderecoEntrega('')
     setRatio(null); setTravarRatio(true)
     if (onImagemClear) onImagemClear()
@@ -284,6 +281,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     if (!tipoMontagem) { setErro('Selecione o tipo de montagem (Canvas ou Quadro Convencional).'); return }
     if (tipoMontagem === 'convencional' && !tipoVidro) { setErro('Selecione o tipo de vidro.'); return }
     if (framesDoTipo.length > 0 && !molduraId) { setErro('Selecione a categoria da moldura.'); return }
+    if (framesDoTipo.length > 0 && !molduraCor) { setErro('Escolha a cor da moldura.'); return }
     if (!clienteNome.trim() || !clienteContato.trim()) { setErro('Informe o nome e o contato do cliente.'); return }
     if (!formaEntrega) { setErro('Escolha a forma de entrega.'); return }
     if (formaEntrega === 'entrega' && !enderecoEntrega.trim()) { setErro('Informe o endereço de entrega.'); return }
@@ -309,6 +307,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
           })(),
           moldura_id: molduraId || null,
           moldura_nome: moldura?.name ?? null,
+          moldura_cor: CORES_MOLDURA.find(c => c.id === molduraCor)?.label ?? null,
           largura_cm: parseFloat(largura),
           altura_cm: parseFloat(altura),
           quantidade: parseInt(quantidade) || 1,
@@ -463,7 +462,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                     kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
                     slices={isKit ? 1 : nFatias}
                     ratio={ratio || parseFloat(imagem.ratio) || 1}
-                    frameColor={mockupCor} room={mockupRoom} width={900}
+                    frameColor={molduraCor || 'preta'} room={mockupRoom} width={900}
                     tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null} />
                 </button>
               ) : (
@@ -472,7 +471,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                   kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
                   slices={isKit ? 1 : nFatias}
                   ratio={ratio || parseFloat(imagem.ratio) || 1}
-                  frameColor={mockupCor} room={mockupRoom} width={1200}
+                  frameColor={molduraCor || 'preta'} room={mockupRoom} width={1200}
                   tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null}
                   onTamanhoChange={(alt) => {
                     const f = alt / (parseFloat(altura) || alt)
@@ -503,12 +502,6 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
                     style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, fontFamily: fonts.body, cursor: 'pointer', color: mockupRoom.id === room.id ? colors.text : colors.textMuted, fontWeight: mockupRoom.id === room.id ? 600 : 400 }}>
                     {room.label}
                   </button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {FRAME_COLORS.map(fc => (
-                  <button key={fc.id} title={`Moldura ${fc.label.toLowerCase()} no ambiente`} aria-label={`Moldura ${fc.label} no ambiente`} aria-pressed={mockupCor === fc.id} onClick={() => setMockupCor(fc.id)}
-                    style={{ width: 18, height: 18, borderRadius: '50%', background: fc.swatch, border: `1px solid ${fc.border}`, cursor: 'pointer', padding: 0, outline: mockupCor === fc.id ? `1.5px solid ${ink}` : 'none', outlineOffset: 2 }} />
                 ))}
               </div>
             </div>
@@ -587,13 +580,28 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             )}
           </div>
 
-          {/* Moldura */}
-          {framesDoTipo.length > 0 && tipoMontagem && (
+          {/* Moldura (categoria) — só aparece se o tipo tiver mais de uma */}
+          {framesDoTipo.length > 1 && tipoMontagem && (
             <div style={grupo}>
               {grupoLbl('Moldura')}
               <div style={gradeOpcoes}>
                 {framesDoTipo.map(f => (
                   <button key={f.id} onClick={() => setMolduraId(f.id)} style={chipBtn(molduraId === f.id)} aria-pressed={molduraId === f.id}>{f.rotulo}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cor da moldura — mesmo preço; vai no pedido e pinta o mockup */}
+          {framesDoTipo.length > 0 && tipoMontagem && (
+            <div style={grupo}>
+              {grupoLbl('Cor da moldura')}
+              <div style={gradeOpcoes}>
+                {CORES_MOLDURA.map(c => (
+                  <button key={c.id} onClick={() => setMolduraCor(c.id)} style={{ ...chipBtn(molduraCor === c.id), display: 'inline-flex', alignItems: 'center', gap: 8 }} aria-pressed={molduraCor === c.id}>
+                    <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: '50%', background: c.hex, border: '1px solid rgba(0,0,0,0.18)', flexShrink: 0 }} />
+                    {c.label}
+                  </button>
                 ))}
               </div>
             </div>
@@ -687,6 +695,45 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
 
       </div>
 
+      {/* Materiais de impressão (fotos reais) */}
+      <section aria-label="Materiais de impressão" style={{ borderTop: `1px solid ${colors.border}`, marginTop: 56, paddingTop: 28 }}>
+        {grupoLbl('Materiais de impressão')}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 24 : 32, marginTop: 14 }}>
+          {[
+            { img: 'material-canvas', titulo: 'Canvas de algodão 360 g/m²', texto: 'Tela de algodão encorpada, com a trama aparente que dá textura de pintura. Esticada no chassi e acabada com moldura canaleta, que deixa um respiro entre a tela e a moldura.' },
+            { img: 'material-papel', titulo: 'Papel sintético', texto: 'Superfície lisa, que reproduz detalhes finos e cores vivas. Resistente à umidade e a rasgos. Vai em moldura caixa, com ou sem vidro.' },
+          ].map(m => (
+            <figure key={m.img} style={{ margin: 0 }}>
+              <img src={`/molduras/${m.img}.jpg`} alt={m.titulo} loading="lazy"
+                style={{ width: '100%', aspectRatio: '3 / 2', objectFit: 'cover', display: 'block', background: colors.surfaceAlt }} />
+              <figcaption style={{ marginTop: 12 }}>
+                <div style={{ fontFamily: fonts.display, fontSize: 17, fontWeight: 600 }}>{m.titulo}</div>
+                <p style={{ fontSize: 13, color: colors.textMuted, lineHeight: 1.55, margin: '6px 0 0', maxWidth: 460 }}>{m.texto}</p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+
+      {/* Referência das molduras (fotos reais do canto) */}
+      <section aria-label="Conheça as molduras" style={{ marginTop: 40 }}>
+        {grupoLbl('Conheça as molduras')}
+        {[{ tipo: 'canvas', titulo: 'Canvas', sub: 'moldura canaleta' }, { tipo: 'papel', titulo: 'Papel', sub: 'moldura caixa' }].map(g => (
+          <div key={g.tipo} style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 13, marginBottom: 8 }}><strong style={{ fontWeight: 600 }}>{g.titulo}</strong> <span style={{ color: colors.textMuted }}>· {g.sub}</span></div>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? 3 : 5}, minmax(0, 1fr))`, gap: 10 }}>
+              {CORES_MOLDURA.map(c => (
+                <figure key={c.id} style={{ margin: 0 }}>
+                  <img src={`/molduras/${g.tipo}-${c.id}.jpg`} alt={`Moldura ${g.sub} ${c.label.toLowerCase()}`} loading="lazy"
+                    style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block', background: colors.surfaceAlt }} />
+                  <figcaption style={{ fontSize: 12, color: colors.textMuted, marginTop: 6 }}>{c.label}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
       {mockupAberto && imagem && (
         <div role="dialog" aria-modal="true" aria-label="Quadro no ambiente" onClick={e => { if (e.target === e.currentTarget) setMockupAberto(false) }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(14,13,10,0.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', zIndex: 1000, padding: '20px 16px', overflowY: 'auto' }}>
@@ -701,9 +748,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase' }}>Moldura</span>
-              {FRAME_COLORS.map(fc => (
-                <button key={fc.id} title={fc.label} aria-label={`Moldura ${fc.label}`} aria-pressed={mockupCor === fc.id} onClick={() => setMockupCor(fc.id)}
-                  style={{ width: 26, height: 26, borderRadius: '50%', background: fc.swatch, border: `2px solid ${fc.border}`, cursor: 'pointer', outline: mockupCor === fc.id ? '2px solid #fff' : 'none', outlineOffset: 2 }} />
+              {CORES_MOLDURA.map(fc => (
+                <button key={fc.id} title={fc.label} aria-label={`Moldura ${fc.label}`} aria-pressed={(molduraCor || 'preta') === fc.id} onClick={() => setMolduraCor(fc.id)}
+                  style={{ width: 26, height: 26, borderRadius: '50%', background: fc.hex, border: '2px solid rgba(255,255,255,0.25)', cursor: 'pointer', outline: (molduraCor || 'preta') === fc.id ? '2px solid #fff' : 'none', outlineOffset: 2 }} />
               ))}
             </div>
           </div>
@@ -712,7 +759,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
             slices={isKit ? 1 : nFatias}
             ratio={ratio || parseFloat(imagem.ratio) || 1}
-            frameColor={mockupCor}
+            frameColor={molduraCor || 'preta'}
             width={1100}
             room={mockupRoom}
             interactive

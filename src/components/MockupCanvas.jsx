@@ -46,6 +46,12 @@ const FRAME_STYLES = {
   branco:  { fill: '#f8f6f3', stroke: '#dedad4', inner: 'rgba(0,0,0,0.05)' },
   preto:   { fill: '#1a1a1a', stroke: '#000',    inner: 'rgba(255,255,255,0.06)' },
   madeira: { fill: '#8B5E3C', stroke: '#6b4828', inner: 'rgba(255,255,255,0.08)' },
+  // cores reais das molduras (utils/molduras.js → CORES_MOLDURA)
+  escura:  { fill: '#4b2c20', stroke: '#2e1a12', inner: 'rgba(255,255,255,0.07)' },
+  clara:   { fill: '#d8bd8f', stroke: '#b89a6a', inner: 'rgba(0,0,0,0.06)' },
+  mel:     { fill: '#a4602b', stroke: '#7a4419', inner: 'rgba(255,255,255,0.08)' },
+  branca:  { fill: '#f1f0ec', stroke: '#d9d6cf', inner: 'rgba(0,0,0,0.05)' },
+  preta:   { fill: '#1c1c1e', stroke: '#000',    inner: 'rgba(255,255,255,0.06)' },
 }
 
 function loadImg(src) {
