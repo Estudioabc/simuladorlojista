@@ -58,7 +58,7 @@ export default function RepComissoesPage() {
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.loja || 'Loja'}</div>
             <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-              OS #{c.os} · {new Date(c.created_at).toLocaleDateString('pt-BR')} · pedido de {formatCurrency(c.valor_estudio)}
+              {c.pedido != null ? `Pedido nº ${c.pedido} · ` : ''}OS #{c.os} · {new Date(c.created_at).toLocaleDateString('pt-BR')} · pedido de {formatCurrency(c.valor_estudio)}
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
