@@ -6,14 +6,26 @@ import SimuladorPage from './SimuladorPage'
 import PedidosPage from './PedidosPage'
 import ConfigPage from './ConfigPage'
 import CarrinhoPage from './CarrinhoPage'
+import RepLojasPage from './RepLojasPage'
+import RepComissoesPage from './RepComissoesPage'
 import { carregarCarrinho, salvarCarrinho, CARRINHO_VAZIO } from '../utils/carrinho'
 
-const NAV = [
+const NAV_LOJISTA = [
   { id: 'banco',     label: 'Acervo' },
   { id: 'simulador', label: 'Novo pedido' },
   { id: 'pedidos',   label: 'Meus pedidos' },
   { id: 'config',    label: 'Ajustes' },
 ]
+// Representante (vendedor do estúdio): vende direto pela loja própria e acompanha a carteira e as comissões
+const NAV_REPRESENTANTE = [
+  { id: 'banco',     label: 'Acervo' },
+  { id: 'simulador', label: 'Novo pedido' },
+  { id: 'pedidos',   label: 'Pedidos' },
+  { id: 'lojas',     label: 'Minhas lojas' },
+  { id: 'comissoes', label: 'Comissões' },
+  { id: 'config',    label: 'Ajustes' },
+]
+const ROTULO_CELULAR = { simulador: 'Novo pedido', pedidos: 'Pedidos', lojas: 'Lojas' }
 
 export default function AppShell() {
   const { profile, lojista, signOut } = useAuth()
@@ -46,6 +58,10 @@ export default function AppShell() {
   }
 
   const loja = lojista?.store_name ?? profile?.name ?? 'Portal do Lojista'
+  const isRep = profile?.role === 'representante'
+  const NAV = isRep ? NAV_REPRESENTANTE : NAV_LOJISTA
+  // celular: no máximo 5 botões embaixo; o Ajustes do representante vai para o topo
+  const navCelular = isRep ? NAV.filter(n => n.id !== 'config') : NAV
 
   const S = {
     shell: { minHeight: '100vh', background: colors.bg, color: colors.text, fontFamily: fonts.body, display: 'flex', flexDirection: 'column' },
@@ -68,7 +84,7 @@ export default function AppShell() {
         <div style={S.headerInner}>
           <div style={S.brand}>
             <div style={S.loja}>{loja}</div>
-            <div style={S.sub}>Portal do lojista · Estúdio ABC</div>
+            <div style={S.sub}>{isRep ? 'Representante' : 'Portal do lojista'} · Estúdio ABC</div>
           </div>
 
           {!isMobile && (
@@ -95,6 +111,7 @@ export default function AppShell() {
                 </span>
               )}
             </button>
+            {isRep && isMobile && <button style={S.sair} onClick={() => irPara('config')}>Ajustes</button>}
             <button style={S.sair} onClick={signOut}>Sair</button>
           </div>
         </div>
@@ -126,13 +143,15 @@ export default function AppShell() {
         )}
         {tab === 'pedidos'   && <PedidosPage onNovoPedido={() => irPara('simulador')} />}
         {tab === 'config'    && <ConfigPage />}
+        {tab === 'lojas'     && isRep && <RepLojasPage />}
+        {tab === 'comissoes' && isRep && <RepComissoesPage />}
       </main>
 
       {isMobile && (
         <nav style={S.mobileNav} aria-label="Seções">
-          {NAV.map(n => (
+          {navCelular.map(n => (
             <button key={n.id} style={S.mobileBtn(tab === n.id)} onClick={() => irPara(n.id)} aria-current={tab === n.id ? 'page' : undefined}>
-              {n.id === 'simulador' ? 'Novo pedido' : n.id === 'pedidos' ? 'Pedidos' : n.label}
+              {ROTULO_CELULAR[n.id] ?? n.label}
             </button>
           ))}
         </nav>

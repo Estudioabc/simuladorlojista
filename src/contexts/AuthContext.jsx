@@ -25,12 +25,13 @@ export function AuthProvider({ children }) {
   const loadProfile = async (userId) => {
     const { data: p } = await supabase
       .from('profiles')
-      .select('id, role, name, email, tenant_id')
+      .select('id, role, name, email, tenant_id, active')
       .eq('id', userId)
       .single()
 
-    if (!p || p.role !== 'lojista') {
-      setError('Acesso restrito a lojistas cadastrados.')
+    // Portal: lojistas e representantes (vendedores do estúdio). Desativado não entra.
+    if (!p || !['lojista', 'representante'].includes(p.role) || p.active === false) {
+      setError(p?.active === false ? 'Este acesso foi desativado. Fale com o Estúdio ABC.' : 'Acesso restrito a lojistas cadastrados.')
       await supabase.auth.signOut()
       return
     }
