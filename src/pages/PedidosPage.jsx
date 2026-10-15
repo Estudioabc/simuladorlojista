@@ -25,6 +25,14 @@ function tamanhoTexto(it) {
   return `${pecas.length} peças: ${pecas.map(p => `${cmFmt(p.largura_cm)} × ${cmFmt(p.altura_cm)}`).join(' + ')} cm`
 }
 
+function acabamentoTexto(it, p) {
+  const tipo = it.tipo_montagem ?? p?.tipo_montagem
+  const vidro = it.tipo_vidro ?? p?.tipo_vidro
+  const base = tipo === 'canvas' ? 'Canvas' : tipo === 'convencional' ? 'Papel' : (it.montagem_nome || '')
+  const v = tipo === 'convencional' ? (vidro === 'sem_vidro' ? 'sem vidro' : vidro ? 'com vidro' : '') : ''
+  return [base, v].filter(Boolean).join(', ')
+}
+
 function abrirOrcamentoCliente(p, lojaNome) {
   const w = window.open('', '_blank')
   if (!w) { alert('Permita pop-ups para abrir o orçamento.'); return }
@@ -40,9 +48,10 @@ function abrirOrcamentoCliente(p, lojaNome) {
         <h2>${esc(it.imagem_titulo || 'Quadro sob medida')}</h2>
         <dl>
           ${tamanhoTexto(it) ? `<dt>Tamanho</dt><dd>${esc(tamanhoTexto(it))}</dd>` : ''}
-          ${it.montagem_nome ? `<dt>Acabamento</dt><dd>${esc(it.montagem_nome)}</dd>` : ''}
+          ${acabamentoTexto(it, p) ? `<dt>Acabamento</dt><dd>${esc(acabamentoTexto(it, p))}</dd>` : ''}
           ${it.moldura_nome ? `<dt>Moldura</dt><dd>${esc(infoMoldura(it.moldura_nome).rotulo)}</dd>` : ''}
           <dt>${pecasDe(it) ? 'Conjuntos' : 'Quantidade'}</dt><dd>${esc(it.quantidade || 1)}</dd>
+          ${(p.itens?.length > 1 && it.preco_total) ? `<dt>Valor</dt><dd>${esc(fmt(it.preco_total))}</dd>` : ''}
         </dl>
       </div>
     </div>`).join('')
@@ -299,12 +308,14 @@ export default function PedidosPage({ onNovoPedido }) {
                 {itens[0]?.imagem_url ? <img src={itens[0].imagem_url} alt="" style={S.rowThumb} /> : <div style={S.rowThumb} />}
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <div style={{ fontFamily: fonts.display, fontSize: 16, fontWeight: 600, color: colors.text, lineHeight: 1.15 }}>
-                    {itens[0]?.imagem_titulo || (p.cliente_nome ? `Quadro de ${p.cliente_nome}` : 'Quadro sob medida')}
+                    {itens.length > 1
+                      ? `${itens.length} quadros${p.cliente_nome ? ` · ${p.cliente_nome}` : ''}`
+                      : (itens[0]?.imagem_titulo || (p.cliente_nome ? `Quadro de ${p.cliente_nome}` : 'Quadro sob medida'))}
                   </div>
                   <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
                     {p.os?.number ? `OS #${p.os.number}` : `Pedido #${p.numero ?? p.id.slice(-6).toUpperCase()}`}
                     {' · '}{formatDate(p.created_at)}
-                    {p.cliente_nome && itens[0]?.imagem_titulo ? ` · ${p.cliente_nome}` : ''}
+                    {itens.length === 1 && p.cliente_nome && itens[0]?.imagem_titulo ? ` · ${p.cliente_nome}` : ''}
                   </div>
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 999, border: `1px solid ${st.color}`, color: st.color, whiteSpace: 'nowrap' }}>{st.label}</span>
@@ -363,10 +374,11 @@ export default function PedidosPage({ onNovoPedido }) {
                       <div style={{ flex: 1 }}>
                         {item.imagem_titulo && <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: colors.text }}>{item.imagem_titulo}</div>}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 20px' }}>
-                          {item.montagem_nome && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Montagem:</strong> {item.montagem_nome}</div>}
+                          {acabamentoTexto(item, p) && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Acabamento:</strong> {acabamentoTexto(item, p)}</div>}
                           {item.moldura_nome  && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Moldura:</strong> {infoMoldura(item.moldura_nome).rotulo}</div>}
                           {tamanhoTexto(item) && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Tamanho:</strong> {tamanhoTexto(item)}{item.modo === 'fatiado' ? ` (obra fatiada, total ${cmFmt(item.largura_cm)} × ${cmFmt(item.altura_cm)} cm)` : ''}</div>}
                           {item.quantidade > 1 && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>{pecasDe(item) ? 'Conjuntos' : 'Quantidade'}:</strong> {item.quantidade}</div>}
+                          {itens.length > 1 && item.preco_total > 0 && <div style={{ fontSize: 12, color: colors.textMuted }}><strong>Valor:</strong> {fmt(item.preco_total)}</div>}
                         </div>
                       </div>
                     </div>

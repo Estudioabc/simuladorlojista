@@ -1,14 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme, useIsMobile } from '../styles/theme'
 import BancoImagensPage from './BancoImagensPage'
 import SimuladorPage from './SimuladorPage'
 import PedidosPage from './PedidosPage'
 import ConfigPage from './ConfigPage'
+import CarrinhoPage from './CarrinhoPage'
+import { carregarCarrinho, salvarCarrinho, CARRINHO_VAZIO } from '../utils/carrinho'
 
 const NAV = [
   { id: 'banco',     label: 'Acervo' },
   { id: 'simulador', label: 'Novo pedido' },
+  { id: 'carrinho',  label: 'Carrinho' },
   { id: 'pedidos',   label: 'Meus pedidos' },
   { id: 'config',    label: 'Ajustes' },
 ]
@@ -19,10 +22,26 @@ export default function AppShell() {
   const [tab, setTab] = useState('banco')
   const isMobile = useIsMobile()
   const [imagemParaSimulador, setImagemParaSimulador] = useState(null)
+  const [carrinho, setCarrinho] = useState(() => carregarCarrinho(profile?.id))
+  const [editando, setEditando] = useState(null) // quadro do carrinho aberto no Novo pedido
+
+  useEffect(() => { setCarrinho(carregarCarrinho(profile?.id)) }, [profile?.id])
+  useEffect(() => { salvarCarrinho(profile?.id, carrinho) }, [carrinho, profile?.id])
+
+  // novo quadro entra no fim; quadro editado volta para o mesmo lugar
+  const adicionarAoCarrinho = (item) => {
+    setCarrinho(c => {
+      const i = c.itens.findIndex(x => x.id === item.id)
+      return { ...c, itens: i >= 0 ? c.itens.map((x, j) => j === i ? item : x) : [...c.itens, item] }
+    })
+    if (editando) { setEditando(null); irPara('carrinho') }
+  }
+  const nCarrinho = carrinho.itens.length
 
   const irPara = (id) => { setTab(id); window.scrollTo({ top: 0 }) }
 
   const handleSelectImagem = (img) => {
+    setEditando(null)
     setImagemParaSimulador(img)
     irPara('simulador')
   }
@@ -57,7 +76,7 @@ export default function AppShell() {
             <nav style={S.nav} aria-label="Seções">
               {NAV.map(n => (
                 <button key={n.id} style={S.navBtn(tab === n.id)} onClick={() => irPara(n.id)} aria-current={tab === n.id ? 'page' : undefined}>
-                  {n.label}
+                  {n.label}{n.id === 'carrinho' && nCarrinho > 0 ? ` (${nCarrinho})` : ''}
                 </button>
               ))}
             </nav>
@@ -69,7 +88,28 @@ export default function AppShell() {
 
       <main style={S.content}>
         {tab === 'banco'     && <BancoImagensPage onSelectImagem={handleSelectImagem} />}
-        {tab === 'simulador' && <SimuladorPage imagemInicial={imagemParaSimulador} onImagemClear={() => setImagemParaSimulador(null)} onVerPedidos={() => irPara('pedidos')} />}
+        {tab === 'simulador' && (
+          <SimuladorPage
+            key={editando?.id ?? 'novo'}
+            imagemInicial={editando ? null : imagemParaSimulador}
+            onImagemClear={() => setImagemParaSimulador(null)}
+            onAdicionar={adicionarAoCarrinho}
+            itemEditando={editando}
+            onCancelarEdicao={() => { setEditando(null); irPara('carrinho') }}
+            onVerCarrinho={() => irPara('carrinho')}
+            nCarrinho={nCarrinho}
+          />
+        )}
+        {tab === 'carrinho' && (
+          <CarrinhoPage
+            carrinho={carrinho}
+            onAlterar={setCarrinho}
+            onEditar={(item) => { setEditando(item); irPara('simulador') }}
+            onLimpar={() => setCarrinho(CARRINHO_VAZIO)}
+            onMontar={() => { setEditando(null); irPara('simulador') }}
+            onVerPedidos={() => irPara('pedidos')}
+          />
+        )}
         {tab === 'pedidos'   && <PedidosPage onNovoPedido={() => irPara('simulador')} />}
         {tab === 'config'    && <ConfigPage />}
       </main>
@@ -78,7 +118,7 @@ export default function AppShell() {
         <nav style={S.mobileNav} aria-label="Seções">
           {NAV.map(n => (
             <button key={n.id} style={S.mobileBtn(tab === n.id)} onClick={() => irPara(n.id)} aria-current={tab === n.id ? 'page' : undefined}>
-              {n.label}
+              {n.id === 'simulador' ? 'Novo' : n.id === 'pedidos' ? 'Pedidos' : n.label}{n.id === 'carrinho' && nCarrinho > 0 ? ` (${nCarrinho})` : ''}
             </button>
           ))}
         </nav>

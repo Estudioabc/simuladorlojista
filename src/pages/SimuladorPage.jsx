@@ -101,7 +101,7 @@ function maxFatias(img, ratio) {
 const um = (v) => Math.round(v * 10) / 10
 const cm = (v) => String(um(v)).replace('.', ',')
 
-export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedidos }) {
+export default function SimuladorPage({ imagemInicial, onImagemClear, onAdicionar, itemEditando, onCancelarEdicao, onVerCarrinho, nCarrinho = 0 }) {
   const { colors, fonts } = useTheme()
   const isMobile = useIsMobile()
   const { lojista } = useAuth()
@@ -122,20 +122,13 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const [tipoVidro, setTipoVidro] = useState('')
   const [substratoId, setSubstratoId] = useState('')
   const [molduraId, setMolduraId] = useState('')
-  const [clienteNome, setClienteNome] = useState('')
-  const [clienteContato, setClienteContato] = useState('')
-  const [formaEntrega, setFormaEntrega] = useState('') // 'retirada' | 'entrega'
-  const [enderecoEntrega, setEnderecoEntrega] = useState('')
-  const [obs, setObs] = useState('')
 
   const [showBanco, setShowBanco] = useState(false)
   const [mockupAberto, setMockupAberto] = useState(false)
   const [mockupRoom, setMockupRoom] = useState(ROOMS[0])
   const [molduraCor, setMolduraCor] = useState('') // id em CORES_MOLDURA; vai no pedido e pinta o mockup
-  const [enviando, setEnviando] = useState(null) // null | 'novo' | 'orcamento'
-  const [sucesso, setSucesso] = useState(null) // null | 'novo' | 'orcamento'
+  const [adicionado, setAdicionado] = useState(false) // aviso "quadro no carrinho"
   const [erro, setErro] = useState('')
-  const [maisAberto, setMaisAberto] = useState(false) // observações
   const [verCusto, setVerCusto] = useState(false)
 
   useEffect(() => {
@@ -153,6 +146,17 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
     else if (ratio >= 1) { setLargura('60'); setAltura(String(Math.round(60 / ratio))) }
     else { setAltura('60'); setLargura(String(Math.round(60 * ratio))) }
   }, [ratio, imagem])
+
+  // Editar um quadro do carrinho: volta para a montagem com tudo preenchido
+  useEffect(() => {
+    if (!itemEditando) return
+    const c = itemEditando.config
+    setImagem(c.imagem ?? null); setRatio(c.ratio ?? null); setTravarRatio(c.travarRatio ?? true)
+    setLargura(c.largura ?? ''); setAltura(c.altura ?? ''); setQuantidade(c.quantidade ?? '1'); setFatias(c.fatias ?? 1)
+    setTipoMontagem(c.tipoMontagem ?? ''); setMontagemId(c.montagemId ?? ''); setTipoVidro(c.tipoVidro ?? '')
+    setMolduraId(c.molduraId ?? ''); setMolduraCor(c.molduraCor ?? '')
+    setErro(''); setAdicionado(false)
+  }, [itemEditando?.id])
 
   useEffect(() => {
     if (imagemInicial) {
@@ -281,74 +285,61 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   const resetForm = () => {
     setImagem(null); setLargura(''); setAltura(''); setQuantidade('1'); setFatias(1)
     setTipoMontagem(''); setMontagemId(''); setTipoVidro('')
-    setSubstratoId(''); setMolduraId(''); setMolduraCor(''); setObs('')
-    setClienteNome(''); setClienteContato(''); setFormaEntrega(''); setEnderecoEntrega('')
+    setSubstratoId(''); setMolduraId(''); setMolduraCor('')
     setRatio(null); setTravarRatio(true)
     if (onImagemClear) onImagemClear()
   }
 
-  const handleEnviar = async (statusEnvio = 'novo') => {
+  // Monta o quadro para o carrinho: config (para editar depois), payload (vai ao sim-pedido) e resumo (exibição)
+  const handleAdicionar = () => {
     if (!largura || !altura) { setErro('Informe o tamanho do quadro.'); return }
-    if (!tipoMontagem) { setErro('Selecione o tipo de montagem (Canvas ou Quadro Convencional).'); return }
-    if (tipoMontagem === 'convencional' && !tipoVidro) { setErro('Selecione o tipo de vidro.'); return }
-    if (framesDoTipo.length > 0 && !molduraId) { setErro('Selecione a categoria da moldura.'); return }
+    if (!tipoMontagem) { setErro('Escolha o acabamento: Canvas ou Papel.'); return }
+    if (framesDoTipo.length > 0 && !molduraId) { setErro('Selecione a moldura.'); return }
     if (framesDoTipo.length > 0 && !molduraCor) { setErro('Escolha a cor da moldura.'); return }
-    if (!clienteNome.trim() || !clienteContato.trim()) { setErro('Informe o nome e o contato do cliente.'); return }
-    if (!formaEntrega) { setErro('Escolha a forma de entrega.'); return }
-    if (formaEntrega === 'entrega' && !enderecoEntrega.trim()) { setErro('Informe o endereço de entrega.'); return }
+    if (tipoMontagem === 'convencional' && !tipoVidro) { setErro('Escolha com ou sem vidro.'); return }
+    if (!precoPronto) { setErro('Não foi possível calcular o preço deste quadro.'); return }
     setErro('')
-    setEnviando(statusEnvio)
-    try {
-      await callFunction('sim-pedido', {
-        method: 'POST',
-        body: {
-          status: statusEnvio,
-          montagem_id: montagemId || null,
-          montagem_nome: montagem?.nome ?? '',
-          tipo_montagem: tipoMontagem,
-          tipo_vidro: tipoVidro || null,
-          substrato_id: montagem?.itens?.find(i => i.role === 'substrato')?.substrato_id ?? null,
-          substrato_nome: substrates?.find(s => s.id === montagem?.itens?.find(i => i.role === 'substrato')?.substrato_id)?.name ?? null,
-          vidro_material_id: (() => {
-            const vi = montagem?.itens?.find(i => i.role === 'vidro_selecionavel')
-            if (!vi) return null
-            if (tipoVidro === 'vidro_comum') return vi.vidro_cristal_id || null
-            if (tipoVidro === 'antirreflexo') return vi.vidro_fosco_id || null
-            return null
-          })(),
-          moldura_id: molduraId || null,
-          moldura_nome: moldura?.name ?? null,
-          moldura_cor: CORES_MOLDURA.find(c => c.id === molduraCor)?.label ?? null,
-          largura_cm: parseFloat(largura),
-          altura_cm: parseFloat(altura),
-          quantidade: parseInt(quantidade) || 1,
-          modo: isKit ? 'kit' : multiPeca ? 'fatiado' : null,
-          pecas,
-          obs,
-          cliente_nome: clienteNome || null,
-          cliente_contato: clienteContato || null,
-          forma_entrega: formaEntrega || null,
-          endereco_entrega: formaEntrega === 'entrega' ? (enderecoEntrega || null) : null,
-          imagem_id: imagem?.id ?? null,
-          imagem_titulo: imagem?.titulo ?? null,
-          imagem_url: imagem?.img_url ?? null,
-          preco_unitario: preco?.totalPeca ?? null,
-          preco_total: preco?.totalGeral ?? null,
-          preco_b2b: preco?.totalGeral != null ? parseFloat((preco.totalGeral / (1 + (parseFloat(markupPct) || 0) / 100)).toFixed(2)) : null,
-          linhas: preco?.lines?.map(l => ({ item: l.label, detail: '', cost: 0, sell: parseFloat((l.valor || 0).toFixed(2)) })) ?? [],
-        },
-      })
-      setSucesso(statusEnvio)
-      resetForm()
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    } catch (e) {
-      setErro(e.message)
-      if (e.message.startsWith('O preço foi atualizado')) {
-        callFunction('sim-lojista-data').then(d => setCatalogoData(d)).catch(() => {})
-      }
-    } finally {
-      setEnviando(null)
+    const vi = montagem?.itens?.find(i => i.role === 'vidro_selecionavel')
+    const substratoIdMont = montagem?.itens?.find(i => i.role === 'substrato')?.substrato_id ?? null
+    const cor = CORES_MOLDURA.find(c => c.id === molduraCor)
+    const qtd = parseInt(quantidade) || 1
+    const item = {
+      id: itemEditando?.id ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      config: { imagem, ratio, travarRatio, largura, altura, quantidade: String(qtd), fatias, tipoMontagem, montagemId, tipoVidro, molduraId, molduraCor },
+      payload: {
+        montagem_id: montagemId || null,
+        tipo_montagem: tipoMontagem,
+        tipo_vidro: tipoVidro || null,
+        substrato_id: substratoIdMont,
+        vidro_material_id: !vi ? null : tipoVidro === 'vidro_comum' ? (vi.vidro_cristal_id || null) : tipoVidro === 'antirreflexo' ? (vi.vidro_fosco_id || null) : null,
+        moldura_id: molduraId || null,
+        moldura_cor: cor?.label ?? null,
+        largura_cm: parseFloat(largura),
+        altura_cm: parseFloat(altura),
+        quantidade: qtd,
+        modo: isKit ? 'kit' : multiPeca ? 'fatiado' : null,
+        pecas,
+        imagem_id: imagem?.id ?? null,
+        imagem_titulo: imagem?.titulo ?? null,
+        imagem_url: imagem?.img_url ?? null,
+        preco_total: +preco.totalGeral.toFixed(2),
+      },
+      resumo: {
+        titulo: imagem?.titulo || 'Quadro sem obra do acervo',
+        imagemUrl: imagem?.img_url ?? null,
+        kitUrls: isKit ? imagem.kitParts.map(p => p.img_url) : null,
+        tamanho: multiPeca ? descPecas : `${cm(parseFloat(largura))} × ${cm(parseFloat(altura))} cm`,
+        acabamento: tipoMontagem === 'canvas' ? 'Canvas' : 'Papel',
+        cor: cor?.label ?? null,
+        vidro: tipoMontagem === 'convencional' ? (GLASS_TYPES.find(g => g.id === tipoVidro)?.label ?? null) : null,
+        conjunto: multiPeca,
+        precoUnit: preco.totalPeca,
+      },
     }
+    onAdicionar?.(item)
+    resetForm()
+    setAdicionado(!itemEditando)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const accent = colors.accent
@@ -434,28 +425,29 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
   return (
     <div style={{ fontFamily: fonts.body }}>
 
-      {sucesso && (
-        <div style={{ background: colors.success + '12', border: `1px solid ${colors.success}40`, borderRadius: 4, padding: '16px 20px', marginBottom: 28, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ flex: '1 1 260px' }}>
-            <div style={{ fontWeight: 700, color: colors.success, fontSize: 15, marginBottom: 2 }}>
-              {sucesso === 'orcamento' ? 'Orçamento salvo' : 'Pedido enviado ao estúdio'}
-            </div>
-            <div style={{ fontSize: 13, color: colors.textMuted }}>
-              {sucesso === 'orcamento'
-                ? 'Ele fica em Meus pedidos. De lá você gera o PDF para o cliente e confirma quando ele fechar.'
-                : 'O Estúdio ABC vai confirmar e iniciar a produção. Acompanhe em Meus pedidos.'}
+      {adicionado && (
+        <div role="status" style={{ background: colors.success + '12', border: `1px solid ${colors.success}40`, borderRadius: 2, padding: '14px 18px', marginBottom: 24, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ flex: '1 1 240px' }}>
+            <div style={{ fontWeight: 700, color: colors.success, fontSize: 15 }}>Quadro adicionado ao carrinho</div>
+            <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
+              {nCarrinho === 1 ? 'Você tem 1 quadro no carrinho.' : `Você tem ${nCarrinho} quadros no carrinho.`} Monte o próximo ou finalize o pedido.
             </div>
           </div>
-          {onVerPedidos && (
-            <button onClick={onVerPedidos}
-              style={{ background: 'none', color: colors.text, border: `1px solid ${colors.text}`, borderRadius: 999, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body, whiteSpace: 'nowrap' }}>
-              Ver meus pedidos
+          <button onClick={() => setAdicionado(false)} style={{ background: 'none', color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 2, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body, whiteSpace: 'nowrap' }}>
+            Montar outro quadro
+          </button>
+          {onVerCarrinho && (
+            <button onClick={onVerCarrinho} style={{ background: colors.text, color: colors.bg, border: 'none', borderRadius: 2, padding: '10px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body, whiteSpace: 'nowrap' }}>
+              Ver carrinho
             </button>
           )}
-          <button onClick={() => setSucesso(null)}
-            style={{ background: colors.text, color: colors.bg, border: 'none', borderRadius: 999, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body, whiteSpace: 'nowrap' }}>
-            Novo pedido
-          </button>
+        </div>
+      )}
+
+      {itemEditando && (
+        <div style={{ border: `1px solid ${colors.border}`, background: colors.surface, borderRadius: 2, padding: '12px 16px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 14 }}>
+          <span style={{ flex: '1 1 200px' }}>Editando um quadro do carrinho.</span>
+          <button onClick={onCancelarEdicao} style={{ background: 'none', border: 'none', padding: 0, color: colors.text, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, fontFamily: fonts.body }}>Cancelar edição</button>
         </div>
       )}
 
@@ -618,32 +610,6 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             </div>
           )}
 
-          {/* Cliente e entrega (obrigatório) */}
-          <div style={grupo}>
-            {grupoLbl('Cliente')}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-              <input style={{ ...inp, fontSize: 14, padding: '10px 12px' }} placeholder="Nome do cliente" aria-label="Nome do cliente" required value={clienteNome} onChange={e => setClienteNome(e.target.value)} />
-              <input style={{ ...inp, fontSize: 14, padding: '10px 12px' }} placeholder="Telefone ou e-mail" aria-label="Contato do cliente" required value={clienteContato} onChange={e => setClienteContato(e.target.value)} />
-            </div>
-            <div style={{ ...gradeOpcoes, marginBottom: formaEntrega === 'entrega' ? 10 : 0 }}>
-              {[{ id: 'retirada', label: 'Retira na loja' }, { id: 'entrega', label: 'Entrega no endereço' }].map(f => (
-                <button key={f.id} onClick={() => setFormaEntrega(f.id)} style={chipBtn(formaEntrega === f.id)} aria-pressed={formaEntrega === f.id}>{f.label}</button>
-              ))}
-            </div>
-            {formaEntrega === 'entrega' && (
-              <input style={{ ...inp, fontSize: 14, padding: '10px 12px' }} placeholder="Rua, número, bairro, cidade..." aria-label="Endereço de entrega" required value={enderecoEntrega} onChange={e => setEnderecoEntrega(e.target.value)} />
-            )}
-            {(maisAberto || obs) ? (
-              <div style={{ marginTop: 14 }}>
-                <textarea style={{ ...inp, fontSize: 14, resize: 'vertical', minHeight: 64 }} aria-label="Observações para o estúdio"
-                  placeholder="Observações para o estúdio: prazo, acabamento especial..."
-                  value={obs} onChange={e => setObs(e.target.value)} />
-              </div>
-            ) : (
-              <button onClick={() => setMaisAberto(true)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted, marginTop: 12 }}>+ Observações para o estúdio</button>
-            )}
-          </div>
-
           {/* Total */}
           <div style={{ borderTop: `1px solid ${colors.border}`, marginTop: 30, paddingTop: 18 }}>
             {precoPronto ? (
@@ -680,15 +646,17 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onVerPedid
             </div>
           )}
 
-          <button onClick={() => handleEnviar('novo')} disabled={!!enviando}
-            style={{ marginTop: 18, width: '100%', background: enviando === 'novo' ? colors.textMuted : colors.text, color: colors.bg, border: 'none', borderRadius: 2, padding: 15, fontSize: 15, fontWeight: 600, cursor: enviando ? 'default' : 'pointer', fontFamily: fonts.body }}>
-            {enviando === 'novo' ? 'Enviando…' : 'Enviar pedido ao estúdio'}
+          <button onClick={handleAdicionar}
+            style={{ marginTop: 18, width: '100%', background: colors.text, color: colors.bg, border: 'none', borderRadius: 2, padding: 15, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body }}>
+            {itemEditando ? 'Salvar alterações' : 'Adicionar ao carrinho'}
           </button>
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-            <button onClick={() => handleEnviar('orcamento')} disabled={!!enviando} title="Fica em Meus pedidos para você mandar ao cliente e confirmar depois" style={{ ...linkBtn, opacity: enviando === 'orcamento' ? 0.6 : 1 }}>
-              {enviando === 'orcamento' ? 'Salvando…' : 'Salvar como orçamento'}
-            </button>
-          </div>
+          {!itemEditando && nCarrinho > 0 && onVerCarrinho && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+              <button onClick={onVerCarrinho} style={linkBtn}>
+                Ver carrinho ({nCarrinho} {nCarrinho === 1 ? 'quadro' : 'quadros'})
+              </button>
+            </div>
+          )}
 
         </div>
 
