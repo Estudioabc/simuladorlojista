@@ -225,7 +225,8 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
   const grade = (cols) => ({ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : cols, gap: 12, marginBottom: 12 })
 
   if (pronto) {
-    const link = window.location.origin
+    // link que a loja vai usar: o do site publicado (testando localmente, o endereço seria localhost)
+    const link = /localhost|127\.0\.0\.1/.test(window.location.hostname) ? 'https://simuladorlojista.netlify.app' : window.location.origin
     const msg = `Olá! Seu acesso ao portal do Estúdio ABC está pronto.\n\nEntre em ${link}\nUsuário: ${pronto.usuario}\nSenha: ${pronto.senha}\n\nLá você escolhe as obras, vê o quadro na parede do cliente e faz o pedido.`
     const wa = digitos(pronto.whatsapp)
     return (
