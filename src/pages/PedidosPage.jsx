@@ -111,13 +111,6 @@ const STATUS = {
   cancelado:   { label: 'Cancelado',         color: '#B4312A' },
 }
 
-const PERIODS = [
-  { id: 'mes',  label: 'Este mês' },
-  { id: '3m',   label: '3 meses' },
-  { id: '6m',   label: '6 meses' },
-  { id: 'tudo', label: 'Tudo' },
-]
-
 function startOf(period) {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
@@ -135,8 +128,6 @@ export default function PedidosPage({ onNovoPedido }) {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
   const [expandedId, setExpandedId] = useState(null)
-  const [period, setPeriod] = useState('mes')
-  const [filterStatus, setFilterStatus] = useState('')
   const [confirmando, setConfirmando] = useState(null) // id do pedido sendo confirmado
 
   useEffect(() => { loadPedidos() }, [])
@@ -171,22 +162,20 @@ export default function PedidosPage({ onNovoPedido }) {
     return 0
   }
 
-  const filtered = useMemo(() => {
-    const cutoff = startOf(period)
-    return pedidos.filter(p => {
-      if (cutoff && new Date(p.created_at) < cutoff) return false
-      if (filterStatus && resolveStatus(p) !== filterStatus) return false
-      return true
-    })
-  }, [pedidos, period, filterStatus])
+  // Lista: todos os pedidos. Resumo: só o mês atual.
+  const filtered = pedidos
+  const doMes = useMemo(() => {
+    const cutoff = startOf('mes')
+    return pedidos.filter(p => new Date(p.created_at) >= cutoff)
+  }, [pedidos])
 
-  // Financeiro — apenas pedidos finalizados ou com OS (excluindo cancelados)
+  // Financeiro do mês — apenas pedidos aprovados em diante (excluindo cancelados)
   const financeiro = useMemo(() => {
-    const ativos = filtered.filter(p => !['cancelado', 'novo', 'orcamento'].includes(resolveStatus(p)))
+    const ativos = doMes.filter(p => !['cancelado', 'novo', 'orcamento'].includes(resolveStatus(p)))
     const venda = ativos.reduce((s, p) => s + (p.revenda_total || 0), 0)
     const custo = ativos.reduce((s, p) => s + getB2b(p), 0)
     return { qtd: ativos.length, venda, custo, lucro: venda - custo }
-  }, [filtered])
+  }, [doMes])
 
   const S = {
     eyebrow:  { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
@@ -194,18 +183,16 @@ export default function PedidosPage({ onNovoPedido }) {
     subtitle: { fontSize: 15, color: colors.textMuted },
     novoBtn:  { background: colors.text, color: colors.bg, border: 'none', borderRadius: 999, padding: '12px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' },
     card:     { background: colors.surface, border: `1px solid ${colors.border}`, marginBottom: 12 },
-    kpiRow:   { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', borderTop: `1px solid ${colors.text}`, borderBottom: `1px solid ${colors.border}`, margin: '8px 0 36px' },
-    kpi:      { padding: '16px 20px 18px 0' },
+    kpiRow:   { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', borderTop: `1px solid ${colors.text}`, borderBottom: `1px solid ${colors.border}`, margin: '8px 0 32px' },
+    kpi:      { padding: '14px 12px 16px 0', minWidth: 0 },
     kpiLabel: { fontSize: 12, fontWeight: 600, color: colors.textMuted, marginBottom: 6 },
-    kpiValue: { fontFamily: fonts.display, fontSize: 25, fontWeight: 600, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
-    pill:     (active) => ({ padding: '7px 14px', fontSize: 13, borderRadius: 999, border: `1px solid ${active ? colors.text : colors.border}`, cursor: 'pointer', fontWeight: 600, background: active ? colors.text : colors.surface, color: active ? colors.bg : colors.text }),
+    kpiValue: { fontFamily: fonts.display, fontSize: 'clamp(18px, 4.6vw, 24px)', fontWeight: 600, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
     cardHeader: (exp) => ({ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', cursor: 'pointer', background: exp ? colors.surfaceAlt : 'transparent', flexWrap: 'wrap' }),
     cardBody: { padding: '4px 20px 22px', borderTop: `1px solid ${colors.border}` },
     infoLabel: { fontSize: 12, color: colors.textMuted, marginTop: 14, marginBottom: 3, fontWeight: 600 },
     infoValue: { fontSize: 14, color: colors.text },
     imgThumb: { width: 72, height: 72, objectFit: 'contain', background: colors.surfaceAlt, flexShrink: 0 },
     rowThumb: { width: 48, height: 48, objectFit: 'contain', background: colors.surfaceAlt, flexShrink: 0 },
-    select: { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 999, padding: '7px 14px', color: colors.text, fontSize: 13, outline: 'none', cursor: 'pointer' },
   }
 
   const ETAPAS = [
@@ -259,18 +246,8 @@ export default function PedidosPage({ onNovoPedido }) {
         {onNovoPedido && <button style={S.novoBtn} onClick={onNovoPedido}>Novo pedido</button>}
       </div>
 
-      {/* Filtros de período */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        {PERIODS.map(p => (
-          <button key={p.id} style={S.pill(period === p.id)} onClick={() => setPeriod(p.id)}>{p.label}</button>
-        ))}
-        <select style={{ ...S.select, marginLeft: 8 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">Todos os status</option>
-          {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
-      </div>
-
-      {/* Painel financeiro */}
+      {/* Painel financeiro do mês */}
+      <div style={{ ...S.eyebrow, marginBottom: 4 }}>Neste mês</div>
       <div style={S.kpiRow}>
         {[
           { label: 'Pedidos aprovados', value: financeiro.qtd,   fmt: false, color: colors.text },
@@ -289,8 +266,8 @@ export default function PedidosPage({ onNovoPedido }) {
 
       {filtered.length === 0 ? (
         <EmptyState
-          title={pedidos.length === 0 ? 'Você ainda não fez nenhum pedido' : 'Nenhum pedido neste período'}
-          description={pedidos.length === 0 ? 'Monte o primeiro quadro no Novo pedido.' : 'Escolha um período maior ou outro status.'}
+          title="Você ainda não fez nenhum pedido"
+          description="Monte o primeiro quadro no Novo pedido."
           action={pedidos.length === 0 && onNovoPedido ? 'Fazer o primeiro pedido' : undefined}
           onAction={onNovoPedido}
         />

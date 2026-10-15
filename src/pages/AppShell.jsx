@@ -11,7 +11,6 @@ import { carregarCarrinho, salvarCarrinho, CARRINHO_VAZIO } from '../utils/carri
 const NAV = [
   { id: 'banco',     label: 'Acervo' },
   { id: 'simulador', label: 'Novo pedido' },
-  { id: 'carrinho',  label: 'Carrinho' },
   { id: 'pedidos',   label: 'Meus pedidos' },
   { id: 'config',    label: 'Ajustes' },
 ]
@@ -76,13 +75,28 @@ export default function AppShell() {
             <nav style={S.nav} aria-label="Seções">
               {NAV.map(n => (
                 <button key={n.id} style={S.navBtn(tab === n.id)} onClick={() => irPara(n.id)} aria-current={tab === n.id ? 'page' : undefined}>
-                  {n.label}{n.id === 'carrinho' && nCarrinho > 0 ? ` (${nCarrinho})` : ''}
+                  {n.label}
                 </button>
               ))}
             </nav>
           )}
 
-          <button style={S.sair} onClick={signOut}>Sair</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 14 : 22 }}>
+            <button onClick={() => irPara('carrinho')} aria-label={`Carrinho, ${nCarrinho} ${nCarrinho === 1 ? 'quadro' : 'quadros'}`}
+              aria-current={tab === 'carrinho' ? 'page' : undefined}
+              style={{ position: 'relative', background: 'none', border: 'none', padding: 6, cursor: 'pointer', color: colors.text, display: 'flex' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 8h14l-1.2 11.1a1 1 0 0 1-1 .9H7.2a1 1 0 0 1-1-.9L5 8Z" />
+                <path d="M9 10V7a3 3 0 0 1 6 0v3" />
+              </svg>
+              {nCarrinho > 0 && (
+                <span style={{ position: 'absolute', top: 0, right: -2, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: colors.text, color: colors.bg, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+                  {nCarrinho}
+                </span>
+              )}
+            </button>
+            <button style={S.sair} onClick={signOut}>Sair</button>
+          </div>
         </div>
       </header>
 
@@ -118,7 +132,7 @@ export default function AppShell() {
         <nav style={S.mobileNav} aria-label="Seções">
           {NAV.map(n => (
             <button key={n.id} style={S.mobileBtn(tab === n.id)} onClick={() => irPara(n.id)} aria-current={tab === n.id ? 'page' : undefined}>
-              {n.id === 'simulador' ? 'Novo' : n.id === 'pedidos' ? 'Pedidos' : n.label}{n.id === 'carrinho' && nCarrinho > 0 ? ` (${nCarrinho})` : ''}
+              {n.id === 'simulador' ? 'Novo pedido' : n.id === 'pedidos' ? 'Pedidos' : n.label}
             </button>
           ))}
         </nav>
