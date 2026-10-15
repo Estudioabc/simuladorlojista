@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../styles/theme'
+import { emailDoLogin } from '../utils/login'
 
 export default function LoginPage() {
   const { signIn, error, setError } = useAuth()
@@ -13,7 +14,7 @@ export default function LoginPage() {
     e.preventDefault()
     if (!email || !password) return
     setLoading(true)
-    await signIn(email, password)
+    await signIn(emailDoLogin(email), password)
     setLoading(false)
   }
 
@@ -52,7 +53,7 @@ export default function LoginPage() {
       <main style={S.main}>
         <form onSubmit={handleSubmit} style={S.form}>
           <h1 style={S.title}>Entrar</h1>
-          <p style={S.subtitle}>Entre com o e-mail cadastrado pelo Estúdio ABC.</p>
+          <p style={S.subtitle}>Entre com o usuário e a senha que o Estúdio ABC passou para você.</p>
 
           {error && (
             <div style={S.error} role="alert">
@@ -63,15 +64,18 @@ export default function LoginPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
-              <label style={S.label} htmlFor="login-email">E-mail</label>
+              <label style={S.label} htmlFor="login-email">Usuário</label>
               <input
                 id="login-email"
                 style={S.input}
-                type="email"
+                type="text"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="voce@sualoja.com.br"
-                autoComplete="email"
+                placeholder="seu usuário"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
               />
             </div>

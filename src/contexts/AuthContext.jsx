@@ -48,7 +48,7 @@ export function AuthProvider({ children }) {
   const signIn = async (email, password) => {
     setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError('E-mail ou senha incorretos.')
+    if (error) setError('Usuário ou senha incorretos.')
     return !error
   }
 
