@@ -127,6 +127,7 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [pronto, setPronto] = useState(null) // { usuario, senha, nome, whatsapp }
+  const [tentou, setTentou] = useState(false) // depois da 1ª tentativa, campos obrigatórios vazios ficam vermelhos
 
   const set = (k, v) => setF(x => ({ ...x, [k]: v }))
   const setNome = (v) => { set('nome_fantasia', v); if (!usuarioMexido) setUsuario(sugerirUsuario(v)) }
@@ -173,7 +174,23 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
     setBuscando('')
   }
 
+  const invalido = {
+    cnpj: ![11, 14].includes(digitos(f.cnpj).length),
+    razao_social: !f.razao_social.trim(),
+    nome_fantasia: !f.nome_fantasia.trim(),
+    whatsapp: digitos(f.whatsapp).length < 10,
+    endereco: !f.endereco.trim(),
+    numero: !f.numero.trim(),
+    cidade: !f.cidade.trim(),
+    uf: f.uf.trim().length !== 2,
+    usuario: !USUARIO_RE.test(usuario),
+    senha: senha.length < 6,
+  }
+  const marca = (k) => (tentou && invalido[k] ? { borderColor: colors.danger, boxShadow: `inset 0 0 0 1px ${colors.danger}` } : {})
+  const ast = <span style={{ color: colors.danger }} aria-hidden="true"> *</span>
+
   const enviar = async () => {
+    setTentou(true)
     const faltando = []
     if (![11, 14].includes(digitos(f.cnpj).length)) faltando.push('CNPJ')
     if (!f.razao_social.trim()) faltando.push('razão social')
@@ -194,12 +211,17 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
     setSalvando(false)
   }
 
-  const campo = (k, label, extra = {}) => (
-    <div style={{ minWidth: 0 }}>
-      <label style={lbl} htmlFor={`cad-${k}`}>{label}</label>
-      <input id={`cad-${k}`} style={inp} value={f[k]} onChange={e => set(k, e.target.value)} {...extra} />
-    </div>
-  )
+  const campo = (k, label, extra = {}) => {
+    const obrigatorio = k in invalido
+    const { style: estiloExtra, ...resto } = extra
+    return (
+      <div style={{ minWidth: 0 }}>
+        <label style={lbl} htmlFor={`cad-${k}`}>{label}{obrigatorio && ast}</label>
+        <input id={`cad-${k}`} style={{ ...inp, ...estiloExtra, ...marca(k) }} value={f[k]} onChange={e => set(k, e.target.value)}
+          aria-required={obrigatorio || undefined} aria-invalid={(tentou && invalido[k]) || undefined} {...resto} />
+      </div>
+    )
+  }
   const grade = (cols) => ({ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : cols, gap: 12, marginBottom: 12 })
 
   if (pronto) {
@@ -235,6 +257,7 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
       <button onClick={onVoltar} style={{ background: 'none', border: 'none', padding: 0, color: colors.textMuted, fontSize: 14, cursor: 'pointer', fontFamily: fonts.body }}>← Minhas lojas</button>
       <h1 style={{ fontFamily: fonts.display, fontSize: 28, fontWeight: 600, margin: '10px 0 4px' }}>Cadastrar loja</h1>
       <p style={{ fontSize: 14, color: colors.textMuted, margin: 0, lineHeight: 1.5 }}>Comece pelo CNPJ: o resto se preenche sozinho.</p>
+      <p style={{ fontSize: 12, color: colors.textMuted, margin: '6px 0 0' }}><span style={{ color: colors.danger }}>*</span> campos obrigatórios</p>
 
       <div style={sec}>Empresa</div>
       <div style={grade('1fr 1fr')}>
@@ -244,8 +267,8 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
       <div style={grade('1fr 1fr')}>
         {campo('razao_social', 'Razão social')}
         <div style={{ minWidth: 0 }}>
-          <label style={lbl} htmlFor="cad-nome">Nome da loja</label>
-          <input id="cad-nome" style={inp} value={f.nome_fantasia} onChange={e => setNome(e.target.value)} placeholder="Como a loja é conhecida" />
+          <label style={lbl} htmlFor="cad-nome">Nome da loja{ast}</label>
+          <input id="cad-nome" style={{ ...inp, ...marca('nome_fantasia') }} aria-required value={f.nome_fantasia} onChange={e => setNome(e.target.value)} placeholder="Como a loja é conhecida" />
         </div>
       </div>
 
@@ -274,13 +297,13 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
       <div style={sec}>Acesso da loja ao portal</div>
       <div style={grade('1fr 1fr')}>
         <div style={{ minWidth: 0 }}>
-          <label style={lbl} htmlFor="cad-usuario">Usuário</label>
-          <input id="cad-usuario" style={inp} autoCapitalize="none" autoCorrect="off" spellCheck={false} value={usuario}
+          <label style={lbl} htmlFor="cad-usuario">Usuário{ast}</label>
+          <input id="cad-usuario" style={{ ...inp, ...marca('usuario') }} aria-required autoCapitalize="none" autoCorrect="off" spellCheck={false} value={usuario}
             onChange={e => { setUsuarioMexido(true); setUsuario(e.target.value.toLowerCase().replace(/\s/g, '')) }} placeholder="ex.: casadecor" />
         </div>
         <div style={{ minWidth: 0 }}>
-          <label style={lbl} htmlFor="cad-senha">Senha</label>
-          <input id="cad-senha" style={inp} value={senha} onChange={e => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" autoComplete="new-password" />
+          <label style={lbl} htmlFor="cad-senha">Senha{ast}</label>
+          <input id="cad-senha" style={{ ...inp, ...marca('senha') }} aria-required value={senha} onChange={e => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" autoComplete="new-password" />
         </div>
       </div>
       <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 8px', lineHeight: 1.5 }}>
