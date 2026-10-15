@@ -102,7 +102,7 @@ export default function RepLojasPage() {
                   <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderTop: `1px dashed ${colors.border}`, fontSize: 13 }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 600 }}>{p.quadros > 1 ? `${p.quadros} quadros` : (p.titulo || 'Quadro')}</div>
-                      <div style={{ color: colors.textMuted }}>#{p.numero ?? '—'} · {dataBr(p.created_at)} · {situacaoPedido(p)}</div>
+                      <div style={{ color: colors.textMuted }}>Pedido nº {p.numero ?? '—'}{p.os?.number ? ` · OS #${p.os.number}` : ''} · {dataBr(p.created_at)} · {situacaoPedido(p)}</div>
                     </div>
                     <div style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{p.valor_estudio ? formatCurrency(p.valor_estudio) : '—'}</div>
                   </div>

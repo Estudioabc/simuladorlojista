@@ -290,7 +290,7 @@ export default function PedidosPage({ onNovoPedido }) {
                       : (itens[0]?.imagem_titulo || (p.cliente_nome ? `Quadro de ${p.cliente_nome}` : 'Quadro sob medida'))}
                   </div>
                   <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                    {p.os?.number ? `OS #${p.os.number}` : `Pedido #${p.numero ?? p.id.slice(-6).toUpperCase()}`}
+                    {`Pedido nº ${p.numero ?? p.id.slice(-6).toUpperCase()}`}{p.os?.number ? ` · OS #${p.os.number}` : ''}
                     {' · '}{formatDate(p.created_at)}
                     {itens.length === 1 && p.cliente_nome && itens[0]?.imagem_titulo ? ` · ${p.cliente_nome}` : ''}
                   </div>
