@@ -16,6 +16,7 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
   const [sucesso, setSucesso] = useState(null) // null | 'novo' | 'orcamento'
   const [verCusto, setVerCusto] = useState(false)
   const [obsAberta, setObsAberta] = useState(!!carrinho.cliente.obs)
+  const [tentou, setTentou] = useState(false) // depois da 1ª tentativa, o que falta fica vermelho
 
   const { itens, cliente } = carrinho
   const total = itens.reduce((s, it) => s + (it.payload.preco_total || 0), 0)
@@ -29,6 +30,7 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
 
   const enviar = async (status) => {
     if (!itens.length) return
+    setTentou(true)
     if (!cliente.nome.trim() || !cliente.contato.trim()) { setErro('Informe o nome e o contato do cliente.'); return }
     if (!cliente.formaEntrega) { setErro('Escolha a forma de entrega.'); return }
     if (cliente.formaEntrega === 'entrega' && !cliente.endereco.trim()) { setErro('Informe o endereço de entrega.'); return }
@@ -59,6 +61,15 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
 
   const inp = { width: '100%', boxSizing: 'border-box', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 2, padding: '10px 12px', color: colors.text, fontSize: 14, fontFamily: fonts.body, outline: 'none' }
   const lbl = { fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.textMuted, marginBottom: 8 }
+  const rotulo = { fontSize: 12, fontWeight: 600, color: colors.textMuted, display: 'block', marginBottom: 5 }
+  const ast = <span style={{ color: colors.danger }} aria-hidden="true"> *</span>
+  const falta = {
+    nome: !cliente.nome.trim(),
+    contato: !cliente.contato.trim(),
+    entrega: !cliente.formaEntrega,
+    endereco: cliente.formaEntrega === 'entrega' && !cliente.endereco.trim(),
+  }
+  const marca = (k) => (tentou && falta[k] ? { borderColor: colors.danger, boxShadow: `inset 0 0 0 1px ${colors.danger}` } : {})
   const chip = (on) => ({ padding: on ? '8px 15px' : '9px 16px', borderRadius: 2, border: `${on ? 2 : 1}px solid ${on ? colors.text : colors.border}`, background: colors.surface, color: colors.text, fontWeight: on ? 600 : 500, fontSize: 13, fontFamily: fonts.body, cursor: 'pointer', whiteSpace: 'nowrap' })
   const linkBtn = { background: 'none', border: 'none', padding: 0, color: colors.text, fontSize: 13, fontFamily: fonts.body, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }
   const qtdBtn = { width: 30, height: 30, border: `1px solid ${colors.border}`, background: colors.surface, color: colors.text, fontSize: 16, cursor: 'pointer', borderRadius: 2, fontFamily: fonts.body, lineHeight: 1 }
@@ -148,18 +159,31 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
 
         {/* ─── Cliente e finalizar ─── */}
         <div style={{ position: isMobile ? 'static' : 'sticky', top: 96 }}>
-          <div style={lbl}>Cliente</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-            <input style={inp} placeholder="Nome do cliente" aria-label="Nome do cliente" value={cliente.nome} onChange={e => setCliente('nome', e.target.value)} />
-            <input style={inp} placeholder="Telefone ou e-mail" aria-label="Contato do cliente" value={cliente.contato} onChange={e => setCliente('contato', e.target.value)} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={lbl}>Cliente</div>
+            <span style={{ fontSize: 11, color: colors.textMuted }}><span style={{ color: colors.danger }}>*</span> obrigatório</span>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: cliente.formaEntrega === 'entrega' ? 10 : 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <label style={rotulo} htmlFor="cli-nome">Nome{ast}</label>
+              <input id="cli-nome" style={{ ...inp, ...marca('nome') }} placeholder="Nome do cliente" aria-required value={cliente.nome} onChange={e => setCliente('nome', e.target.value)} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <label style={rotulo} htmlFor="cli-contato">Telefone ou e-mail{ast}</label>
+              <input id="cli-contato" style={{ ...inp, ...marca('contato') }} inputMode="tel" placeholder="(11) 99999-9999" aria-required value={cliente.contato} onChange={e => setCliente('contato', e.target.value)} />
+            </div>
+          </div>
+          <span style={{ ...rotulo, color: tentou && falta.entrega ? colors.danger : colors.textMuted }}>Entrega{ast}</span>
+          <div role="group" aria-label="Forma de entrega" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: cliente.formaEntrega === 'entrega' ? 12 : 0 }}>
             {[{ id: 'retirada', label: 'Retira na loja' }, { id: 'entrega', label: 'Entrega no endereço' }].map(f => (
-              <button key={f.id} onClick={() => setCliente('formaEntrega', f.id)} style={chip(cliente.formaEntrega === f.id)} aria-pressed={cliente.formaEntrega === f.id}>{f.label}</button>
+              <button key={f.id} onClick={() => setCliente('formaEntrega', f.id)} style={{ ...chip(cliente.formaEntrega === f.id), ...(tentou && falta.entrega ? { borderColor: colors.danger } : {}) }} aria-pressed={cliente.formaEntrega === f.id}>{f.label}</button>
             ))}
           </div>
           {cliente.formaEntrega === 'entrega' && (
-            <input style={inp} placeholder="Rua, número, bairro, cidade..." aria-label="Endereço de entrega" value={cliente.endereco} onChange={e => setCliente('endereco', e.target.value)} />
+            <div>
+              <label style={rotulo} htmlFor="cli-endereco">Endereço de entrega{ast}</label>
+              <input id="cli-endereco" style={{ ...inp, ...marca('endereco') }} placeholder="Rua, número, bairro, cidade..." aria-required value={cliente.endereco} onChange={e => setCliente('endereco', e.target.value)} />
+            </div>
           )}
           {obsAberta ? (
             <textarea style={{ ...inp, resize: 'vertical', minHeight: 64, marginTop: 14 }} aria-label="Observações para o estúdio"

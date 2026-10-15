@@ -85,7 +85,7 @@ export default function ConfigPage() {
         <div style={S.sectionTitle}>Identidade</div>
 
         <div style={S.field}>
-          <label style={S.label}>Nome da loja</label>
+          <label style={S.label}>Nome da loja<span style={{ color: colors.danger }} aria-hidden="true"> *</span></label>
           <div style={S.inputWrap}>
             <input style={S.input} value={storeName} onChange={e => setStoreName(e.target.value)} placeholder="Nome que aparece no portal" maxLength={80} />
           </div>

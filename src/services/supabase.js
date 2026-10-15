@@ -18,6 +18,11 @@ export async function callFunction(name, options = {}) {
     },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   })
+  // sessão perdida (expirou ou saiu em outra aba): volta para o login em vez de mostrar "Não autorizado"
+  if (res.status === 401) {
+    await supabase.auth.signOut()
+    throw new Error('Sua sessão expirou. Entre de novo.')
+  }
   const json = await res.json()
   if (!res.ok) {
     const msg = typeof json.error === 'string' ? json.error : (json.error?.message ?? json.msg ?? 'Erro desconhecido')

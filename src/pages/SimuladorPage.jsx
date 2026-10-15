@@ -129,6 +129,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const [molduraCor, setMolduraCor] = useState('') // id em CORES_MOLDURA; vai no pedido e pinta o mockup
   const [adicionado, setAdicionado] = useState(false) // aviso "quadro no carrinho"
   const [erro, setErro] = useState('')
+  const [falta, setFalta] = useState({}) // grupos obrigatórios que faltaram na última tentativa
   const [verCusto, setVerCusto] = useState(false)
 
   useEffect(() => {
@@ -274,6 +275,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const glassOptions = GLASS_TYPES.filter(g => allowedGlassTypes.includes(g.id))
 
   const handleTipoMontagem = (tipo) => {
+    setFalta(f => ({ ...f, acabamento: false }))
     setTipoMontagem(tipo)
     setTipoVidro('')
     setMolduraId('') // a moldura do tipo é escolhida sozinha (efeito abaixo)
@@ -292,11 +294,17 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
 
   // Monta o quadro para o carrinho: config (para editar depois), payload (vai ao sim-pedido) e resumo (exibição)
   const handleAdicionar = () => {
-    if (!largura || !altura) { setErro('Informe o tamanho do quadro.'); return }
-    if (!tipoMontagem) { setErro('Escolha o acabamento: Canvas ou Papel.'); return }
-    if (framesDoTipo.length > 0 && !molduraId) { setErro('Selecione a moldura.'); return }
-    if (framesDoTipo.length > 0 && !molduraCor) { setErro('Escolha a cor da moldura.'); return }
-    if (tipoMontagem === 'convencional' && !tipoVidro) { setErro('Escolha com ou sem vidro.'); return }
+    const faltas = {
+      tamanho: !(parseFloat(largura) > 0 && parseFloat(altura) > 0),
+      acabamento: !tipoMontagem,
+      cor: !!tipoMontagem && framesDoTipo.length > 0 && (!molduraId || !molduraCor),
+      vidro: tipoMontagem === 'convencional' && !tipoVidro,
+    }
+    setFalta(faltas)
+    if (faltas.tamanho) { setErro('Informe o tamanho do quadro.'); return }
+    if (faltas.acabamento) { setErro('Escolha o acabamento: Canvas ou Papel.'); return }
+    if (faltas.cor) { setErro('Escolha a cor da moldura.'); return }
+    if (faltas.vidro) { setErro('Escolha com ou sem vidro.'); return }
     if (!precoPronto) { setErro('Não foi possível calcular o preço deste quadro.'); return }
     setErro('')
     const vi = montagem?.itens?.find(i => i.role === 'vidro_selecionavel')
@@ -364,9 +372,12 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
 
   const gradeOpcoes = { display: 'flex', flexWrap: 'wrap', gap: 8 }
   // Rótulo de grupo no estilo de loja (caixa alta pequena)
-  const grupoLbl = (texto, valor) => (
-    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.textMuted, marginBottom: 8 }}>
-      {texto}{valor && <span style={{ textTransform: 'none', letterSpacing: 0, color: colors.text, fontWeight: 500, fontSize: 12, marginLeft: 8 }}>{valor}</span>}
+  // obrig: mostra o asterisco; falta: fica vermelho (depois de tentar adicionar sem escolher)
+  const grupoLbl = (texto, valor, { obrig = false, falta = false } = {}) => (
+    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: falta ? colors.danger : colors.textMuted, marginBottom: 8 }}>
+      {texto}{obrig && <span style={{ color: colors.danger }} aria-hidden="true"> *</span>}
+      {falta && <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500, fontSize: 12, marginLeft: 8 }}>escolha uma opção</span>}
+      {valor && <span style={{ textTransform: 'none', letterSpacing: 0, color: colors.text, fontWeight: 500, fontSize: 12, marginLeft: 8 }}>{valor}</span>}
     </div>
   )
 
@@ -529,7 +540,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
           {/* Tamanho */}
           <div style={grupo}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-              {grupoLbl(multiPeca ? 'Tamanho total (cm)' : 'Tamanho (cm)')}
+              {grupoLbl(multiPeca ? 'Tamanho total (cm)' : 'Tamanho (cm)', null, { obrig: true, falta: falta.tamanho && !(parseFloat(largura) > 0 && parseFloat(altura) > 0) })}
               {ratio && !isKit && (
                 <button onClick={() => setTravarRatio(t => !t)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted, marginBottom: 8 }}>
                   {travarRatio ? 'Destravar proporção' : 'Travar proporção'}
@@ -561,7 +572,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
 
           {/* Acabamento */}
           <div style={grupo}>
-            {grupoLbl('Acabamento')}
+            {grupoLbl('Acabamento', null, { obrig: true, falta: falta.acabamento && !tipoMontagem })}
             {montagems.length === 0 ? (
               <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>Nenhuma montagem disponível.</p>
             ) : (
@@ -586,7 +597,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
           {/* Cor da moldura — mesmo preço; vai no pedido e pinta o mockup */}
           {framesDoTipo.length > 0 && tipoMontagem && (
             <div style={grupo}>
-              {grupoLbl('Cor da moldura')}
+              {grupoLbl('Cor da moldura', null, { obrig: true, falta: falta.cor && !molduraCor })}
               <div style={gradeOpcoes}>
                 {CORES_MOLDURA.map(c => (
                   <button key={c.id} onClick={() => setMolduraCor(c.id)} style={{ ...chipBtn(molduraCor === c.id), display: 'inline-flex', alignItems: 'center', gap: 8 }} aria-pressed={molduraCor === c.id}>
@@ -601,7 +612,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
           {/* Vidro */}
           {tipoMontagem === 'convencional' && molduraId && glassOptions.length > 0 && (
             <div style={grupo}>
-              {grupoLbl('Vidro')}
+              {grupoLbl('Vidro', null, { obrig: true, falta: falta.vidro && !tipoVidro })}
               <div style={gradeOpcoes}>
                 {glassOptions.map(g => (
                   <button key={g.id} onClick={() => setTipoVidro(g.id)} style={chipBtn(tipoVidro === g.id)} aria-pressed={tipoVidro === g.id}>{g.label}</button>
