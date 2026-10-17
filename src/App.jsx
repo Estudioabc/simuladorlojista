@@ -2,6 +2,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './styles/theme'
 import LoginPage from './pages/LoginPage'
 import AppShell from './pages/AppShell'
+import { EquipeProvider } from './contexts/EquipeContext'
 import { Spinner } from './components/UI'
 
 function Router() {
@@ -11,7 +12,7 @@ function Router() {
       <Spinner label="Verificando acesso..." />
     </div>
   )
-  return session ? <AppShell /> : <LoginPage />
+  return session ? <EquipeProvider><AppShell /></EquipeProvider> : <LoginPage />
 }
 
 export default function App() {

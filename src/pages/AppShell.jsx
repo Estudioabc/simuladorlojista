@@ -8,6 +8,10 @@ import ConfigPage from './ConfigPage'
 import CarrinhoPage from './CarrinhoPage'
 import RepLojasPage from './RepLojasPage'
 import RepComissoesPage from './RepComissoesPage'
+import EquipePage from './EquipePage'
+import BalcaoPage from './BalcaoPage'
+import PinModal from '../components/PinModal'
+import { useEquipe } from '../contexts/EquipeContext'
 import { carregarCarrinho, salvarCarrinho, CARRINHO_VAZIO } from '../utils/carrinho'
 
 const NAV_LOJISTA = [
@@ -35,6 +39,10 @@ export default function AppShell() {
   const [imagemParaSimulador, setImagemParaSimulador] = useState(null)
   const [carrinho, setCarrinho] = useState(() => carregarCarrinho(profile?.id))
   const [editando, setEditando] = useState(null) // quadro do carrinho aberto no Novo pedido
+  const { status: equipeStatus, temEquipe, balcao, dono, entrarDono, sairDono } = useEquipe()
+  const [pinDonoAberto, setPinDonoAberto] = useState(false)
+  // ao entrar/sair da Área do dono as telas recarregam (preços com ou sem margem, custo visível ou não)
+  const modo = balcao ? 'balcao' : 'dono'
 
   useEffect(() => { setCarrinho(carregarCarrinho(profile?.id)) }, [profile?.id])
   useEffect(() => { salvarCarrinho(profile?.id, carrinho) }, [carrinho, profile?.id])
@@ -111,6 +119,16 @@ export default function AppShell() {
                 </span>
               )}
             </button>
+            {temEquipe && (
+              <button style={{ ...S.sair, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                onClick={() => (dono ? sairDono() : setPinDonoAberto(true))} aria-label={dono ? 'Sair da área do dono' : 'Entrar na área do dono'}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="5" y="11" width="14" height="10" rx="1.5" />
+                  <path d={dono ? 'M8 11V7a4 4 0 0 1 7.5-2' : 'M8 11V7a4 4 0 0 1 8 0v4'} />
+                </svg>
+                {isMobile ? (dono ? 'Sair' : 'Dono') : (dono ? 'Sair da área do dono' : 'Área do dono')}
+              </button>
+            )}
             {isRep && isMobile && <button style={S.sair} onClick={() => irPara('config')}>Ajustes</button>}
             <button style={S.sair} onClick={signOut}>Sair</button>
           </div>
@@ -121,7 +139,7 @@ export default function AppShell() {
         {tab === 'banco'     && <BancoImagensPage onSelectImagem={handleSelectImagem} />}
         {tab === 'simulador' && (
           <SimuladorPage
-            key={editando?.id ?? 'novo'}
+            key={`${editando?.id ?? 'novo'}-${modo}`}
             imagemInicial={editando ? null : imagemParaSimulador}
             onImagemClear={() => setImagemParaSimulador(null)}
             onAdicionar={adicionarAoCarrinho}
@@ -133,6 +151,7 @@ export default function AppShell() {
         )}
         {tab === 'carrinho' && (
           <CarrinhoPage
+            key={modo}
             carrinho={carrinho}
             onAlterar={setCarrinho}
             onEditar={(item) => { setEditando(item); irPara('simulador') }}
@@ -141,11 +160,15 @@ export default function AppShell() {
             onVerPedidos={() => irPara('pedidos')}
           />
         )}
-        {tab === 'pedidos'   && <PedidosPage onNovoPedido={() => irPara('simulador')} />}
-        {tab === 'config'    && <ConfigPage />}
+        {tab === 'pedidos'   && <PedidosPage key={modo} onNovoPedido={() => irPara('simulador')} />}
+        {tab === 'config'    && (balcao ? <BalcaoPage /> : <><ConfigPage /><EquipePage /></>)}
         {tab === 'lojas'     && isRep && <RepLojasPage />}
         {tab === 'comissoes' && isRep && <RepComissoesPage />}
       </main>
+
+      <PinModal open={pinDonoAberto} criando={!equipeStatus?.dono_pin_criado} titulo="Área do dono"
+        descricao="Custo, lucro, margem, equipe e comissões."
+        onConfirmar={async (pin) => { await entrarDono(pin); setPinDonoAberto(false) }} onClose={() => setPinDonoAberto(false)} />
 
       {isMobile && (
         <nav style={S.mobileNav} aria-label="Seções">

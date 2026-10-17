@@ -96,6 +96,14 @@ export default function RepLojasPage() {
                     Chamar no WhatsApp
                   </a>
                 )}
+                <button style={{ display: 'block', background: 'none', border: 'none', padding: 0, color: colors.textMuted, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, fontFamily: fonts.body, marginBottom: 12 }}
+                  onClick={async () => {
+                    if (!confirm(`Zerar o PIN do dono da ${l.store_name}? No próximo acesso o dono cria outro.`)) return
+                    try { await callFunction('sim-representante', { method: 'POST', body: { acao: 'zerar_pin_dono', lojista_id: l.id } }); alert('PIN do dono zerado.') }
+                    catch (e) { alert(e.message) }
+                  }}>
+                  Zerar PIN do dono (esqueceu o PIN)
+                </button>
                 {peds.length === 0 ? (
                   <div style={{ fontSize: 13, color: colors.textMuted }}>A loja ainda não fez pedidos.</div>
                 ) : peds.slice(0, 20).map(p => (

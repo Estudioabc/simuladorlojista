@@ -5,6 +5,8 @@ import { callFunction } from '../services/supabase'
 import { EmptyState } from '../components/UI'
 import { FramedArtThumb } from '../components/MockupCanvas'
 import { comQuantidade } from '../utils/carrinho'
+import { useEquipe } from '../contexts/EquipeContext'
+import PinModal from '../components/PinModal'
 
 // Carrinho: vários quadros para o mesmo cliente → um pedido só (uma OS no estúdio)
 export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, onMontar, onVerPedidos }) {
@@ -15,6 +17,12 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState(null) // null | 'novo' | 'orcamento'
   const [verCusto, setVerCusto] = useState(false)
+  const { status: equipeStatus, temEquipe, balcao, vendedorLembrado, assinarVendedor, esquecerVendedor } = useEquipe()
+  // Quem vendeu (loja com equipe): assinatura = { id, nome, token } | 'dono' (sem comissão)
+  const [assinatura, setAssinatura] = useState(() => vendedorLembrado())
+  const [pinDe, setPinDe] = useState(null)
+  const [lembrar, setLembrar] = useState(true)
+  const equipeAtiva = (equipeStatus?.equipe || []).filter(v => v.ativo)
   const [obsAberta, setObsAberta] = useState(!!carrinho.cliente.obs)
   const [tentou, setTentou] = useState(false) // depois da 1ª tentativa, o que falta fica vermelho
 
@@ -34,6 +42,7 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
     if (!cliente.nome.trim() || !cliente.contato.trim()) { setErro('Informe o nome e o contato do cliente.'); return }
     if (!cliente.formaEntrega) { setErro('Escolha a forma de entrega.'); return }
     if (cliente.formaEntrega === 'entrega' && !cliente.endereco.trim()) { setErro('Informe o endereço de entrega.'); return }
+    if (temEquipe && !assinatura) { setErro('Escolha quem vendeu.'); return }
     setErro('')
     setEnviando(status)
     try {
@@ -48,7 +57,9 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
           endereco_entrega: cliente.formaEntrega === 'entrega' ? cliente.endereco.trim() : null,
           obs: cliente.obs.trim() || null,
         },
+        headers: assinatura && assinatura !== 'dono' ? { 'x-vendedor-token': assinatura.token } : undefined,
       })
+      if (assinatura && assinatura !== 'dono' && !vendedorLembrado()) setAssinatura(null)
       onLimpar()
       setSucesso(status)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -157,6 +168,16 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
           </div>
         </div>
 
+        <PinModal open={!!pinDe} criando={pinDe && !pinDe.tem_pin} titulo={pinDe ? pinDe.nome : ''}
+          descricao={pinDe && !pinDe.tem_pin ? 'Primeira venda: crie o seu PIN. Só você deve saber.' : 'Digite o seu PIN para assinar esta venda.'}
+          extra={(
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginTop: 14 }}>
+              <input type="checkbox" checked={lembrar} onChange={e => setLembrar(e.target.checked)} /> Lembrar que este celular é meu
+            </label>
+          )}
+          onConfirmar={async (pin) => { setAssinatura(await assinarVendedor(pinDe, pin, lembrar)); setPinDe(null) }}
+          onClose={() => setPinDe(null)} />
+
         {/* ─── Cliente e finalizar ─── */}
         <div style={{ position: isMobile ? 'static' : 'sticky', top: 96 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -193,17 +214,39 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
             <button onClick={() => setObsAberta(true)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted, marginTop: 12 }}>+ Observações para o estúdio</button>
           )}
 
+          {temEquipe && (
+            <div style={{ marginTop: 22 }}>
+              <span style={{ ...rotulo, color: tentou && !assinatura ? colors.danger : colors.textMuted }}>Quem vendeu?{ast}</span>
+              {assinatura && assinatura !== 'dono' ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', border: `2px solid ${colors.text}`, background: colors.surface }}>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>Vendido por {assinatura.nome}</span>
+                  <button style={{ ...linkBtn, fontSize: 12, color: colors.textMuted }} onClick={() => { esquecerVendedor(); setAssinatura(null) }}>Trocar</button>
+                </div>
+              ) : (
+                <div role="group" aria-label="Quem vendeu" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {equipeAtiva.map(v => (
+                    <button key={v.id} style={{ ...chip(false), ...(tentou && !assinatura ? { borderColor: colors.danger } : {}) }} onClick={() => setPinDe(v)}>{v.nome}</button>
+                  ))}
+                  <button style={{ ...chip(assinatura === 'dono'), ...(tentou && !assinatura ? { borderColor: colors.danger } : {}) }}
+                    onClick={() => setAssinatura(a => (a === 'dono' ? null : 'dono'))} aria-pressed={assinatura === 'dono'}>Venda do dono (sem comissão)</button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ borderTop: `1px solid ${colors.border}`, marginTop: 26, paddingTop: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
               <span style={{ fontSize: 13, color: colors.textMuted }}>Total</span>
               <span style={{ fontFamily: fonts.display, fontSize: 30, fontWeight: 600, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(total)}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
-              <button onClick={() => setVerCusto(v => !v)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted }}>
-                {verCusto ? 'ocultar custo e lucro' : 'ver custo e lucro'}
-              </button>
-            </div>
-            {verCusto && (
+            {!balcao && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                <button onClick={() => setVerCusto(v => !v)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted }}>
+                  {verCusto ? 'ocultar custo e lucro' : 'ver custo e lucro'}
+                </button>
+              </div>
+            )}
+            {verCusto && !balcao && (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
                 <span style={{ color: colors.textMuted }}>Custo do estúdio {formatCurrency(custo)}</span>
                 <span style={{ color: colors.success, fontWeight: 600 }}>Seu lucro {formatCurrency(total - custo)}</span>

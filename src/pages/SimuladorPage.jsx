@@ -198,7 +198,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const substrato = substrates.find(s => s.id === substratoId) ?? null
   const moldura = frames.find(f => f.id === molduraId) ?? null
 
-  const markupPct = lojista?.markup_pct ?? 0
+  // modo balcão: o servidor já manda o preço ao cliente (com a margem) — não aplicar de novo
+  const balcao = !!catalogoData?.balcao
+  const markupPct = balcao ? 0 : (lojista?.markup_pct ?? 0)
 
   const fatiasMax = maxFatias(imagem, ratio)
   const nFatias = Math.min(fatias, fatiasMax)
@@ -633,11 +635,13 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6, fontSize: 12, color: colors.textMuted }}>
                   <span>{preco.qty > 1 ? `${formatCurrency(preco.totalPeca)} por ${multiPeca ? 'conjunto' : 'unidade'}` : ''}</span>
-                  <button onClick={() => setVerCusto(v => !v)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted }}>
-                    {verCusto ? 'ocultar custo e lucro' : 'ver custo e lucro'}
-                  </button>
+                  {!balcao && (
+                    <button onClick={() => setVerCusto(v => !v)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted }}>
+                      {verCusto ? 'ocultar custo e lucro' : 'ver custo e lucro'}
+                    </button>
+                  )}
                 </div>
-                {verCusto && (
+                {verCusto && !balcao && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
                     <span style={{ color: colors.textMuted }}>Custo do estúdio {formatCurrency(precoB2b)}</span>
                     <span style={{ color: colors.success, fontWeight: 600 }}>Seu lucro {formatCurrency(preco.totalGeral - precoB2b)}</span>

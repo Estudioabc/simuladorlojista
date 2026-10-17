@@ -7,14 +7,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export const functionsUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_URL || `${supabaseUrl}/functions/v1`
 
+// Passe da Área do dono (Fase 2): vai em toda chamada enquanto valer (sessionStorage, 30 min)
+export function passeDono() {
+  try {
+    const p = JSON.parse(sessionStorage.getItem('pfp:dono') || 'null')
+    return p && p.exp > Date.now() ? p.token : null
+  } catch { return null }
+}
+
 export async function callFunction(name, options = {}) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
+  const dono = passeDono()
   const res = await fetch(`${functionsUrl}/${name}${options.query ?? ''}`, {
     method: options.method ?? 'GET',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(dono ? { 'x-dono-token': dono } : {}),
+      ...(options.headers ?? {}),
     },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   })

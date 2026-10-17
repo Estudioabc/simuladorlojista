@@ -4,6 +4,7 @@ import { useTheme } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { Spinner, EmptyState } from '../components/UI'
 import { infoMoldura } from '../utils/molduras'
+import { useEquipe } from '../contexts/EquipeContext'
 
 const fmt = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -124,6 +125,7 @@ export default function PedidosPage({ onNovoPedido }) {
   const { colors, fonts } = useTheme()
   const { lojista, profile } = useAuth()
   const markupDiv = 1 + (parseFloat(lojista?.markup_pct) || 0) / 100
+  const { balcao } = useEquipe() // modo balcão: sem custo da loja nem lucro
   const [pedidos, setPedidos] = useState([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
@@ -157,6 +159,7 @@ export default function PedidosPage({ onNovoPedido }) {
 
   // preco_b2b do pedido, com fallback calculado via markup do lojista
   const getB2b = (p) => {
+    if (balcao) return 0
     if (p.preco_b2b) return p.preco_b2b
     if (p.revenda_total && markupDiv > 1) return +(p.revenda_total / markupDiv).toFixed(2)
     return 0
@@ -252,8 +255,10 @@ export default function PedidosPage({ onNovoPedido }) {
         {[
           { label: 'Pedidos aprovados', value: financeiro.qtd,   fmt: false, color: colors.text },
           { label: 'Vendido',           value: financeiro.venda, fmt: true,  color: colors.text },
-          { label: 'Custo do estúdio',  value: financeiro.custo, fmt: true,  color: colors.textMuted },
-          { label: 'Seu lucro',         value: financeiro.lucro, fmt: true,  color: financeiro.lucro >= 0 ? colors.success : colors.danger },
+          ...(balcao ? [] : [
+            { label: 'Custo do estúdio',  value: financeiro.custo, fmt: true,  color: colors.textMuted },
+            { label: 'Seu lucro',         value: financeiro.lucro, fmt: true,  color: financeiro.lucro >= 0 ? colors.success : colors.danger },
+          ]),
         ].map(c => (
           <div key={c.label} style={S.kpi}>
             <div style={S.kpiLabel}>{c.label}</div>
@@ -334,6 +339,12 @@ export default function PedidosPage({ onNovoPedido }) {
                       <div>
                         <div style={S.infoLabel}>Contato</div>
                         <div style={S.infoValue}>{p.cliente_contato}</div>
+                      </div>
+                    )}
+                    {p.vendedor_nome && (
+                      <div>
+                        <div style={S.infoLabel}>Vendido por</div>
+                        <div style={S.infoValue}>{p.vendedor_nome}</div>
                       </div>
                     )}
                     {p.forma_entrega && (
