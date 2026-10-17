@@ -23,13 +23,15 @@ export default function BalcaoPage() {
   }
 
   if (vendas) {
-    const total = vendas.pedidos.reduce((s, p) => s + (Number(p.vendedor_comissao) || 0), 0)
-    const vendido = vendas.pedidos.reduce((s, p) => s + (Number(p.revenda_total) || 0), 0)
+    // orçamento ainda não é venda: só conta quando o cliente fecha (pedido confirmado)
+    const fechados = vendas.pedidos.filter(p => p.status !== 'orcamento')
+    const total = fechados.reduce((s, p) => s + (Number(p.vendedor_comissao) || 0), 0)
+    const vendido = fechados.reduce((s, p) => s + (Number(p.revenda_total) || 0), 0)
     return (
       <div style={{ fontFamily: fonts.body, maxWidth: 640 }}>
         <button onClick={() => setVendas(null)} style={{ background: 'none', border: 'none', padding: 0, color: colors.textMuted, fontSize: 14, cursor: 'pointer', fontFamily: fonts.body }}>← Voltar</button>
         <h1 style={{ fontFamily: fonts.display, fontSize: 28, fontWeight: 600, margin: '10px 0 4px' }}>Vendas de {vendas.vendedor?.nome}</h1>
-        <div style={{ fontSize: 14, color: colors.textMuted, marginBottom: 20 }}>Neste mês · {String(vendas.vendedor?.comissao_pct ?? 0).replace('.', ',')}% de comissão sobre o valor de venda</div>
+        <div style={{ fontSize: 14, color: colors.textMuted, marginBottom: 20 }}>Pedidos fechados neste mês · {String(vendas.vendedor?.comissao_pct ?? 0).replace('.', ',')}% de comissão sobre o valor de venda</div>
         <div style={{ display: 'flex', gap: 28, borderTop: `1px solid ${colors.text}`, borderBottom: `1px solid ${colors.border}`, padding: '14px 0', marginBottom: 16 }}>
           <div><div style={{ fontSize: 12, color: colors.textMuted }}>Vendido</div><div style={{ fontSize: 22, fontWeight: 600, fontFamily: fonts.display }}>{formatCurrency(vendido)}</div></div>
           <div><div style={{ fontSize: 12, color: colors.textMuted }}>Sua comissão</div><div style={{ fontSize: 22, fontWeight: 600, fontFamily: fonts.display, color: colors.success }}>{formatCurrency(total)}</div></div>
@@ -43,7 +45,7 @@ export default function BalcaoPage() {
             <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
               <div style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(p.revenda_total)}</div>
               <div style={{ fontSize: 12, color: p.vendedor_comissao_paga_em ? colors.success : colors.textMuted }}>
-                {formatCurrency(p.vendedor_comissao)} {p.vendedor_comissao_paga_em ? '· paga' : ''}
+                {p.status === 'orcamento' ? 'comissão quando fechar' : `${formatCurrency(p.vendedor_comissao)}${p.vendedor_comissao_paga_em ? ' · paga' : ''}`}
               </div>
             </div>
           </div>
