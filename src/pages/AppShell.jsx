@@ -120,13 +120,13 @@ export default function AppShell() {
               )}
             </button>
             {temEquipe && (
-              <button style={{ ...S.sair, display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                onClick={() => (dono ? sairDono() : setPinDonoAberto(true))} aria-label={dono ? 'Sair da área do dono' : 'Entrar na área do dono'}>
+              <button style={{ ...S.sair, display: 'inline-flex', alignItems: 'center', gap: 5, textDecoration: 'none', border: `1px solid ${dono ? colors.text : colors.border}`, borderRadius: 2, padding: '5px 9px', color: dono ? colors.text : colors.textMuted, background: dono ? colors.surface : 'none' }}
+                onClick={() => (dono ? sairDono() : setPinDonoAberto(true))} aria-label={dono ? 'Bloquear a área do dono' : 'Entrar na área do dono'}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <rect x="5" y="11" width="14" height="10" rx="1.5" />
                   <path d={dono ? 'M8 11V7a4 4 0 0 1 7.5-2' : 'M8 11V7a4 4 0 0 1 8 0v4'} />
                 </svg>
-                {isMobile ? (dono ? 'Sair' : 'Dono') : (dono ? 'Sair da área do dono' : 'Área do dono')}
+                {isMobile ? (dono ? 'Bloquear' : 'Dono') : (dono ? 'Bloquear área do dono' : 'Área do dono')}
               </button>
             )}
             {isRep && isMobile && <button style={S.sair} onClick={() => irPara('config')}>Ajustes</button>}
