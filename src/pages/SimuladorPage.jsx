@@ -127,9 +127,9 @@ const cm = (v) => String(um(v)).replace('.', ',')
 const TAMANHOS_23 = [[60, 90], [80, 120], [100, 150], [130, 200]]
 const VIDRO_MAX = [110, 160]
 // Limites de produção por peça (espelhado em sim-pedido): o menor lado cabe na largura do rolo
-// (canvas: rolo 160 cm com 5 cm de dobra por lado → arte até 150; papel: rolo 150 com refile → até 148)
+// (canvas: rolo 160 cm com 5 cm de dobra por lado → arte até 150; papel: rolo 150 → até 150, já com o refile)
 // e o maior lado cabe na barra de moldura/chassi (270 cm).
-const LIMITE_ROLO = { canvas: 150, convencional: 148 }
+const LIMITE_ROLO = { canvas: 150, convencional: 150 }
 const LIMITE_BARRA = 270
 export function foraDoLimite(pecas, tipoMontagem) {
   const rolo = LIMITE_ROLO[tipoMontagem]
