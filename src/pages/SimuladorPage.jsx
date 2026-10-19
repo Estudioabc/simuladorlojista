@@ -141,7 +141,11 @@ export function foraDoLimite(pecas, tipoMontagem) {
   }
   return null
 }
-const ehDoisTres = (r) => r > 0 && (Math.abs(r - 2 / 3) / (2 / 3) < 0.04 || Math.abs(r - 1.5) / 1.5 < 0.04)
+// Fração da obra que sai (corte central) para caber no quadro w/h. Os tamanhos padrão valem para obras 2:3
+// e para as próximas de 2:3 que precisam de até 12% de corte; o resto fica só no personalizado.
+const fracaoCorte = (r, alvo) => (r > 0 && alvo > 0 ? 1 - Math.min(r, alvo) / Math.max(r, alvo) : 1)
+const CORTE_MAX_PADRAO = 0.12
+const ehDoisTres = (r) => fracaoCorte(r, r >= 1 ? 1.5 : 2 / 3) <= CORTE_MAX_PADRAO
 
 export default function SimuladorPage({ imagemInicial, onImagemClear, onAdicionar, itemEditando, onCancelarEdicao, onVerCarrinho, nCarrinho = 0 }) {
   const { colors, fonts } = useTheme()
@@ -279,6 +283,10 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const opcoesPadrao = temPadrao ? TAMANHOS_23.map(([a, b]) => (parseFloat(ratio) >= 1 ? [b, a] : [a, b])) : []
   const padraoAtual = opcoesPadrao.find(([w, h]) => parseFloat(largura) === w && parseFloat(altura) === h) || null
   const modoPadrao = temPadrao && !tamPersonalizado
+  // no tamanho padrão o quadro tem a proporção do tamanho escolhido; a obra é cortada no centro se precisar
+  const ratioQuadro = modoPadrao && padraoAtual ? padraoAtual[0] / padraoAtual[1] : null
+  const corteAtual = ratioQuadro ? fracaoCorte(parseFloat(ratio), ratioQuadro) : 0
+  const eixoCorte = ratioQuadro && ratioQuadro > parseFloat(ratio) ? 'altura' : 'largura'
   const cabeVidro = (w, h) => Math.min(w, h) <= VIDRO_MAX[0] && Math.max(w, h) <= VIDRO_MAX[1]
 
   const preco = useMemo(() =>
@@ -394,6 +402,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
         imagem_id: imagem?.id ?? null,
         imagem_titulo: imagem?.titulo ?? null,
         imagem_url: imagem?.img_url ?? null,
+        // proporção da obra: o servidor calcula o corte do tamanho padrão e manda a instrução para a OS
+        proporcao_original: ratioQuadro && corteAtual > 0.01 ? +parseFloat(ratio).toFixed(4) : null,
         preco_total: +preco.totalGeral.toFixed(2),
       },
       resumo: {
@@ -539,7 +549,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                     imgUrl={isKit ? null : imagem.img_url}
                     kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
                     slices={isKit ? 1 : nFatias}
-                    ratio={ratio || parseFloat(imagem.ratio) || 1}
+                    ratio={ratioQuadro || ratio || parseFloat(imagem.ratio) || 1}
                     frameColor={molduraCor || 'preta'} room={mockupRoom} width={900}
                     tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null} />
                 </button>
@@ -548,7 +558,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                   imgUrl={isKit ? null : imagem.img_url}
                   kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
                   slices={isKit ? 1 : nFatias}
-                  ratio={ratio || parseFloat(imagem.ratio) || 1}
+                  ratio={ratioQuadro || ratio || parseFloat(imagem.ratio) || 1}
                   frameColor={molduraCor || 'preta'} room={mockupRoom} width={1200}
                   tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null}
                   onTamanhoChange={(alt) => {
@@ -633,11 +643,17 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                     </button>
                   )
                 })}
-                <button onClick={() => setTamPersonalizado(true)} style={chipBtn(tamPersonalizado)} aria-pressed={tamPersonalizado}>Personalizado</button>
+                <button onClick={() => { setTamPersonalizado(true); if (travarRatio && parseFloat(ratio) > 0 && parseFloat(altura) > 0) handleAltura(altura) }} style={chipBtn(tamPersonalizado)} aria-pressed={tamPersonalizado}>Personalizado</button>
               </div>
             )}
-            {modoPadrao && padraoAtual && Math.max(...padraoAtual) === 200 && (
-              <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>A arte é ajustada para o tamanho exato (corte imperceptível). Só em canvas.</div>
+            {modoPadrao && padraoAtual && corteAtual > 0.01 && (
+              <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>
+                A arte é ajustada ao tamanho {padraoAtual[0]} × {padraoAtual[1]}: corte de {Math.round(corteAtual * 100) || 1}% na {eixoCorte}, centralizado (como no ambiente ao lado).
+                {Math.max(...padraoAtual) === 200 ? ' Só em canvas.' : ''}
+              </div>
+            )}
+            {modoPadrao && padraoAtual && corteAtual <= 0.01 && Math.max(...padraoAtual) === 200 && (
+              <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>Só em canvas.</div>
             )}
             {modoPadrao && tipoMontagem === 'convencional' && padraoAtual && !cabeVidro(...padraoAtual) && (
               <div style={{ fontSize: 12, color: '#B4312A', marginBottom: 10 }}>Em papel, o maior tamanho é 100 × 150. Escolha outro tamanho ou canvas.</div>
@@ -833,7 +849,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
             imgUrl={isKit ? null : imagem.img_url}
             kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
             slices={isKit ? 1 : nFatias}
-            ratio={ratio || parseFloat(imagem.ratio) || 1}
+            ratio={ratioQuadro || ratio || parseFloat(imagem.ratio) || 1}
             frameColor={molduraCor || 'preta'}
             width={1100}
             room={mockupRoom}
