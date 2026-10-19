@@ -298,6 +298,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       categoria: kit ? (kit.categoria ?? img.categoria) : img.categoria,
       kitParts,
       kitCount: kit?.kitCount ?? 1,
+      cardChave: kit ? `kit-${kit.kitId}` : img.id, // mesma sala do mockup do card
     }
   }
 
@@ -323,7 +324,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
         style={S.card}
         onMouseEnter={() => setHoveredId(key)}
         onMouseLeave={() => setHoveredId(null)}
-        onClick={() => openPreview(img)}
+        onClick={() => (onSelectImagem ? usarNoSimulador(img) : openPreview(img))}
       >
         <div style={S.wall(hovered)}>
           {isKit

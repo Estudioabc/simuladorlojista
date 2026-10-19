@@ -3,7 +3,7 @@ import { useTheme, useIsMobile, formatCurrency } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
-import MockupCanvas, { ROOMS } from '../components/MockupCanvas'
+import MockupCanvas, { PEDIDO_ROOMS, orientacaoDe, salaDaObra } from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
 import { infoMoldura, CORES_MOLDURA } from '../utils/molduras'
 
@@ -125,7 +125,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
 
   const [showBanco, setShowBanco] = useState(false)
   const [mockupAberto, setMockupAberto] = useState(false)
-  const [mockupRoom, setMockupRoom] = useState(ROOMS[0])
+  const [mockupRoom, setMockupRoom] = useState(PEDIDO_ROOMS.vertical[0])
   const [molduraCor, setMolduraCor] = useState('') // id em CORES_MOLDURA; vai no pedido e pinta o mockup
   const [adicionado, setAdicionado] = useState(false) // aviso "quadro no carrinho"
   const [erro, setErro] = useState('')
@@ -140,12 +140,20 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   }, [])
 
   const isKit = imagem?.kitCount > 1 && imagem?.kitParts?.length > 1
+  // Ambientes do pedido = os do card do acervo (mesma sala e calibração); a lista acompanha a orientação da obra
+  const orientacao = imagem ? orientacaoDe(isKit ? imagem.kitParts.map(p => parseFloat(p.ratio) || 1) : [parseFloat(ratio) || parseFloat(imagem.ratio) || 1]) : 'vertical'
+  const salas = PEDIDO_ROOMS[orientacao]
+  useEffect(() => {
+    if (imagem) setMockupRoom(salaDaObra(imagem.cardChave || imagem.id || imagem.img_url, orientacao))
+  }, [imagem?.img_url, imagem?.cardChave, orientacao])
 
   useEffect(() => {
     if (!ratio || largura || altura) return
-    if (isKit) { setAltura('50'); setLargura(String(um(50 * ratio))) }
-    else if (ratio >= 1) { setLargura('60'); setAltura(String(Math.round(60 / ratio))) }
-    else { setAltura('60'); setLargura(String(Math.round(60 * ratio))) }
+    // tamanho inicial de quadro de sala (o pedido abre com a obra bem visível na parede): horizontal 120 cm de largura,
+    // vertical 90 cm de altura, composição 60 cm de altura por peça
+    if (isKit) { setAltura('60'); setLargura(String(um(60 * ratio))) }
+    else if (ratio >= 1) { setLargura('120'); setAltura(String(Math.round(120 / ratio))) }
+    else { setAltura('90'); setLargura(String(Math.round(90 * ratio))) }
   }, [ratio, imagem])
 
   // Editar um quadro do carrinho: volta para a montagem com tudo preenchido
@@ -162,6 +170,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   useEffect(() => {
     if (imagemInicial) {
       setImagem(imagemInicial)
+      // obra nova vinda do acervo: recomeça tamanho e peças (senão herdava os da obra anterior)
+      setLargura(''); setAltura(''); setFatias(1)
       detectRatio(imagemInicial)
     }
   }, [imagemInicial])
@@ -473,7 +483,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
               {isMobile ? (
                 <button onClick={() => setMockupAberto(true)} aria-label="Ampliar o quadro no ambiente"
                   style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'zoom-in' }}>
-                  <MockupCanvas inline aspect={3 / 2}
+                  <MockupCanvas inline
                     imgUrl={isKit ? null : imagem.img_url}
                     kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
                     slices={isKit ? 1 : nFatias}
@@ -482,7 +492,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                     tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null} />
                 </button>
               ) : (
-                <MockupCanvas inline aspect={3 / 2} interactive
+                <MockupCanvas inline interactive
                   imgUrl={isKit ? null : imagem.img_url}
                   kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
                   slices={isKit ? 1 : nFatias}
@@ -501,7 +511,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
               </button>
             </div>
           ) : (
-            <div style={{ aspectRatio: '3 / 2', background: colors.surfaceAlt, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24, textAlign: 'center' }}>
+            <div style={{ aspectRatio: '1088 / 1024', background: colors.surfaceAlt, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24, textAlign: 'center' }}>
               <button onClick={() => setShowBanco(true)}
                 style={{ background: colors.text, color: colors.bg, border: 'none', borderRadius: 2, padding: '13px 22px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body }}>
                 Escolher obra no acervo
@@ -513,7 +523,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
           {imagem && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
               <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-                {ROOMS.map(room => (
+                {salas.map(room => (
                   <button key={room.id} onClick={() => setMockupRoom(room)} aria-pressed={mockupRoom.id === room.id}
                     style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, fontFamily: fonts.body, cursor: 'pointer', color: mockupRoom.id === room.id ? colors.text : colors.textMuted, fontWeight: mockupRoom.id === room.id ? 600 : 400 }}>
                     {room.label}
@@ -721,7 +731,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
           style={{ position: 'fixed', inset: 0, background: 'rgba(14,13,10,0.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', zIndex: 1000, padding: '20px 16px', overflowY: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, width: '100%', maxWidth: 1100, marginBottom: 12 }}>
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, minWidth: 0 }}>
-              {ROOMS.map(room => (
+              {salas.map(room => (
                 <button key={room.id} onClick={() => setMockupRoom(room)} title={room.label} aria-label={`Ambiente ${room.label}`} aria-pressed={mockupRoom.id === room.id}
                   style={{ flexShrink: 0, width: 84, height: 54, overflow: 'hidden', border: 'none', outline: mockupRoom.id === room.id ? '2px solid #fff' : '1px solid rgba(255,255,255,0.15)', outlineOffset: mockupRoom.id === room.id ? 2 : 0, opacity: mockupRoom.id === room.id ? 1 : 0.6, cursor: 'pointer', padding: 0, background: '#000' }}>
                   <img src={room.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
