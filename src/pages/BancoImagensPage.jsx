@@ -105,6 +105,34 @@ function buildKitMap(imagens, kits, pecas) {
   return { kitOf, coverOf }
 }
 
+// Faixa da marca no topo do acervo: identidade Casa Quadro Trade (grafite, off-white, areia)
+// com uma ilustração em traço — parede com quadros e sofá; um detalhe dourado lembra os exclusivos
+const AREIA = '#C4B6A0', GRAFITE = '#1E1D1B', OURO = '#C9A24B'
+function IlustracaoParede() {
+  const t = { fill: 'none', stroke: AREIA, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }
+  return (
+    <svg viewBox="0 0 520 260" width="100%" height="100%" role="img" aria-label="Parede com quadros e sofá" preserveAspectRatio="xMidYMid meet">
+      {/* quadros */}
+      <rect x="128" y="34" width="168" height="104" {...t} />
+      <path d="M140 92 C170 80, 196 98, 226 86 S272 96, 284 84" stroke={OURO} strokeWidth="3" fill="none" strokeLinecap="round" />
+      <path d="M140 108 C176 100, 210 116, 240 104 S276 110, 284 104" {...t} strokeWidth="1.2" opacity="0.6" />
+      <rect x="312" y="34" width="70" height="104" {...t} />
+      <circle cx="347" cy="70" r="14" {...t} strokeWidth="1.4" opacity="0.8" />
+      <rect x="54" y="52" width="58" height="86" {...t} />
+      <path d="M83 128 L83 74 M83 92 L70 82 M83 104 L96 92 M83 116 L72 108" {...t} strokeWidth="1.4" opacity="0.8" />
+      {/* sofá */}
+      <path d="M70 214 L70 182 Q70 170 82 170 L346 170 Q358 170 358 182 L358 214" {...t} />
+      <path d="M58 214 L58 196 Q58 188 66 188 L82 188 L82 214 M346 214 L346 188 L362 188 Q370 188 370 196 L370 214" {...t} />
+      <path d="M52 214 L376 214 M80 214 L76 230 M348 214 L352 230" {...t} />
+      <path d="M100 170 L100 198 M214 170 L214 198 M328 170 L328 198 M82 198 L346 198" {...t} strokeWidth="1.2" opacity="0.55" />
+      {/* planta e luminária */}
+      <path d="M430 230 L424 196 L456 196 L450 230 Z" {...t} />
+      <path d="M440 196 C432 168, 414 156, 402 150 M440 196 C444 166, 462 150, 476 142 M440 196 C440 172, 440 150, 446 128" {...t} strokeWidth="1.6" />
+      <path d="M20 230 L500 230" {...t} strokeWidth="1.2" opacity="0.5" />
+    </svg>
+  )
+}
+
 export default function BancoImagensPage({ onSelectImagem }) {
   const { profile } = useAuth()
   const { colors, fonts } = useTheme()
@@ -122,7 +150,6 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [frameColor, setFrameColor] = useState('preto')
   const [selectedRoom, setSelectedRoom] = useState(ROOMS[0])
   const [hoveredId, setHoveredId] = useState(null)
-  const [vistosNoAmbiente, setVistosNoAmbiente] = useState(() => new Set())
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
   const [kitOf, setKitOf] = useState({})
   const [coverOf, setCoverOf] = useState({})
@@ -225,6 +252,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
     const matchFav = !soFavoritos || favoritos.has(cardKeyOf(img))
     return doLado(img) && matchCat && matchBusca && matchFormato && matchCor && matchTipo && matchFav
   }).sort((a, b) => (potencial[b.id] || 0) - (potencial[a.id] || 0) || String(a.titulo).localeCompare(String(b.titulo), 'pt-BR'))
+  // No Em alta a ordem é invertida (pedido do Pedro, 19/10): as obras que ficavam no fim vêm primeiro
+  if (catAtiva === 'em_alta') filtradas.reverse()
 
   // Colapsa kits em um único card
   const cards = useMemo(() => {
@@ -292,7 +321,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       <article
         key={key}
         style={S.card}
-        onMouseEnter={() => { setHoveredId(key); if (!vistosNoAmbiente.has(key)) setVistosNoAmbiente(v => new Set(v).add(key)) }}
+        onMouseEnter={() => setHoveredId(key)}
         onMouseLeave={() => setHoveredId(null)}
         onClick={() => openPreview(img)}
       >
@@ -301,9 +330,9 @@ export default function BancoImagensPage({ onSelectImagem }) {
             ? <FramedArtThumb srcs={kit.parts.map(p => p.img_url)} alt={title} />
             : <FramedArtThumb src={img.img_url} alt={title} />
           }
-          {/* como na Artspot: ao passar o mouse, a obra aparece pendurada num ambiente (só desktop) */}
-          {!isMobile && vistosNoAmbiente.has(key) && (
-            <div style={S.ambiente(hovered)} aria-hidden="true">
+          {/* como na Artspot: a obra aparece pendurada num ambiente; ao passar o mouse, mostra só o quadro */}
+          {(
+            <div style={S.ambiente(!hovered)} aria-hidden="true">
               <CardMockup urls={urls} chave={key} />
             </div>
           )}
@@ -350,6 +379,12 @@ export default function BancoImagensPage({ onSelectImagem }) {
     title: { fontFamily: fonts.display, fontSize: 'clamp(28px, 3.9vw, 41px)', fontWeight: 600, lineHeight: 1.02, letterSpacing: -1, margin: '6px 0 10px', textWrap: 'balance' },
     lead: { fontSize: 15, color: colors.textMuted, maxWidth: 560, lineHeight: 1.55 },
     toolbar: { margin: '16px 0 0' },
+    marca: { background: GRAFITE, color: '#F5F2EC', borderRadius: 14, padding: isMobile ? '24px 22px' : '30px 40px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.1fr) minmax(0, 1fr)', alignItems: 'center', gap: 28 },
+    marcaTexto: { display: 'flex', alignItems: 'center', gap: isMobile ? 18 : 30, minWidth: 0 },
+    marcaLogo: { height: isMobile ? 74 : 104, width: 'auto', flexShrink: 0 },
+    marcaTitulo: { fontFamily: fonts.display, fontSize: isMobile ? 22 : 'clamp(24px, 2.6vw, 32px)', fontWeight: 600, lineHeight: 1.08, letterSpacing: -0.5, margin: 0 },
+    marcaLead: { fontSize: 13, color: 'rgba(245,242,236,0.65)', margin: '10px 0 0', lineHeight: 1.5, maxWidth: 340 },
+    marcaIlustra: { height: 190, display: 'flex', justifyContent: 'flex-end' },
     lados: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 24, maxWidth: 560 },
     lado: (on) => ({ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, textAlign: 'left', cursor: 'pointer', borderRadius: 10, padding: '12px 16px', background: on ? colors.text : colors.surface, color: on ? colors.bg : colors.text, border: `1px solid ${on ? colors.text : colors.border}` }),
     fixo: { position: 'sticky', top: isMobile ? 0 : 72, zIndex: 20, background: colors.bg, padding: '10px 0', marginBottom: 8, borderBottom: `1px solid ${colors.border}` },
@@ -400,9 +435,16 @@ export default function BancoImagensPage({ onSelectImagem }) {
 
   return (
     <div>
-      <div style={S.eyebrow}>Acervo</div>
-      <h1 style={S.title}>Obras para a parede do seu cliente</h1>
-      <p style={S.lead}>Escolha um tema ou use os filtros de formato e cor. Abra uma obra para vê-la num ambiente, ou leve direto para um novo pedido.</p>
+      <section style={S.marca} aria-label="Casa Quadro Trade">
+        <div style={S.marcaTexto}>
+          <img src="/marca-casa-quadro-trade.png" alt="Casa Quadro Trade" style={S.marcaLogo} />
+          <div>
+            <h1 style={S.marcaTitulo}>Seu cliente escolhe.<br /><span style={{ color: AREIA }}>A gente produz.</span></h1>
+            <p style={S.marcaLead}>Abra uma obra para vê-la num ambiente, ou leve direto para um novo pedido.</p>
+          </div>
+        </div>
+        {!isMobile && <div style={S.marcaIlustra}><IlustracaoParede /></div>}
+      </section>
 
       <div style={S.lados} role="tablist" aria-label="Grandes categorias">
         {[{ id: 'exclusivos', label: 'Exclusivos', nota: 'seleção exclusiva' }, { id: 'geral', label: 'Geral', nota: 'acervo completo' }].map(l => (

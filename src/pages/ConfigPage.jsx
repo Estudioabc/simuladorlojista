@@ -94,7 +94,7 @@ export default function ConfigPage() {
             <div style={S.previewBox}>
               <div style={S.previewLabel}>Como fica no topo do portal</div>
               <div style={S.previewVal}>{storeName.trim()}</div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: colors.textMuted, marginTop: 5, letterSpacing: 1.6, textTransform: 'uppercase' }}>Portal do lojista · Estúdio ABC</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: colors.textMuted, marginTop: 5, letterSpacing: 1.6, textTransform: 'uppercase' }}>Portal do lojista · Casa Quadro Trade</div>
             </div>
           )}
         </div>
@@ -120,13 +120,13 @@ export default function ConfigPage() {
             <div style={S.inputSuffix}>%</div>
           </div>
           <div style={S.hint}>
-            É somado ao preço do Estúdio ABC para chegar no preço que o seu cliente paga. Vale para os próximos pedidos.
+            É somado ao preço do Casa Quadro Trade para chegar no preço que o seu cliente paga. Vale para os próximos pedidos.
           </div>
           {markup > 0 && (
             <div style={S.previewBox}>
               <div style={S.previewLabel}>Exemplo de cálculo</div>
               <div style={{ ...S.infoRow, marginTop: 6 }}>
-                <span>Custo base (Estúdio ABC)</span>
+                <span>Custo base (Casa Quadro Trade)</span>
                 <span style={S.infoVal}>R$ {exampleCost.toFixed(2).replace('.', ',')}</span>
               </div>
               <div style={S.infoRow}>
@@ -142,9 +142,9 @@ export default function ConfigPage() {
         </div>
 
         <div style={{ ...S.field, ...S.previewBox }}>
-          <div style={S.previewLabel}>Seu desconto no Estúdio ABC</div>
+          <div style={S.previewLabel}>Seu desconto no Casa Quadro Trade</div>
           <div style={S.previewVal}>{lojista?.discount_pct ?? 0}%</div>
-          <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 4 }}>Definido pelo Estúdio ABC. Para mudar, fale com eles.</div>
+          <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 4 }}>Definido pelo Casa Quadro Trade. Para mudar, fale com eles.</div>
         </div>
       </div>
 

@@ -92,7 +92,7 @@ export default function AppShell() {
         <div style={S.headerInner}>
           <div style={S.brand}>
             <div style={S.loja}>{loja}</div>
-            <div style={S.sub}>{isRep ? 'Representante' : 'Portal do lojista'} · Estúdio ABC</div>
+            <div style={S.sub}>{isRep ? 'Representante' : 'Portal do lojista'} · Casa Quadro Trade</div>
           </div>
 
           {!isMobile && (

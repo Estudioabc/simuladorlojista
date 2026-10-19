@@ -94,7 +94,7 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
         <p style={{ fontSize: 15, color: colors.textMuted, lineHeight: 1.55, margin: '10px 0 26px' }}>
           {sucesso === 'orcamento'
             ? 'Ele fica em Meus pedidos. De lá você gera o PDF para o cliente e confirma quando ele fechar.'
-            : 'O Estúdio ABC vai confirmar e iniciar a produção. Acompanhe em Meus pedidos.'}
+            : 'O Casa Quadro Trade vai confirmar e iniciar a produção. Acompanhe em Meus pedidos.'}
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={onVerPedidos} style={{ ...chip(false), padding: '12px 20px' }}>Ver meus pedidos</button>

@@ -235,7 +235,7 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
   if (pronto) {
     // link que a loja vai usar: o do site publicado (testando localmente, o endereço seria localhost)
     const link = /localhost|127\.0\.0\.1/.test(window.location.hostname) ? 'https://simuladorlojista.netlify.app' : window.location.origin
-    const msg = `Olá! Seu acesso ao portal do Estúdio ABC está pronto.\n\nEntre em ${link}\nUsuário: ${pronto.usuario}\nSenha: ${pronto.senha}\n\nLá você escolhe as obras, vê o quadro na parede do cliente e faz o pedido.`
+    const msg = `Olá! Seu acesso ao portal do Casa Quadro Trade está pronto.\n\nEntre em ${link}\nUsuário: ${pronto.usuario}\nSenha: ${pronto.senha}\n\nLá você escolhe as obras, vê o quadro na parede do cliente e faz o pedido.`
     const wa = digitos(pronto.whatsapp)
     return (
       <div style={{ maxWidth: 520, margin: '24px auto', fontFamily: fonts.body }}>
@@ -316,7 +316,7 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
         </div>
       </div>
       <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 8px', lineHeight: 1.5 }}>
-        Depois de cadastrar, você manda o acesso para a loja pelo WhatsApp. O Estúdio ABC define os produtos liberados para ela.
+        Depois de cadastrar, você manda o acesso para a loja pelo WhatsApp. O Casa Quadro Trade define os produtos liberados para ela.
       </p>
 
       {erro && <div role="alert" style={{ margin: '14px 0', background: colors.danger + '10', borderLeft: `3px solid ${colors.danger}`, padding: '10px 12px', fontSize: 14, color: colors.danger }}>{erro}</div>}

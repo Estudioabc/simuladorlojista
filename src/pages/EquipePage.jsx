@@ -48,7 +48,7 @@ export default function EquipePage() {
         </p>
         <button style={btn} onClick={() => setPinAberto(true)}>{criar ? 'Criar PIN do dono' : 'Entrar na Área do dono'}</button>
         <PinModal open={pinAberto} criando={criar} titulo={criar ? 'PIN do dono' : 'Área do dono'}
-          descricao={criar ? 'Só você deve saber este PIN. Se esquecer, o Estúdio ABC ou o seu representante zeram.' : null}
+          descricao={criar ? 'Só você deve saber este PIN. Se esquecer, o Casa Quadro Trade ou o seu representante zeram.' : null}
           onConfirmar={async (pin) => { await entrarDono(pin); setPinAberto(false) }} onClose={() => setPinAberto(false)} />
       </div>
     )

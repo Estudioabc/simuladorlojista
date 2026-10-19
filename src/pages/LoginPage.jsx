@@ -43,17 +43,17 @@ export default function LoginPage() {
   return (
     <div style={S.page}>
       <aside style={S.side}>
-        <div style={S.sideBrand}>Estúdio ABC · Portal do lojista</div>
+        <div style={S.sideBrand}>Casa Quadro Trade · Portal do lojista</div>
         <div>
           <div style={S.sideTitle}>Seu cliente escolhe.<br />A gente produz.</div>
-          <p style={S.sideText}>Mais de mil obras, simulação na parede e preço na hora. O Estúdio ABC imprime e emoldura.</p>
+          <p style={S.sideText}>Mais de mil obras, simulação na parede e preço na hora. O Casa Quadro Trade imprime e emoldura.</p>
         </div>
       </aside>
 
       <main style={S.main}>
         <form onSubmit={handleSubmit} style={S.form}>
           <h1 style={S.title}>Entrar</h1>
-          <p style={S.subtitle}>Entre com o usuário e a senha que o Estúdio ABC passou para você.</p>
+          <p style={S.subtitle}>Entre com o usuário e a senha que o Casa Quadro Trade passou para você.</p>
 
           {error && (
             <div style={S.error} role="alert">
@@ -97,7 +97,7 @@ export default function LoginPage() {
           </div>
 
           <p style={{ fontSize: 13, color: colors.textMuted, marginTop: 24, lineHeight: 1.5 }}>
-            Esqueceu a senha? Fale com o Estúdio ABC.
+            Esqueceu a senha? Fale com o Casa Quadro Trade.
           </p>
         </form>
       </main>

@@ -219,11 +219,25 @@ export function KitThumb({ kitUrls, frameColor = 'branco', cardWidth = 200, room
   )
 }
 
-// Mockup do card do acervo: o QUADRO é o protagonista. Dá zoom no ambiente em volta da obra,
-// deixando-a centralizada e grande (vertical ≈ 60% da altura do card; horizontal/composição ≈ 80% da largura).
-// O ambiente entra só como contexto. Ambientes: parede alta para vertical, parede larga para horizontal.
-const SALAS_VERTICAL = ['sala-clara', 'sala-escura']
-const SALAS_HORIZONTAL = ['quarto', 'jantar', 'sala-clara']
+// Mockup do card do acervo: o QUADRO é o protagonista, grande na parede como na Artspot.
+// Ambientes próprios do card (gerados com parede alta e móveis baixos, formato do card). Calibração em fração da foto:
+// top/bottom = faixa livre da parede (bottom = topo do móvel), cx = centro horizontal da parede livre.
+export const CARD_ROOMS = {
+  vertical: [
+    { src: '/card_v_aparador.jpg', top: 0.13, bottom: 0.68, cx: 0.49 },
+    { src: '/card_v_banco.jpg', top: 0.04, bottom: 0.74, cx: 0.45 },
+    { src: '/card_v_corredor.jpg', top: 0.09, bottom: 0.73, cx: 0.50 },
+    { src: '/card_v_poltrona.jpg', top: 0.05, bottom: 0.78, cx: 0.60 },
+    { src: '/card_v_quarto.jpg', top: 0.04, bottom: 0.80, cx: 0.48 },
+    { src: '/card_v_sala_bege.jpg', top: 0.04, bottom: 0.72, cx: 0.49 },
+  ],
+  horizontal: [
+    { src: '/card_h_aparador.jpg', top: 0.06, bottom: 0.76, cx: 0.50 },
+    { src: '/card_h_cama.jpg', top: 0.06, bottom: 0.67, cx: 0.49 },
+    { src: '/card_h_sofa_creme.jpg', top: 0.06, bottom: 0.65, cx: 0.50 },
+    { src: '/card_h_sofa_curvo.jpg', top: 0.06, bottom: 0.71, cx: 0.51 },
+  ],
+}
 
 export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 }) {
   const wrapRef = useRef()
@@ -234,53 +248,46 @@ export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 
     const wrap = wrapRef.current, canvas = canvasRef.current
     if (!wrap || !canvas || !lista.length) return
     let vivo = true
-    Promise.all(lista.map(u => loadImg(u))).then(async arts => {
+    const io = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting) return
+      io.disconnect()
+      desenhar()
+    }, { rootMargin: '300px' })
+    io.observe(wrap)
+    const desenhar = () => Promise.all(lista.map(u => loadImg(u))).then(async arts => {
       const ratios = arts.map(a => a.naturalWidth / a.naturalHeight)
       const N = arts.length
-      const gapRel = N > 1 ? 0.06 : 0                       // espaço entre quadros, em fração da altura
-      const grupoAsp = ratios.reduce((a, b) => a + b, 0) + gapRel * (N - 1)  // largura/altura do conjunto
-      const ids = grupoAsp <= 1.05 ? SALAS_VERTICAL : SALAS_HORIZONTAL
-      const opcoes = ROOMS.filter(r => ids.includes(r.id))
-      const room = opcoes[Math.abs(hashStr(chave || lista[0])) % opcoes.length]
-      const roomImg = await loadRoomImg(room.src)
+      const gapRel = N > 1 ? 0.06 : 0
+      const grupoAsp = ratios.reduce((a, b) => a + b, 0) + gapRel * (N - 1)
+      const vertical = grupoAsp <= 1.05
+      const salas = vertical ? CARD_ROOMS.vertical : CARD_ROOMS.horizontal
+      const sala = salas[hashStr(chave || lista[0]) % salas.length]
+      const roomImg = await loadRoomImg(sala.src)
       if (!vivo) return
       const W = Math.max(320, Math.round((wrap.offsetWidth || 320) * 2)), H = Math.round(W * aspect)
       canvas.width = W; canvas.height = H
       const ctx = canvas.getContext('2d')
-
-      // tamanho do conjunto no card
-      let gH = grupoAsp <= 1.05 ? H * 0.60 : Math.min(H * 0.58, (W * 0.80) / grupoAsp)
-      let gW = gH * grupoAsp
-      // o conjunto na foto do ambiente: centrado na parede livre, cabendo nela
-      const z = room.zone
-      const zW = (z.right - z.left) * room.w, zH = (z.bottom - z.top) * room.h
-      let rH = Math.min(zH * 0.80, (zW * 0.80) / grupoAsp)
-      let esc = gH / rH                                        // px do card por px da foto
-      // não deixa o recorte ficar menor que 30% da foto (evita imagem estourada)
-      const escMax = W / (room.w * 0.30)
-      if (esc > escMax) { esc = escMax; gH = rH * esc; gW = gH * grupoAsp }
-      // nem maior que a foto inteira
-      const escMin = Math.max(W / room.w, H / room.h)
-      if (esc < escMin) { esc = escMin; gH = rH * esc; gW = gH * grupoAsp }
-      const cxFoto = (z.left + z.right) / 2 * room.w
-      const cyFoto = z.top * room.h + zH * 0.5
-      // recorte da foto: o centro do conjunto cai no centro do card (um pouco acima, para mostrar o móvel)
-      let sx = cxFoto - (W / 2) / esc, sy = cyFoto - (H * 0.40) / esc
-      const sw = W / esc, sh = H / esc
-      sx = Math.min(Math.max(0, sx), room.w - sw); sy = Math.min(Math.max(0, sy), room.h - sh)
-      ctx.drawImage(roomImg, sx * (roomImg.naturalWidth / room.w), sy * (roomImg.naturalHeight / room.h),
-        sw * (roomImg.naturalWidth / room.w), sh * (roomImg.naturalHeight / room.h), 0, 0, W, H)
-      // posição do conjunto no card (depois do ajuste de borda do recorte)
-      const gx = (cxFoto - sx) * esc - gW / 2, gy = (cyFoto - sy) * esc - gH / 2
+      // foto do ambiente cobrindo o card (o formato já é quase o mesmo)
+      const rA = roomImg.naturalWidth / roomImg.naturalHeight, cA = W / H
+      const dw = rA > cA ? H * rA : W, dh = rA > cA ? H : W / rA
+      const ox = (W - dw) / 2, oy = (H - dh) / 2
+      ctx.drawImage(roomImg, ox, oy, dw, dh)
+      // faixa livre da parede no card
+      const topo = oy + sala.top * dh, base = oy + sala.bottom * dh, cx = ox + sala.cx * dw
+      const livreH = base - topo
+      // quadro grande: vertical ≈ 88% da parede livre (máx. 62% da largura); horizontal até 74% da largura
+      let gH = vertical ? Math.min(livreH * 0.88, (W * 0.62) / grupoAsp) : Math.min(livreH * 0.80, (W * 0.74) / grupoAsp)
+      const gW = gH * grupoAsp
+      const gy = base - Math.max(livreH * 0.06, (livreH - gH) * 0.5) - gH  // centrado na parede livre (no mínimo 6% acima do móvel)
+      let x = Math.min(Math.max(cx - gW / 2, W * 0.04), W * 0.96 - gW)
       const gap = gapRel * gH
       const frames = []
-      let x = gx
       ratios.forEach(r => { frames.push({ fx: x, fy: gy, fw: gH * r, fh: gH }); x += gH * r + gap })
       // mesma moldura da miniatura do card (preta, branca ou madeira, escolhida pela obra)
       const fs = frameColor ? FRAME_STYLES[frameColor] : { ...GRID_FRAME_PALETTE[hashStr(lista[0]) % 3], inner: 'rgba(0,0,0,0.06)' }
-      drawFrames(ctx, frames, arts, fs, Math.max(3, Math.round(gH * 0.022)), false)
+      drawFrames(ctx, frames, arts, fs, Math.max(3, Math.round(gH * 0.02)), false)
     }).catch(() => {})
-    return () => { vivo = false }
+    return () => { vivo = false; io.disconnect() }
   }, [lista.join('|'), chave, frameColor, aspect])
 
   return (
