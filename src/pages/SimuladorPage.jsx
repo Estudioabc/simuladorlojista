@@ -84,6 +84,10 @@ export const PRECO_TAMANHO_PADRAO = {
   '100x150': { canvas: 892, vidro_comum: 1211, sem_vidro: 972 },
   '130x200': { canvas: 1451 },
 }
+// Fora da tabela (personalizado, composição, obra fatiada): +15% no preço de venda, para o personalizado nunca
+// sair mais barato que o tamanho padrão. Só o preço; o custo de cada linha não muda. Espelho do sim-pedido.
+const ACRESCIMO_PERSONALIZADO = 0.15
+
 export function precoTabela(pecas, tipoMontagem, tipoVidro) {
   if (pecas?.length !== 1) return null
   const [a, b] = [pecas[0].largura_cm, pecas[0].altura_cm].map(Number).sort((x, y) => x - y)
@@ -100,7 +104,7 @@ function calcPrecoPecas({ pecas, qty, tipoMontagem, descontoPct, ...cfg }) {
   const tab = precoTabela(pecas, tipoMontagem, cfg.tipoVidro)
   const markup = 1 + (parseFloat(cfg.markupPct) || 0) / 100
   const somaFormula = porPeca.reduce((s, r) => s + r.totalPeca, 0)
-  const fator = tab && somaFormula > 0 ? (tab * (1 - (parseFloat(descontoPct) || 0) / 100) * markup) / somaFormula : 1
+  const fator = tab && somaFormula > 0 ? (tab * (1 - (parseFloat(descontoPct) || 0) / 100) * markup) / somaFormula : 1 + ACRESCIMO_PERSONALIZADO
   const porLabel = new Map()
   porPeca.forEach(r => r.lines.forEach(l => porLabel.set(l.label, (porLabel.get(l.label) || 0) + l.valor * fator)))
   const lines = [...porLabel].map(([label, valor]) => ({ label, valor }))
