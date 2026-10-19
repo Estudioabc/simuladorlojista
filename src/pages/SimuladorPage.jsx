@@ -126,6 +126,21 @@ const cm = (v) => String(um(v)).replace('.', ',')
 // 130×200: a arte é ajustada com um corte imperceptível para o tamanho ficar redondo. Com vidro, o máximo é 100×150 (chapa 110×160).
 const TAMANHOS_23 = [[60, 90], [80, 120], [100, 150], [130, 200]]
 const VIDRO_MAX = [110, 160]
+// Limites de produção por peça (espelhado em sim-pedido): o menor lado cabe na largura do rolo
+// (canvas: rolo 160 cm com 5 cm de dobra por lado → arte até 150; papel: rolo 150 com refile → até 148)
+// e o maior lado cabe na barra de moldura/chassi (270 cm).
+const LIMITE_ROLO = { canvas: 150, convencional: 148 }
+const LIMITE_BARRA = 270
+export function foraDoLimite(pecas, tipoMontagem) {
+  const rolo = LIMITE_ROLO[tipoMontagem]
+  for (const p of pecas || []) {
+    const [a, b] = [Number(p.largura_cm), Number(p.altura_cm)].sort((x, y) => x - y)
+    if (!(a > 0)) continue
+    if (rolo && a > rolo) return `Em ${tipoMontagem === 'canvas' ? 'canvas' : 'papel'}, o lado menor vai até ${rolo} cm (largura do rolo).`
+    if (b > LIMITE_BARRA) return `O lado maior vai até ${LIMITE_BARRA} cm (tamanho da barra de moldura).`
+  }
+  return null
+}
 const ehDoisTres = (r) => r > 0 && (Math.abs(r - 2 / 3) / (2 / 3) < 0.04 || Math.abs(r - 1.5) / 1.5 < 0.04)
 
 export default function SimuladorPage({ imagemInicial, onImagemClear, onAdicionar, itemEditando, onCancelarEdicao, onVerCarrinho, nCarrinho = 0 }) {
@@ -352,6 +367,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     if (faltas.acabamento) { setErro('Escolha o acabamento: Canvas ou Papel.'); return }
     if (faltas.cor) { setErro('Escolha a cor da moldura.'); return }
     if (faltas.vidro) { setErro('Escolha com ou sem vidro.'); return }
+    if (foraDoLimite(pecas, tipoMontagem)) { setErro(foraDoLimite(pecas, tipoMontagem)); return }
     if (tipoMontagem === 'convencional' && modoPadrao && padraoAtual && !cabeVidro(...padraoAtual)) { setErro('Em papel, o maior tamanho é 100 × 150. Escolha outro tamanho ou canvas.'); return }
     if (!precoPronto) { setErro('Não foi possível calcular o preço deste quadro.'); return }
     setErro('')
@@ -638,6 +654,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                 <span style={{ marginLeft: 'auto' }}>Qtd.</span>
                 <input style={{ ...inpTam, width: 56 }} type="number" min="1" aria-label="Quantidade" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
               </div>
+            )}
+            {hasDims && tipoMontagem && foraDoLimite(pecas, tipoMontagem) && (
+              <div style={{ fontSize: 12, color: '#B4312A', marginTop: 8 }}>{foraDoLimite(pecas, tipoMontagem)}</div>
             )}
             {hasDims && multiPeca && (
               <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 8, lineHeight: 1.5 }}>
