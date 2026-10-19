@@ -141,11 +141,6 @@ export default function ConfigPage() {
           )}
         </div>
 
-        <div style={{ ...S.field, ...S.previewBox }}>
-          <div style={S.previewLabel}>Seu desconto no Casa Quadro Trade</div>
-          <div style={S.previewVal}>{lojista?.discount_pct ?? 0}%</div>
-          <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 4 }}>Definido pelo Casa Quadro Trade. Para mudar, fale com eles.</div>
-        </div>
       </div>
 
       {/* Conta */}
