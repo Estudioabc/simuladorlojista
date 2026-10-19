@@ -75,15 +75,36 @@ function calcPreco({ montagem, moldura, w, h, qty, materials, substrates, tipoVi
   return { lines, totalPeca, totalGeral: totalPeca * q, qty: q }
 }
 
+// Tabela dos tamanhos padrão (out/2026): preço B2B fechado por quadro (custo com perda + 7% de NF × 3; 60×90 × 2,5).
+// O preço da fórmula é ajustado para o da tabela, diluído nas linhas (o custo de cada linha não muda).
+// Chave = lados em ordem crescente; acabamento = canvas, ou o vidro no papel. Espelhado em sim-pedido — manter iguais.
+export const PRECO_TAMANHO_PADRAO = {
+  '60x90': { canvas: 406, vidro_comum: 406, sem_vidro: 309 },
+  '80x120': { canvas: 741, vidro_comum: 797, sem_vidro: 558 },
+  '100x150': { canvas: 892, vidro_comum: 1211, sem_vidro: 972 },
+  '130x200': { canvas: 1451 },
+}
+export function precoTabela(pecas, tipoMontagem, tipoVidro) {
+  if (pecas?.length !== 1) return null
+  const [a, b] = [pecas[0].largura_cm, pecas[0].altura_cm].map(Number).sort((x, y) => x - y)
+  const acab = tipoMontagem === 'canvas' ? 'canvas' : tipoMontagem === 'convencional' ? tipoVidro : null
+  return PRECO_TAMANHO_PADRAO[`${a}x${b}`]?.[acab] ?? null
+}
+
 // Soma o preço de cada peça (kit ou obra fatiada). Linhas iguais são agrupadas.
-function calcPrecoPecas({ pecas, qty, ...cfg }) {
+function calcPrecoPecas({ pecas, qty, tipoMontagem, descontoPct, ...cfg }) {
   if (!pecas.length) return null
   const porPeca = pecas.map(p => calcPreco({ ...cfg, w: p.largura_cm, h: p.altura_cm, qty: 1 }))
   if (porPeca.some(r => !r)) return null
+  // tamanho padrão: preço da tabela (com o desconto da loja e a margem dela), diluído nas linhas
+  const tab = precoTabela(pecas, tipoMontagem, cfg.tipoVidro)
+  const markup = 1 + (parseFloat(cfg.markupPct) || 0) / 100
+  const somaFormula = porPeca.reduce((s, r) => s + r.totalPeca, 0)
+  const fator = tab && somaFormula > 0 ? (tab * (1 - (parseFloat(descontoPct) || 0) / 100) * markup) / somaFormula : 1
   const porLabel = new Map()
-  porPeca.forEach(r => r.lines.forEach(l => porLabel.set(l.label, (porLabel.get(l.label) || 0) + l.valor)))
+  porPeca.forEach(r => r.lines.forEach(l => porLabel.set(l.label, (porLabel.get(l.label) || 0) + l.valor * fator)))
   const lines = [...porLabel].map(([label, valor]) => ({ label, valor }))
-  const totalPeca = porPeca.reduce((s, r) => s + r.totalPeca, 0)
+  const totalPeca = porPeca.reduce((s, r) => s + r.totalPeca, 0) * fator
   const q = parseInt(qty) || 1
   return { lines, totalPeca, totalGeral: totalPeca * q, qty: q }
 }
@@ -101,6 +122,12 @@ function maxFatias(img, ratio) {
 const um = (v) => Math.round(v * 10) / 10
 const cm = (v) => String(um(v)).replace('.', ',')
 
+// Tamanhos padrão das obras 2:3 / 3:2 (estudo de aproveitamento de barra, chassi e rolo — out/2026).
+// 130×200: a arte é ajustada com um corte imperceptível para o tamanho ficar redondo. Com vidro, o máximo é 100×150 (chapa 110×160).
+const TAMANHOS_23 = [[60, 90], [80, 120], [100, 150], [130, 200]]
+const VIDRO_MAX = [110, 160]
+const ehDoisTres = (r) => r > 0 && (Math.abs(r - 2 / 3) / (2 / 3) < 0.04 || Math.abs(r - 1.5) / 1.5 < 0.04)
+
 export default function SimuladorPage({ imagemInicial, onImagemClear, onAdicionar, itemEditando, onCancelarEdicao, onVerCarrinho, nCarrinho = 0 }) {
   const { colors, fonts } = useTheme()
   const isMobile = useIsMobile()
@@ -113,6 +140,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const [imagem, setImagem] = useState(imagemInicial ?? null)
   const [ratio, setRatio] = useState(null)
   const [travarRatio, setTravarRatio] = useState(true)
+  const [tamPersonalizado, setTamPersonalizado] = useState(false)
   const [largura, setLargura] = useState('')
   const [altura, setAltura] = useState('')
   const [quantidade, setQuantidade] = useState('1')
@@ -151,6 +179,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     if (!ratio || largura || altura) return
     // tamanho inicial de quadro de sala (o pedido abre com a obra bem visível na parede): horizontal 120 cm de largura,
     // vertical 90 cm de altura, composição 60 cm de altura por peça
+    if (!isKit && ehDoisTres(ratio)) { const [a, b] = TAMANHOS_23[0]; setLargura(String(ratio >= 1 ? b : a)); setAltura(String(ratio >= 1 ? a : b)); return }
     if (isKit) { setAltura('60'); setLargura(String(um(60 * ratio))) }
     else if (ratio >= 1) { setLargura('120'); setAltura(String(Math.round(120 / ratio))) }
     else { setAltura('90'); setLargura(String(Math.round(90 * ratio))) }
@@ -171,7 +200,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     if (imagemInicial) {
       setImagem(imagemInicial)
       // obra nova vinda do acervo: recomeça tamanho e peças (senão herdava os da obra anterior)
-      setLargura(''); setAltura(''); setFatias(1)
+      setLargura(''); setAltura(''); setFatias(1); setTamPersonalizado(false)
       detectRatio(imagemInicial)
     }
   }, [imagemInicial])
@@ -230,10 +259,16 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     return [{ largura_cm: w, altura_cm: h }]
   }, [largura, altura, isKit, imagem, nFatias])
   const multiPeca = pecas.length > 1
+  // tamanhos padrão (só obra 2:3 em quadro único); cada um na orientação da obra
+  const temPadrao = !isKit && nFatias === 1 && ehDoisTres(parseFloat(ratio))
+  const opcoesPadrao = temPadrao ? TAMANHOS_23.map(([a, b]) => (parseFloat(ratio) >= 1 ? [b, a] : [a, b])) : []
+  const padraoAtual = opcoesPadrao.find(([w, h]) => parseFloat(largura) === w && parseFloat(altura) === h) || null
+  const modoPadrao = temPadrao && !tamPersonalizado
+  const cabeVidro = (w, h) => Math.min(w, h) <= VIDRO_MAX[0] && Math.max(w, h) <= VIDRO_MAX[1]
 
   const preco = useMemo(() =>
-    calcPrecoPecas({ pecas, qty: quantidade, montagem, moldura, materials, substrates, tipoVidro, markupPct }),
-    [pecas, montagem, moldura, quantidade, materials, substrates, tipoVidro, markupPct]
+    calcPrecoPecas({ pecas, qty: quantidade, tipoMontagem, descontoPct: discount, montagem, moldura, materials, substrates, tipoVidro, markupPct }),
+    [pecas, montagem, moldura, quantidade, materials, substrates, tipoVidro, markupPct, tipoMontagem, discount]
   )
 
   // "40 × 60 + 30 × 60 + 40 × 60 cm" ou "3 peças de 40 × 60 cm"
@@ -317,6 +352,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     if (faltas.acabamento) { setErro('Escolha o acabamento: Canvas ou Papel.'); return }
     if (faltas.cor) { setErro('Escolha a cor da moldura.'); return }
     if (faltas.vidro) { setErro('Escolha com ou sem vidro.'); return }
+    if (tipoMontagem === 'convencional' && modoPadrao && padraoAtual && !cabeVidro(...padraoAtual)) { setErro('Em papel, o maior tamanho é 100 × 150. Escolha outro tamanho ou canvas.'); return }
     if (!precoPronto) { setErro('Não foi possível calcular o preço deste quadro.'); return }
     setErro('')
     const vi = montagem?.itens?.find(i => i.role === 'vidro_selecionavel')
@@ -325,7 +361,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     const qtd = parseInt(quantidade) || 1
     const item = {
       id: itemEditando?.id ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-      config: { imagem, ratio, travarRatio, largura, altura, quantidade: String(qtd), fatias, tipoMontagem, montagemId, tipoVidro, molduraId, molduraCor },
+      config: { imagem, ratio, travarRatio, largura, altura, tamanhoPadrao: !!(modoPadrao && padraoAtual), quantidade: String(qtd), fatias, tipoMontagem, montagemId, tipoVidro, molduraId, molduraCor },
       payload: {
         montagem_id: montagemId || null,
         tipo_montagem: tipoMontagem,
@@ -568,13 +604,41 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                 ))}
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: colors.textMuted }}>
+            {temPadrao && (
+              <div style={{ ...gradeOpcoes, marginBottom: 12 }}>
+                {opcoesPadrao.map(([w, h]) => {
+                  const on = modoPadrao && padraoAtual?.[0] === w && padraoAtual?.[1] === h
+                  const semVidro = tipoMontagem === 'convencional' && !cabeVidro(w, h)
+                  return (
+                    <button key={`${w}x${h}`} disabled={semVidro} title={semVidro ? 'Em papel, o maior tamanho é 100 × 150' : undefined}
+                      onClick={() => { setTamPersonalizado(false); setLargura(String(w)); setAltura(String(h)) }}
+                      style={{ ...chipBtn(on), ...(semVidro ? { opacity: 0.4, cursor: 'not-allowed' } : {}) }} aria-pressed={on}>
+                      {w} × {h}
+                    </button>
+                  )
+                })}
+                <button onClick={() => setTamPersonalizado(true)} style={chipBtn(tamPersonalizado)} aria-pressed={tamPersonalizado}>Personalizado</button>
+              </div>
+            )}
+            {modoPadrao && padraoAtual && Math.max(...padraoAtual) === 200 && (
+              <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>A arte é ajustada para o tamanho exato (corte imperceptível). Só em canvas.</div>
+            )}
+            {modoPadrao && tipoMontagem === 'convencional' && padraoAtual && !cabeVidro(...padraoAtual) && (
+              <div style={{ fontSize: 12, color: '#B4312A', marginBottom: 10 }}>Em papel, o maior tamanho é 100 × 150. Escolha outro tamanho ou canvas.</div>
+            )}
+            <div style={{ display: modoPadrao ? 'none' : 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: colors.textMuted }}>
               <input style={inpTam} type="number" min="1" step="0.5" placeholder="larg." aria-label="Largura em cm" value={largura} onChange={e => handleLargura(e.target.value)} />
               ×
               <input style={inpTam} type="number" min="1" step="0.5" placeholder="alt." aria-label="Altura em cm" value={altura} onChange={e => handleAltura(e.target.value)} />
               <span style={{ marginLeft: 'auto', fontSize: 13 }}>{multiPeca ? 'Conj.' : 'Qtd.'}</span>
               <input style={{ ...inpTam, width: 56 }} type="number" min="1" aria-label="Quantidade" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
             </div>
+            {modoPadrao && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.textMuted }}>
+                <span style={{ marginLeft: 'auto' }}>Qtd.</span>
+                <input style={{ ...inpTam, width: 56 }} type="number" min="1" aria-label="Quantidade" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
+              </div>
+            )}
             {hasDims && multiPeca && (
               <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 8, lineHeight: 1.5 }}>
                 {descPecas} · {isKit ? 'mesma altura, cada peça na proporção original' : 'a obra dividida em faixas iguais'}

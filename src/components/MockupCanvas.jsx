@@ -73,6 +73,7 @@ function loadRoomImg(src) {
 
 const PAD_RATIO = 0.018  // espessura da moldura como fração da altura do quadro
 const GAP_CM = 5         // espaço real entre quadros de uma composição
+const MOLDURA_CM = 2.5   // largura real da moldura: igual em qualquer tamanho de quadro (no tamanho real)
 
 // Escala real: px por cm na parede do ambiente (null quando não há medida)
 function pxPorCm(room, zW, tamanhoCm) {
@@ -141,7 +142,7 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = fa
     fh *= scale
     fws = fws.map(w => w * scale)
   }
-  const pad = thumbMode ? 2 : Math.max(2, Math.round(fh * PAD_RATIO))
+  const pad = thumbMode ? 2 : Math.max(2, Math.round(escala ? MOLDURA_CM * escala : fh * PAD_RATIO))
 
   const totalKitW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
   let startX = zL + (zW - totalKitW) / 2
@@ -491,7 +492,7 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
       const sc = (zW * 0.9) / totalW
       fh *= sc; fws = fws.map(w => w * sc)
     }
-    const pad = Math.max(2, Math.round(fh * PAD_RATIO))
+    const pad = Math.max(2, Math.round(escala ? MOLDURA_CM * escala : fh * PAD_RATIO))
 
     const kitW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
     const kitH = fh
