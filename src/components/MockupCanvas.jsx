@@ -219,6 +219,77 @@ export function KitThumb({ kitUrls, frameColor = 'branco', cardWidth = 200, room
   )
 }
 
+// Mockup do card do acervo: o QUADRO é o protagonista. Dá zoom no ambiente em volta da obra,
+// deixando-a centralizada e grande (vertical ≈ 60% da altura do card; horizontal/composição ≈ 80% da largura).
+// O ambiente entra só como contexto. Ambientes: parede alta para vertical, parede larga para horizontal.
+const SALAS_VERTICAL = ['sala-clara', 'sala-escura']
+const SALAS_HORIZONTAL = ['quarto', 'jantar', 'sala-clara']
+
+export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 }) {
+  const wrapRef = useRef()
+  const canvasRef = useRef()
+  const lista = urls?.length ? urls : []
+
+  useEffect(() => {
+    const wrap = wrapRef.current, canvas = canvasRef.current
+    if (!wrap || !canvas || !lista.length) return
+    let vivo = true
+    Promise.all(lista.map(u => loadImg(u))).then(async arts => {
+      const ratios = arts.map(a => a.naturalWidth / a.naturalHeight)
+      const N = arts.length
+      const gapRel = N > 1 ? 0.06 : 0                       // espaço entre quadros, em fração da altura
+      const grupoAsp = ratios.reduce((a, b) => a + b, 0) + gapRel * (N - 1)  // largura/altura do conjunto
+      const ids = grupoAsp <= 1.05 ? SALAS_VERTICAL : SALAS_HORIZONTAL
+      const opcoes = ROOMS.filter(r => ids.includes(r.id))
+      const room = opcoes[Math.abs(hashStr(chave || lista[0])) % opcoes.length]
+      const roomImg = await loadRoomImg(room.src)
+      if (!vivo) return
+      const W = Math.max(320, Math.round((wrap.offsetWidth || 320) * 2)), H = Math.round(W * aspect)
+      canvas.width = W; canvas.height = H
+      const ctx = canvas.getContext('2d')
+
+      // tamanho do conjunto no card
+      let gH = grupoAsp <= 1.05 ? H * 0.60 : Math.min(H * 0.58, (W * 0.80) / grupoAsp)
+      let gW = gH * grupoAsp
+      // o conjunto na foto do ambiente: centrado na parede livre, cabendo nela
+      const z = room.zone
+      const zW = (z.right - z.left) * room.w, zH = (z.bottom - z.top) * room.h
+      let rH = Math.min(zH * 0.80, (zW * 0.80) / grupoAsp)
+      let esc = gH / rH                                        // px do card por px da foto
+      // não deixa o recorte ficar menor que 30% da foto (evita imagem estourada)
+      const escMax = W / (room.w * 0.30)
+      if (esc > escMax) { esc = escMax; gH = rH * esc; gW = gH * grupoAsp }
+      // nem maior que a foto inteira
+      const escMin = Math.max(W / room.w, H / room.h)
+      if (esc < escMin) { esc = escMin; gH = rH * esc; gW = gH * grupoAsp }
+      const cxFoto = (z.left + z.right) / 2 * room.w
+      const cyFoto = z.top * room.h + zH * 0.5
+      // recorte da foto: o centro do conjunto cai no centro do card (um pouco acima, para mostrar o móvel)
+      let sx = cxFoto - (W / 2) / esc, sy = cyFoto - (H * 0.40) / esc
+      const sw = W / esc, sh = H / esc
+      sx = Math.min(Math.max(0, sx), room.w - sw); sy = Math.min(Math.max(0, sy), room.h - sh)
+      ctx.drawImage(roomImg, sx * (roomImg.naturalWidth / room.w), sy * (roomImg.naturalHeight / room.h),
+        sw * (roomImg.naturalWidth / room.w), sh * (roomImg.naturalHeight / room.h), 0, 0, W, H)
+      // posição do conjunto no card (depois do ajuste de borda do recorte)
+      const gx = (cxFoto - sx) * esc - gW / 2, gy = (cyFoto - sy) * esc - gH / 2
+      const gap = gapRel * gH
+      const frames = []
+      let x = gx
+      ratios.forEach(r => { frames.push({ fx: x, fy: gy, fw: gH * r, fh: gH }); x += gH * r + gap })
+      // mesma moldura da miniatura do card (preta, branca ou madeira, escolhida pela obra)
+      const fs = frameColor ? FRAME_STYLES[frameColor] : { ...GRID_FRAME_PALETTE[hashStr(lista[0]) % 3], inner: 'rgba(0,0,0,0.06)' }
+      drawFrames(ctx, frames, arts, fs, Math.max(3, Math.round(gH * 0.022)), false)
+    }).catch(() => {})
+    return () => { vivo = false }
+  }, [lista.join('|'), chave, frameColor, aspect])
+
+  return (
+    <div ref={wrapRef} style={{ width: '100%', height: '100%' }}>
+      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+    </div>
+  )
+}
+
 // Hash determinístico para escolher cor de moldura pelo src
 function hashStr(s) {
   let h = 0

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme, useIsMobile } from '../styles/theme'
 import { Spinner, EmptyState } from '../components/UI'
 import ScrollRow from '../components/ScrollRow'
-import MockupCanvas, { FramedArtThumb, ROOMS } from '../components/MockupCanvas'
+import MockupCanvas, { FramedArtThumb, CardMockup, ROOMS } from '../components/MockupCanvas'
 
 const PAGE_SIZE = 48
 
@@ -55,6 +55,32 @@ function formatoDe(ratio) {
   return 'quadrado'
 }
 
+const DIAS_LANCAMENTO = 10
+// Selo "Lançamento" (como na Artspot): obra adicionada nos últimos 10 dias
+function ehLancamento(created_at) {
+  const t = Date.parse(created_at || '')
+  return !!t && Date.now() - t < DIAS_LANCAMENTO * 86400000
+}
+
+// Composições com o nome que a Artspot usa: "Dupla de quadros", "Trio de quadros"
+function nomeConjunto(n) {
+  return n === 2 ? 'Dupla de quadros' : n === 3 ? 'Trio de quadros' : `Composição · ${n} quadros`
+}
+function tituloKit(kit) {
+  if (kit.kitCount !== 2 && kit.kitCount !== 3) return kit.kitName
+  return kit.kitName.replace(/^(Kit|Composição)\s+/i, `${kit.kitCount === 2 ? 'Dupla' : 'Trio'} de Quadros `)
+}
+
+// Estilos que mais vendem nas lojas de referência (Artspot: mais vendidos/destaques) — empurra no "potencial de venda"
+const ESTILOS_QUE_VENDEM = /árvore da vida|jesus|cristo|leão|dourad|ouro|relevo|textur|espatulad|praia|mar |ondas|folha|flor|terracota|bege|neutr|areia|oliveira/i
+
+// Ordem dos temas como na vitrine da Artspot (o que mais vende primeiro); os demais seguem em ordem alfabética
+const ORDEM_TEMAS = ['Abstrato', 'Folhagens e flores', 'Religioso', 'Dourado', 'Paisagens e natureza', 'Pinturas', 'Fotografia fine art', 'Colagem', 'Infantil', 'Retrô', 'Cidades', 'Carros']
+function ordenarCategorias(cats) {
+  const pos = c => { const i = ORDEM_TEMAS.indexOf(c); return i < 0 ? ORDEM_TEMAS.length : i }
+  return cats.sort((a, b) => pos(a) - pos(b) || a.localeCompare(b, 'pt-BR'))
+}
+
 function lerFavoritos(key) {
   try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')) } catch { return new Set() }
 }
@@ -87,6 +113,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [categorias, setCategorias] = useState([])
   const [catAtiva, setCatAtiva] = useState('todas')
   const [catPadrao, setCatPadrao] = useState('todas') // abre em "Em alta" quando houver
+  const [lado, setLado] = useState('exclusivos') // grandes categorias: 'exclusivos' (criações próprias + fotografia fine art) | 'geral'
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
@@ -95,6 +122,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
   const [frameColor, setFrameColor] = useState('preto')
   const [selectedRoom, setSelectedRoom] = useState(ROOMS[0])
   const [hoveredId, setHoveredId] = useState(null)
+  const [vistosNoAmbiente, setVistosNoAmbiente] = useState(() => new Set())
   const [visiveis, setVisiveis] = useState(PAGE_SIZE)
   const [kitOf, setKitOf] = useState({})
   const [coverOf, setCoverOf] = useState({})
@@ -140,10 +168,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
         supabase.from('catalogo_kit_pecas').select('kit_id, imagem_id, ordem').eq('tenant_id', profile.tenant_id),
       ])
       setImagens(all)
+      if (!all.some(i => i.exclusivo)) setLado('geral') // sem obras marcadas ainda: abre no Geral
       const { kitOf: ko, coverOf: co } = buildKitMap(all, kits || [], pecas || [])
       setKitOf(ko)
       setCoverOf(co)
-      setCategorias([...new Set(all.map(i => i.categoria).filter(Boolean))])
+      setCategorias(ordenarCategorias([...new Set(all.map(i => i.categoria).filter(Boolean))]))
       if (all.some(i => i.em_alta) || (kits || []).some(k => k.em_alta)) { setCatAtiva('em_alta'); setCatPadrao('em_alta') }
       setLoading(false)
     }
@@ -151,7 +180,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     callFunction('sim-lojista-data?destaques=1').then(d => setMaisPedidas(d?.mais_pedidas ?? [])).catch(() => {})
   }, [])
 
-  useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca, formato, cor, tipo, soFavoritos])
+  useEffect(() => { setVisiveis(PAGE_SIZE) }, [catAtiva, busca, formato, cor, tipo, soFavoritos, lado])
 
   useEffect(() => {
     if (!preview) return
@@ -165,20 +194,37 @@ export default function BancoImagensPage({ onSelectImagem }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [preview, previewMode])
 
+  const ehExclusivo = (img) => kitOf[img.id] ? kitOf[img.id].parts.every(p => p.exclusivo) : !!img.exclusivo
+  const doLado = (img) => (lado === 'exclusivos') === ehExclusivo(img)
   const cardKeyOf = (img) => kitOf[img.id] ? `kit-${kitOf[img.id].kitId}` : img.id
   const emAlta = (img) => kitOf[img.id] ? kitOf[img.id].emAlta : img.em_alta
+
+  // Potencial de venda: pedidos reais > Em alta > estilo que vende > lançamento; empate = alfabética
+  const potencial = useMemo(() => {
+    const pedidos = Object.fromEntries(maisPedidas.map(m => [m.imagem_id, m.pedidos || 0]))
+    const nota = {}
+    imagens.forEach(img => {
+      const kit = kitOf[img.id]
+      const nome = kit ? kit.kitName : img.titulo
+      nota[img.id] = (pedidos[img.id] || 0) * 100
+        + ((kit ? kit.emAlta : img.em_alta) ? 50 : 0)
+        + (ESTILOS_QUE_VENDEM.test(nome) ? 20 : 0)
+        + (ehLancamento(img.created_at) ? 10 : 0)
+    })
+    return nota
+  }, [imagens, kitOf, maisPedidas])
 
   const filtradas = imagens.filter(img => {
     if (coverOf[img.id]) return false
     const matchCat = catAtiva === 'todas' || (catAtiva === 'em_alta' ? emAlta(img) : img.categoria === catAtiva)
     const q = busca.trim().toLowerCase()
-    const matchBusca = !q || `${kitOf[img.id]?.kitName ?? img.titulo} ${img.categoria || ''}`.toLowerCase().includes(q)
+    const matchBusca = !q || `${kitOf[img.id] ? `${kitOf[img.id].kitName} ${tituloKit(kitOf[img.id])}` : img.titulo} ${img.categoria || ''}`.toLowerCase().includes(q)
     const matchTipo = !tipo || (tipo === 'composicao' ? !!kitOf[img.id] : !kitOf[img.id])
     const matchFormato = !formato || formatoDe(img.ratio) === formato
     const matchCor = !cor || (img.cores || []).includes(cor)
     const matchFav = !soFavoritos || favoritos.has(cardKeyOf(img))
-    return matchCat && matchBusca && matchFormato && matchCor && matchTipo && matchFav
-  })
+    return doLado(img) && matchCat && matchBusca && matchFormato && matchCor && matchTipo && matchFav
+  }).sort((a, b) => (potencial[b.id] || 0) - (potencial[a.id] || 0) || String(a.titulo).localeCompare(String(b.titulo), 'pt-BR'))
 
   // Colapsa kits em um único card
   const cards = useMemo(() => {
@@ -197,48 +243,12 @@ export default function BancoImagensPage({ onSelectImagem }) {
     return out
   }, [filtradas, kitOf])
 
-  // Faixas do topo do "Em alta": kits, novidades e mais pedidas (preenchidas sozinhas)
-  const faixas = useMemo(() => {
-    const porId = Object.fromEntries(imagens.map(i => [i.id, i]))
-    const cardDe = (img) => {
-      const kit = kitOf[img.id]
-      return kit ? { key: `kit-${kit.kitId}`, isKit: true, kit, img: kit.parts[0] } : { key: img.id, isKit: false, img }
-    }
-    const unicos = (lista) => {
-      const vistos = new Set(); const out = []
-      for (const img of lista) {
-        if (!img || coverOf[img.id]) continue
-        const c = cardDe(img)
-        if (vistos.has(c.key)) continue
-        vistos.add(c.key); out.push(c)
-        if (out.length >= 12) break
-      }
-      return out
-    }
-    // composições alternando o estilo (primeira palavra depois de "Composição") para a faixa não repetir o mesmo tipo
-    const kitsPorEstilo = {}
-    imagens.filter(i => kitOf[i.id] && kitOf[i.id].parts[0].id === i.id).forEach(i => {
-      const k = kitOf[i.id]
-      const estilo = (k.kitName.replace(/^(Kit|Composição)\s+/i, '').split(' ')[0] || '').toLowerCase()
-      ;(kitsPorEstilo[estilo] ||= []).push(i)
-    })
-    const grupos = Object.values(kitsPorEstilo).map(g => g.sort((a, b) => (kitOf[b.id].emAlta ? 1 : 0) - (kitOf[a.id].emAlta ? 1 : 0)))
-    const intercalados = []
-    for (let r = 0; grupos.some(g => g[r]); r++) grupos.forEach(g => g[r] && intercalados.push(g[r]))
-    const kitsLista = unicos(intercalados)
-    const novidades = unicos([...imagens].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))))
-    const pedidas = unicos(maisPedidas.map(m => porId[m.imagem_id]))
-    return [
-      { id: 'kits', titulo: 'Composições', nota: 'conjuntos prontos de 2 a 4 quadros', cards: kitsLista },
-      { id: 'pedidas', titulo: 'Mais pedidas pelos lojistas', nota: 'últimos 6 meses', cards: pedidas },
-      { id: 'novas', titulo: 'Novidades no acervo', nota: 'as últimas obras adicionadas', cards: novidades },
-    ].filter(f => f.cards.length >= 4)
-  }, [imagens, kitOf, coverOf, maisPedidas])
-  const mostrarFaixas = catAtiva === 'em_alta' && !busca && !formato && !cor && !tipo && !soFavoritos
-
   const exibidos = cards.slice(0, visiveis)
   const temMais = visiveis < cards.length
-  const nEmAlta = new Set(imagens.filter(i => !coverOf[i.id] && emAlta(i)).map(cardKeyOf)).size
+  const nEmAlta = new Set(imagens.filter(i => !coverOf[i.id] && doLado(i) && emAlta(i)).map(cardKeyOf)).size
+  // temas e contagens do lado escolhido (Exclusivos ou Geral)
+  const contaLado = (l) => new Set(imagens.filter(i => !coverOf[i.id] && (l === 'exclusivos') === ehExclusivo(i)).map(cardKeyOf)).size
+  const catsDoLado = categorias.filter(c => imagens.some(i => i.categoria === c && !coverOf[i.id] && doLado(i)))
 
   async function montarSelecao(img) {
     let ratio = parseFloat(img.ratio)
@@ -253,7 +263,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
       : null
     return {
       ...img,
-      titulo: kit ? kit.kitName : img.titulo,
+      titulo: kit ? tituloKit(kit) : img.titulo,
       img_url: coverImg ? coverImg.img_url : img.img_url,
       ratio: coverImg ? (parseFloat(coverImg.ratio) || ratio) : ratio,
       categoria: kit ? (kit.categoria ?? img.categoria) : img.categoria,
@@ -273,14 +283,16 @@ export default function BancoImagensPage({ onSelectImagem }) {
   }
 
   const renderCard = ({ key, img, isKit, kit }) => {
-    const title = isKit ? kit.kitName : img.titulo
+    const title = isKit ? tituloKit(kit) : img.titulo
     const hovered = hoveredId === key
     const fav = favoritos.has(key)
+    const novo = ehLancamento(img.created_at)
+    const urls = isKit ? kit.parts.map(p => p.img_url) : [img.img_url]
     return (
       <article
         key={key}
         style={S.card}
-        onMouseEnter={() => setHoveredId(key)}
+        onMouseEnter={() => { setHoveredId(key); if (!vistosNoAmbiente.has(key)) setVistosNoAmbiente(v => new Set(v).add(key)) }}
         onMouseLeave={() => setHoveredId(null)}
         onClick={() => openPreview(img)}
       >
@@ -289,6 +301,12 @@ export default function BancoImagensPage({ onSelectImagem }) {
             ? <FramedArtThumb srcs={kit.parts.map(p => p.img_url)} alt={title} />
             : <FramedArtThumb src={img.img_url} alt={title} />
           }
+          {/* como na Artspot: ao passar o mouse, a obra aparece pendurada num ambiente (só desktop) */}
+          {!isMobile && vistosNoAmbiente.has(key) && (
+            <div style={S.ambiente(hovered)} aria-hidden="true">
+              <CardMockup urls={urls} chave={key} />
+            </div>
+          )}
           <button
             onClick={e => { e.stopPropagation(); toggleFavorito(key) }}
             aria-label={fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
@@ -297,7 +315,12 @@ export default function BancoImagensPage({ onSelectImagem }) {
           >
             {fav ? '♥' : '♡'}
           </button>
-          {isKit && <span style={S.kitTag}>Composição · {kit.kitCount} quadros</span>}
+          {(isKit || novo) && (
+            <div style={S.selos}>
+              {novo && <span style={S.seloNovo}>Lançamento</span>}
+              {isKit && <span style={S.kitTag}>{nomeConjunto(kit.kitCount)}</span>}
+            </div>
+          )}
         </div>
         <div style={S.cardTitle} title={title}>{title}</div>
         <div style={S.cardMeta}>
@@ -312,6 +335,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
     )
   }
 
+  const trocarLado = (l) => {
+    setLado(l)
+    const temEmAlta = imagens.some(i => !coverOf[i.id] && (l === 'exclusivos') === ehExclusivo(i) && emAlta(i))
+    setCatAtiva(temEmAlta ? 'em_alta' : 'todas')
+  }
   const limparFiltros = () => { setBusca(''); setFormato(''); setCor(''); setTipo(''); setSoFavoritos(false); setCatAtiva(catPadrao) }
   const CatsWrap = isMobile ? ScrollRow : ({ children, style, colors: _c, step: _s, ...rest }) => <div style={style} {...rest}>{children}</div>
   const nFiltros = [formato, cor, tipo, soFavoritos].filter(Boolean).length
@@ -321,7 +349,9 @@ export default function BancoImagensPage({ onSelectImagem }) {
     eyebrow: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.8 },
     title: { fontFamily: fonts.display, fontSize: 'clamp(28px, 3.9vw, 41px)', fontWeight: 600, lineHeight: 1.02, letterSpacing: -1, margin: '6px 0 10px', textWrap: 'balance' },
     lead: { fontSize: 15, color: colors.textMuted, maxWidth: 560, lineHeight: 1.55 },
-    toolbar: { margin: '28px 0 0' },
+    toolbar: { margin: '16px 0 0' },
+    lados: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 24, maxWidth: 560 },
+    lado: (on) => ({ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, textAlign: 'left', cursor: 'pointer', borderRadius: 10, padding: '12px 16px', background: on ? colors.text : colors.surface, color: on ? colors.bg : colors.text, border: `1px solid ${on ? colors.text : colors.border}` }),
     fixo: { position: 'sticky', top: isMobile ? 0 : 72, zIndex: 20, background: colors.bg, padding: '10px 0', marginBottom: 8, borderBottom: `1px solid ${colors.border}` },
     barra: { display: 'flex', alignItems: 'flex-start', gap: 10 },
     filtroBtn: (on) => ({ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 8, background: on ? colors.surfaceAlt : colors.surface, border: `1px solid ${on ? colors.text : colors.border}`, color: colors.text, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }),
@@ -347,8 +377,11 @@ export default function BancoImagensPage({ onSelectImagem }) {
     cardMeta: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 },
     cardCat: { fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2 },
     usar: { background: 'none', border: 'none', color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 0', whiteSpace: 'nowrap' },
-    fav: (on, show) => ({ position: 'absolute', top: 10, right: 10, width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.94)', color: on ? '#B4312A' : colors.text, fontSize: 17, lineHeight: 1, cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.12)', opacity: on || show ? 1 : 0, transition: 'opacity 0.2s' }),
-    kitTag: { position: 'absolute', top: 12, left: 12, background: colors.text, color: colors.bg, fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', padding: '4px 8px' },
+    fav: (on, show) => ({ position: 'absolute', zIndex: 2, top: 10, right: 10, width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.94)', color: on ? '#B4312A' : colors.text, fontSize: 17, lineHeight: 1, cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.12)', opacity: on || show ? 1 : 0, transition: 'opacity 0.2s' }),
+    selos: { position: 'absolute', top: 12, left: 12, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 },
+    kitTag: { background: colors.text, color: colors.bg, fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', padding: '4px 8px' },
+    seloNovo: { background: colors.accent, color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', padding: '4px 8px' },
+    ambiente: (on) => ({ position: 'absolute', inset: 0, overflow: 'hidden', opacity: on ? 1 : 0, transition: 'opacity 0.35s', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F5F2' }),
     mais: { display: 'block', margin: '48px auto 0', background: 'transparent', border: `1px solid ${colors.text}`, borderRadius: 999, padding: '12px 28px', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
     // preview — "sala de exibição"
     overlay: { position: 'fixed', inset: 0, background: 'rgba(14,13,10,0.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', zIndex: 1000, padding: '20px 16px', overflowY: 'auto' },
@@ -370,6 +403,15 @@ export default function BancoImagensPage({ onSelectImagem }) {
       <div style={S.eyebrow}>Acervo</div>
       <h1 style={S.title}>Obras para a parede do seu cliente</h1>
       <p style={S.lead}>Escolha um tema ou use os filtros de formato e cor. Abra uma obra para vê-la num ambiente, ou leve direto para um novo pedido.</p>
+
+      <div style={S.lados} role="tablist" aria-label="Grandes categorias">
+        {[{ id: 'exclusivos', label: 'Exclusivos', nota: 'seleção exclusiva' }, { id: 'geral', label: 'Geral', nota: 'acervo completo' }].map(l => (
+          <button key={l.id} role="tab" aria-selected={lado === l.id} onClick={() => trocarLado(l.id)} style={S.lado(lado === l.id)}>
+            <span style={{ fontFamily: fonts.display, fontSize: 18, fontWeight: 600 }}>{l.label}</span>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>{contaLado(l.id)} obras · {l.nota}</span>
+          </button>
+        ))}
+      </div>
 
       <div style={S.toolbar}>
         <div style={S.toolRow}>
@@ -405,7 +447,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
               <button role="tab" aria-selected={catAtiva === 'todas'} style={S.catBtn(catAtiva === 'todas')} onClick={() => setCatAtiva('todas')}>
                 Todas
               </button>
-              {categorias.map(c => (
+              {catsDoLado.map(c => (
                 <button key={c} role="tab" aria-selected={catAtiva === c} style={S.catBtn(catAtiva === c)} onClick={() => setCatAtiva(c)}>
                   {c}
                 </button>
@@ -468,21 +510,6 @@ export default function BancoImagensPage({ onSelectImagem }) {
           </div>
         )}
       </div>
-
-      {mostrarFaixas && faixas.map(f => (
-        <section key={f.id} style={{ margin: '28px 0 8px' }} aria-label={f.titulo}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-            <h2 style={{ margin: 0, fontFamily: fonts.display, fontSize: 19, fontWeight: 600, color: colors.text }}>{f.titulo}</h2>
-            <span style={{ fontSize: 12, color: colors.textMuted }}>{f.nota}</span>
-          </div>
-          <ScrollRow colors={colors} style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: isMobile ? '70%' : 'minmax(220px, 260px)', gap: 24, paddingBottom: 12, scrollSnapType: 'x mandatory' }}>
-            {f.cards.map(c => <div key={c.key} style={{ scrollSnapAlign: 'start', minWidth: 0 }}>{renderCard(c)}</div>)}
-          </ScrollRow>
-        </section>
-      ))}
-      {mostrarFaixas && faixas.length > 0 && (
-        <h2 style={{ margin: '28px 0 0', fontFamily: fonts.display, fontSize: 19, fontWeight: 600, color: colors.text }}>★ Em alta</h2>
-      )}
 
       <div style={S.meta}>
         <span>{cards.length} {cards.length === 1 ? 'obra' : 'obras'}{catAtiva === 'em_alta' ? ' em alta: o que mais está vendendo nas grandes lojas de quadros' : catAtiva !== 'todas' ? ` em ${catAtiva}` : ''}</span>
@@ -612,7 +639,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
             <div style={S.caption}>
               <div>
                 <div style={S.pTitle}>{preview.titulo}</div>
-                <div style={S.pCat}>{preview.categoria}{preview.kitCount > 1 ? ` · Composição de ${preview.kitCount} quadros` : ''}</div>
+                <div style={S.pCat}>{preview.categoria}{preview.kitCount > 1 ? ` · ${nomeConjunto(preview.kitCount)}` : ''}</div>
               </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button style={S.btnGhost} onClick={() => setPreview(null)}>Fechar</button>
