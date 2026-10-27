@@ -465,6 +465,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   }
 
   const gradeOpcoes = { display: 'flex', flexWrap: 'wrap', gap: 8 }
+  const dica = { fontSize: 12, color: colors.textMuted, marginBottom: 10, lineHeight: 1.5 }
+  // Controle segmentado (peças; medida total/por peça): botões colados, o escolhido preenchido
+  const segGrupo = { display: 'inline-flex', border: `1px solid ${colors.border}`, borderRadius: 2, overflow: 'hidden' }
   // Rótulo de grupo no estilo de loja (caixa alta pequena)
   // obrig: mostra o asterisco; falta: fica vermelho (depois de tentar adicionar sem escolher)
   const grupoLbl = (texto, valor, { obrig = false, falta = false } = {}) => (
@@ -487,6 +490,12 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     fontFamily: fonts.body,
     cursor: 'pointer', transition: 'border-color 0.15s',
     whiteSpace: 'nowrap',
+  })
+
+  const segBtn = (on, mini = false) => ({
+    padding: mini ? '6px 10px' : '9px 16px', border: 'none', borderRadius: 0,
+    background: on ? ink : colors.surface, color: on ? '#fff' : colors.text,
+    fontWeight: on ? 600 : 500, fontSize: mini ? 12 : 13, fontFamily: fonts.body, cursor: 'pointer', whiteSpace: 'nowrap',
   })
 
   useEffect(() => {
@@ -633,23 +642,27 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
 
           {/* Tamanho */}
           <div style={grupo}>
+            {fatiasMax > 1 && (
+              <div style={{ marginBottom: 16 }}>
+                {grupoLbl('Peças')}
+                <div style={segGrupo}>
+                  {[1, 2, 3].filter(n => n <= fatiasMax).map(n => (
+                    <button key={n} onClick={() => { setFatias(n); setTravarRatio(true); if (n === 1) setTamPorPeca(false); if (ratio && largura) setAltura(String(um(parseFloat(largura) / ratio))) }}
+                      style={segBtn(nFatias === n)} aria-pressed={nFatias === n}>
+                      {n === 1 ? 'Quadro único' : `${n} peças`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-              {grupoLbl(porPeca ? 'Tamanho de cada peça (cm)' : multiPeca ? 'Tamanho total (cm)' : 'Tamanho (cm)', null, { obrig: true, falta: falta.tamanho && !(parseFloat(largura) > 0 && parseFloat(altura) > 0) })}
-              {ratio && !isKit && (
+              {grupoLbl('Tamanho (cm)', null, { obrig: true, falta: falta.tamanho && !(parseFloat(largura) > 0 && parseFloat(altura) > 0) })}
+              {ratio && !isKit && !modoPadrao && (
                 <button onClick={() => setTravarRatio(t => !t)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted, marginBottom: 8 }}>
                   {travarRatio ? 'Destravar proporção' : 'Travar proporção'}
                 </button>
               )}
             </div>
-            {fatiasMax > 1 && (
-              <div style={{ ...gradeOpcoes, marginBottom: 12 }}>
-                {[1, 2, 3].filter(n => n <= fatiasMax).map(n => (
-                  <button key={n} onClick={() => { setFatias(n); setTravarRatio(true); if (n === 1) setTamPorPeca(false); if (ratio && largura) setAltura(String(um(parseFloat(largura) / ratio))) }} style={chipBtn(nFatias === n)}>
-                    {n === 1 ? 'Quadro único' : `${n} peças`}
-                  </button>
-                ))}
-              </div>
-            )}
             {temPadrao && (
               <div style={{ ...gradeOpcoes, marginBottom: 12 }}>
                 {opcoesPadrao.map(([w, h]) => {
@@ -666,49 +679,42 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                 <button onClick={() => { setTamPersonalizado(true); if (travarRatio && parseFloat(ratio) > 0 && parseFloat(altura) > 0) handleAltura(altura) }} style={chipBtn(tamPersonalizado)} aria-pressed={tamPersonalizado}>Personalizado</button>
               </div>
             )}
-            {modoPadrao && padraoAtual && corteAtual > 0.01 && (
-              <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>
-                A arte é ajustada ao tamanho {padraoAtual[0]} × {padraoAtual[1]}: corte de {Math.round(corteAtual * 100) || 1}% na {eixoCorte}, centralizado (como no ambiente ao lado).
-                {Math.max(...padraoAtual) === 200 ? ' Só em canvas.' : ''}
-                {corteAtual > CORTE_MAX_PADRAO ? ' Para a obra inteira, sem corte, use o tamanho personalizado.' : ''}
+            {modoPadrao && padraoAtual && (corteAtual > 0.01 || Math.max(...padraoAtual) === 200) && (
+              <div style={dica}>
+                {corteAtual > 0.01 && `Corte central de ${Math.round(corteAtual * 100) || 1}% na ${eixoCorte} (veja no ambiente). `}
+                {corteAtual > CORTE_MAX_PADRAO && 'Para a obra inteira, use Personalizado. '}
+                {Math.max(...padraoAtual) === 200 && 'Só em canvas.'}
               </div>
-            )}
-            {modoPadrao && padraoAtual && corteAtual <= 0.01 && Math.max(...padraoAtual) === 200 && (
-              <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>Só em canvas.</div>
             )}
             {modoPadrao && tipoMontagem === 'convencional' && padraoAtual && !cabeVidro(...padraoAtual) && (
-              <div style={{ fontSize: 12, color: '#B4312A', marginBottom: 10 }}>Em papel, o maior tamanho é 100 × 150. Escolha outro tamanho ou canvas.</div>
+              <div style={{ ...dica, color: '#B4312A' }}>Em papel, o maior tamanho é 100 × 150. Escolha outro tamanho ou canvas.</div>
             )}
-            {fatiado && (
-              <div style={{ ...gradeOpcoes, marginBottom: 12 }}>
-                <button onClick={() => setTamPorPeca(false)} style={chipBtn(!tamPorPeca)} aria-pressed={!tamPorPeca}>Tamanho total</button>
-                <button onClick={() => setTamPorPeca(true)} style={chipBtn(tamPorPeca)} aria-pressed={tamPorPeca}>Tamanho de cada peça</button>
-              </div>
-            )}
-            <div style={{ display: modoPadrao ? 'none' : 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: colors.textMuted }}>
-              <input style={inpTam} type="number" min="1" step="0.5" placeholder="larg." aria-label={porPeca ? 'Largura de cada peça em cm' : 'Largura em cm'}
-                value={porPeca && largura ? String(um(parseFloat(largura) / nFatias)) : largura}
-                onChange={e => handleLargura(porPeca && e.target.value ? String(um(parseFloat(e.target.value) * nFatias)) : e.target.value)} />
-              ×
-              <input style={inpTam} type="number" min="1" step="0.5" placeholder="alt." aria-label="Altura em cm" value={altura} onChange={e => handleAltura(e.target.value)} />
-              <span style={{ marginLeft: 'auto', fontSize: 13 }}>{multiPeca ? 'Conj.' : 'Qtd.'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: colors.textMuted, flexWrap: 'wrap' }}>
+              {!modoPadrao && (<>
+                <input style={inpTam} type="number" min="1" step="0.5" placeholder="larg." aria-label={porPeca ? 'Largura de cada peça em cm' : 'Largura em cm'}
+                  value={porPeca && largura ? String(um(parseFloat(largura) / nFatias)) : largura}
+                  onChange={e => handleLargura(porPeca && e.target.value ? String(um(parseFloat(e.target.value) * nFatias)) : e.target.value)} />
+                ×
+                <input style={inpTam} type="number" min="1" step="0.5" placeholder="alt." aria-label="Altura em cm" value={altura} onChange={e => handleAltura(e.target.value)} />
+              </>)}
+              <span style={{ marginLeft: 'auto', fontSize: 13 }}>Qtd.</span>
               <input style={{ ...inpTam, width: 56 }} type="number" min="1" aria-label="Quantidade" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
             </div>
-            {modoPadrao && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: colors.textMuted }}>
-                <span style={{ marginLeft: 'auto' }}>Qtd.</span>
-                <input style={{ ...inpTam, width: 56 }} type="number" min="1" aria-label="Quantidade" value={quantidade} onChange={e => setQuantidade(e.target.value)} />
-              </div>
-            )}
             {hasDims && tipoMontagem && foraDoLimite(pecas, tipoMontagem) && (
               <div style={{ fontSize: 12, color: '#B4312A', marginTop: 8 }}>{foraDoLimite(pecas, tipoMontagem)}</div>
             )}
-            {hasDims && multiPeca && (
-              <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 8, lineHeight: 1.5 }}>
-                {descPecas} · {isKit ? 'mesma altura, cada peça na proporção original' : 'a obra dividida em faixas iguais'} · {GAP_CM} cm entre as peças
-                {fatiado && ` · conjunto na parede: ${cm(pecas.reduce((s, p) => s + p.largura_cm + 2 * MOLDURA_CM, 0) + GAP_CM * (pecas.length - 1))} × ${cm(pecas[0].altura_cm + 2 * MOLDURA_CM)} cm com moldura`}
+            {fatiado && !modoPadrao && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+                <div style={segGrupo} role="group" aria-label="A medida digitada é">
+                  <button onClick={() => setTamPorPeca(false)} style={segBtn(!tamPorPeca, true)} aria-pressed={!tamPorPeca}>Medida total</button>
+                  <button onClick={() => setTamPorPeca(true)} style={segBtn(tamPorPeca, true)} aria-pressed={tamPorPeca}>Por peça</button>
+                </div>
+                {hasDims && <span style={{ fontSize: 12, color: colors.textMuted }}>
+                  {porPeca ? `Conjunto: ${cm(parseFloat(largura))} × ${cm(parseFloat(altura))} cm` : `${pecas.length} peças de ${cm(pecas[0].largura_cm)} × ${cm(pecas[0].altura_cm)} cm`}
+                </span>}
               </div>
             )}
+            {hasDims && isKit && multiPeca && <div style={{ ...dica, marginTop: 8, marginBottom: 0 }}>{descPecas}, mesma altura</div>}
           </div>
 
           {/* Acabamento */}
