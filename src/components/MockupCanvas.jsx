@@ -92,11 +92,16 @@ function expandSlices(artImgs, slices) {
 function cortarProporcao(artImgs, alvo) {
   const img = artImgs.length === 1 ? artImgs[0] : null
   if (!img || img.img || !(alvo > 0)) return artImgs
-  const iw = img.naturalWidth, ih = img.naturalHeight
-  if (!(iw > 0 && ih > 0) || Math.abs(iw / ih - alvo) / alvo < 0.01) return artImgs
-  const sw = Math.min(iw, ih * alvo), sh = Math.min(ih, iw / alvo)
-  return [{ img, sx: (iw - sw) / 2, sy: (ih - sh) / 2, sw, sh }]
+  return [cortarImg(img, alvo)]
 }
+function cortarImg(img, alvo) {
+  const iw = img?.naturalWidth, ih = img?.naturalHeight
+  if (!(iw > 0 && ih > 0) || Math.abs(iw / ih - alvo) / alvo < 0.01) return img
+  const sw = Math.min(iw, ih * alvo), sh = Math.min(ih, iw / alvo)
+  return { img, sx: (iw - sw) / 2, sy: (ih - sh) / 2, sw, sh }
+}
+// Composição no tamanho padrão: cada peça cortada no centro para a proporção do tamanho (cortePecas = largura/altura)
+const cortarObra = (imgs, proporcao, cortePecas) => cortePecas > 0 ? imgs.map(i => cortarImg(i, cortePecas)) : cortarProporcao(imgs, proporcao)
 
 function artRatio(a) {
   if (!a) return 1
@@ -104,7 +109,7 @@ function artRatio(a) {
   return a.naturalWidth / a.naturalHeight
 }
 
-async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = false, slices = 1, tamanhoCm = null, proporcao = null) {
+async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = false, slices = 1, tamanhoCm = null, proporcao = null, cortePecas = null) {
   const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
   const W = canvas.width
   const H = canvas.height
@@ -139,7 +144,7 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = fa
   const zH = zB - zT
 
   const lidas = await Promise.all(kitUrls.map(u => loadImg(u).catch(() => null)))
-  const artImgs = slices > 1 ? expandSlices(lidas, slices) : cortarProporcao(lidas, proporcao)
+  const artImgs = slices > 1 ? expandSlices(lidas, slices) : cortarObra(lidas, proporcao, cortePecas)
   const ratios = artImgs.map(artRatio)
   const N = artImgs.length
   const escala = thumbMode ? null : pxPorCm(room, zW, tamanhoCm)
@@ -465,7 +470,7 @@ export function FramedArtThumb({ src, srcs }) {
 // MockupCanvas: modo normal (interactive=false) ou interativo (drag + resize)
 // tamanhoCm = { altura }: desenha o quadro no tamanho real em relação à parede (ambientes com paredeCm)
 // onTamanhoChange(alturaCm): com tamanho real, puxar um canto muda o tamanho do pedido
-export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null, onTamanhoChange = null, inline = false, aspect = null }) {
+export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null, onTamanhoChange = null, inline = false, aspect = null, cortePecas = null }) {
   const canvasRef = useRef()
   const roomCfg = room || ROOMS[0]
 
@@ -481,8 +486,8 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     if (!urls.length) return
     canvas.width = W
     canvas.height = H
-    drawKitOnCanvas(canvas, urls, frameColor, roomCfg, false, slices, tamanhoCm, ratio).catch(() => {})
-  }, [imgUrl, kitUrls, ratio, frameColor, W, H, roomCfg, interactive, slices, tamanhoCm?.altura])
+    drawKitOnCanvas(canvas, urls, frameColor, roomCfg, false, slices, tamanhoCm, ratio, cortePecas).catch(() => {})
+  }, [imgUrl, kitUrls, ratio, frameColor, W, H, roomCfg, interactive, slices, tamanhoCm?.altura, cortePecas])
 
   // ── Modo interativo ───────────────────────────────────────────────────────
   // cx, cy = centro do kit como fração do canvas; scale = fator de escala
@@ -573,11 +578,11 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     ]).then(([roomImg, loaded]) => {
       const canvas = canvasRef.current
       if (canvas) { canvas.width = W; canvas.height = H }
-      const artImgs = slices > 1 ? expandSlices(loaded, slices) : cortarProporcao(loaded, ratio)
+      const artImgs = slices > 1 ? expandSlices(loaded, slices) : cortarObra(loaded, ratio, cortePecas)
       loadedRef.current = { roomImg, artImgs, ratios: artImgs.map(artRatio) }
       redraw()
     })
-  }, [imgUrl, JSON.stringify(kitUrls), roomCfg.id, interactive, W, H, slices, ratio])
+  }, [imgUrl, JSON.stringify(kitUrls), roomCfg.id, interactive, W, H, slices, ratio, cortePecas])
 
   // Redesenha quando a cor da moldura ou o tamanho do pedido mudam
   useEffect(() => {

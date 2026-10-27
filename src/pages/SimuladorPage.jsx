@@ -198,6 +198,11 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   }, [])
 
   const isKit = imagem?.kitCount > 1 && imagem?.kitParts?.length > 1
+  // Composição no tamanho padrão: todas as peças na mesma orientação e nenhuma quadrada; cada peça vira o tamanho
+  // padrão (cortada no centro se precisar), preço da tabela × peças. Abre no padrão se todas forem quase 2:3.
+  const ratiosKit = isKit ? imagem.kitParts.map(p => parseFloat(p.ratio) || 1) : []
+  const kitHoriz = isKit && ratiosKit.every(r => r >= 1)
+  const kitTemPadrao = isKit && (kitHoriz || ratiosKit.every(r => r < 1)) && ratiosKit.every(temTamanhoPadrao)
   // Ambientes do pedido = os do card do acervo (mesma sala e calibração); a lista acompanha a orientação da obra
   const orientacao = imagem ? orientacaoDe(isKit ? imagem.kitParts.map(p => parseFloat(p.ratio) || 1) : [parseFloat(ratio) || parseFloat(imagem.ratio) || 1]) : 'vertical'
   // só as salas em que o quadro cabe no tamanho real (130 × 200 não passa do teto); se nenhuma couber, mostra todas
@@ -218,7 +223,11 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     // vertical 90 cm de altura, composição 60 cm de altura por peça
     if (!isKit && ehDoisTres(ratio)) { const [a, b] = TAMANHOS_23[0]; setLargura(String(ratio >= 1 ? b : a)); setAltura(String(ratio >= 1 ? a : b)); return }
     // fora de 2:3 abre no personalizado, na proporção original (sem corte); o tamanho padrão fica a um clique
-    if (!isKit) setTamPersonalizado(true)
+    if (isKit && kitTemPadrao && ratiosKit.every(ehDoisTres)) {
+      const [a, b] = TAMANHOS_23[0]; const [w, h] = kitHoriz ? [b, a] : [a, b]
+      setAltura(String(h)); setLargura(String(w * ratiosKit.length)); return
+    }
+    setTamPersonalizado(true)
     if (isKit) { setAltura('60'); setLargura(String(um(60 * ratio))) }
     else if (ratio >= 1) { setLargura('120'); setAltura(String(Math.round(120 / ratio))) }
     else { setAltura('90'); setLargura(String(Math.round(90 * ratio))) }
@@ -283,32 +292,41 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const fatiasMax = maxFatias(imagem, ratio)
   const nFatias = Math.min(fatias, fatiasMax)
 
-  // Cada peça que vai para produção. Kit: mesma altura, largura pela proporção original (sem corte).
-  // Fatiada: a obra inteira dividida em faixas iguais.
+  // tamanhos padrão (quadro único de obra não quadrada, ou cada peça da composição); cada um na orientação da obra.
+  // Composição: até 100 × 150 por peça. largura = soma das peças, altura = de cada peça.
+  const temPadrao = isKit ? kitTemPadrao : nFatias === 1 && temTamanhoPadrao(parseFloat(ratio))
+  const opcoesPadrao = !temPadrao ? [] : (isKit ? TAMANHOS_23.filter(([, b]) => b <= 150) : TAMANHOS_23)
+    .map(([a, b]) => ((isKit ? kitHoriz : parseFloat(ratio) >= 1) ? [b, a] : [a, b]))
+  const nKit = ratiosKit.length || 1
+  const padraoAtual = opcoesPadrao.find(([w, h]) => parseFloat(largura) === w * nKit && parseFloat(altura) === h) || null
+  const modoPadrao = temPadrao && !tamPersonalizado
+  // no tamanho padrão o quadro tem a proporção do tamanho escolhido; a obra é cortada no centro se precisar
+  const ratioQuadro = modoPadrao && padraoAtual ? padraoAtual[0] / padraoAtual[1] : null
+  const corteAtual = !ratioQuadro ? 0 : isKit ? Math.max(...ratiosKit.map(r => fracaoCorte(r, ratioQuadro))) : fracaoCorte(parseFloat(ratio), ratioQuadro)
+  const eixoCorte = ratioQuadro && !isKit && ratioQuadro > parseFloat(ratio) ? 'altura' : 'largura'
+
+  // Cada peça que vai para produção. Kit: mesma altura, largura pela proporção original (sem corte), ou o tamanho
+  // padrão em todas (com a proporção original da peça cortada, para a OS). Fatiada: a obra inteira em faixas iguais.
   const pecas = useMemo(() => {
     const w = parseFloat(largura), h = parseFloat(altura)
     if (!(w > 0 && h > 0)) return []
     if (isKit) {
-      return imagem.kitParts.map(p => ({
-        largura_cm: um(h * (parseFloat(p.ratio) || 1)), altura_cm: h,
-        imagem_id: p.id, imagem_titulo: p.titulo, imagem_url: p.img_url,
-      }))
+      return imagem.kitParts.map(p => {
+        const r = parseFloat(p.ratio) || 1
+        const corte = ratioQuadro && fracaoCorte(r, ratioQuadro) > 0.01
+        return {
+          largura_cm: ratioQuadro ? padraoAtual[0] : um(h * r), altura_cm: h,
+          imagem_id: p.id, imagem_titulo: p.titulo, imagem_url: p.img_url,
+          ...(corte ? { proporcao_original: +r.toFixed(4) } : {}),
+        }
+      })
     }
     if (nFatias > 1) return Array.from({ length: nFatias }, () => ({ largura_cm: um(w / nFatias), altura_cm: h }))
     return [{ largura_cm: w, altura_cm: h }]
-  }, [largura, altura, isKit, imagem, nFatias])
+  }, [largura, altura, isKit, imagem, nFatias, ratioQuadro])
   const multiPeca = pecas.length > 1
   const fatiado = !isKit && nFatias > 1
   const porPeca = fatiado && tamPorPeca
-  // tamanhos padrão (quadro único de obra não quadrada); cada um na orientação da obra
-  const temPadrao = !isKit && nFatias === 1 && temTamanhoPadrao(parseFloat(ratio))
-  const opcoesPadrao = temPadrao ? TAMANHOS_23.map(([a, b]) => (parseFloat(ratio) >= 1 ? [b, a] : [a, b])) : []
-  const padraoAtual = opcoesPadrao.find(([w, h]) => parseFloat(largura) === w && parseFloat(altura) === h) || null
-  const modoPadrao = temPadrao && !tamPersonalizado
-  // no tamanho padrão o quadro tem a proporção do tamanho escolhido; a obra é cortada no centro se precisar
-  const ratioQuadro = modoPadrao && padraoAtual ? padraoAtual[0] / padraoAtual[1] : null
-  const corteAtual = ratioQuadro ? fracaoCorte(parseFloat(ratio), ratioQuadro) : 0
-  const eixoCorte = ratioQuadro && ratioQuadro > parseFloat(ratio) ? 'altura' : 'largura'
   const cabeVidro = (w, h) => Math.min(w, h) <= VIDRO_MAX[0] && Math.max(w, h) <= VIDRO_MAX[1]
 
   const preco = useMemo(() =>
@@ -425,7 +443,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
         imagem_titulo: imagem?.titulo ?? null,
         imagem_url: imagem?.img_url ?? null,
         // proporção da obra: o servidor calcula o corte do tamanho padrão e manda a instrução para a OS
-        proporcao_original: ratioQuadro && corteAtual > 0.01 ? +parseFloat(ratio).toFixed(4) : null,
+        proporcao_original: !isKit && ratioQuadro && corteAtual > 0.01 ? +parseFloat(ratio).toFixed(4) : null,
         preco_total: +preco.totalGeral.toFixed(2),
       },
       resumo: {
@@ -579,7 +597,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                   <MockupCanvas inline
                     imgUrl={isKit ? null : imagem.img_url}
                     kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
-                    slices={isKit ? 1 : nFatias}
+                    slices={isKit ? 1 : nFatias} cortePecas={isKit ? ratioQuadro : null}
                     ratio={ratioQuadro || ratio || parseFloat(imagem.ratio) || 1}
                     frameColor={molduraCor || 'preta'} room={mockupRoom} width={900}
                     tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null} />
@@ -588,7 +606,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                 <MockupCanvas inline interactive
                   imgUrl={isKit ? null : imagem.img_url}
                   kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
-                  slices={isKit ? 1 : nFatias}
+                  slices={isKit ? 1 : nFatias} cortePecas={isKit ? ratioQuadro : null}
                   ratio={ratioQuadro || ratio || parseFloat(imagem.ratio) || 1}
                   frameColor={molduraCor || 'preta'} room={mockupRoom} width={1200}
                   tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null}
@@ -672,7 +690,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                   const semVidro = tipoMontagem === 'convencional' && !cabeVidro(w, h)
                   return (
                     <button key={`${w}x${h}`} disabled={semVidro} title={semVidro ? 'Em papel, o maior tamanho é 100 × 150' : undefined}
-                      onClick={() => { setTamPersonalizado(false); setLargura(String(w)); setAltura(String(h)) }}
+                      onClick={() => { setTamPersonalizado(false); setLargura(String(w * nKit)); setAltura(String(h)) }}
                       style={{ ...chipBtn(on), ...(semVidro ? { opacity: 0.4, cursor: 'not-allowed' } : {}) }} aria-pressed={on}>
                       {w} × {h}
                     </button>
@@ -681,9 +699,10 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                 <button onClick={() => { setTamPersonalizado(true); if (travarRatio && parseFloat(ratio) > 0 && parseFloat(altura) > 0) handleAltura(altura) }} style={chipBtn(tamPersonalizado)} aria-pressed={tamPersonalizado}>Personalizado</button>
               </div>
             )}
-            {modoPadrao && padraoAtual && (corteAtual > 0.01 || Math.max(...padraoAtual) === 200) && (
+            {modoPadrao && padraoAtual && (isKit || corteAtual > 0.01 || Math.max(...padraoAtual) === 200) && (
               <div style={dica}>
-                {corteAtual > 0.01 && `Corte central de ${Math.round(corteAtual * 100) || 1}% na ${eixoCorte} (veja no ambiente). `}
+                {isKit && `Cada peça em ${padraoAtual[0]} × ${padraoAtual[1]} cm. `}
+                {corteAtual > 0.01 && (isKit ? `Corte central de até ${Math.round(corteAtual * 100) || 1}% (veja no ambiente). ` : `Corte central de ${Math.round(corteAtual * 100) || 1}% na ${eixoCorte} (veja no ambiente). `)}
                 {corteAtual > CORTE_MAX_PADRAO && 'Para a obra inteira, use Personalizado. '}
                 {Math.max(...padraoAtual) === 200 && 'Só em canvas.'}
               </div>
@@ -717,7 +736,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                 </span>}
               </div>
             )}
-            {hasDims && isKit && multiPeca && <div style={{ ...dica, marginTop: 8, marginBottom: 0 }}>{descPecas}, mesma altura</div>}
+            {hasDims && isKit && multiPeca && !modoPadrao && <div style={{ ...dica, marginTop: 8, marginBottom: 0 }}>{descPecas}, mesma altura</div>}
           </div>
 
           {/* Acabamento */}
@@ -887,7 +906,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
           <MockupCanvas
             imgUrl={isKit ? null : imagem.img_url}
             kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
-            slices={isKit ? 1 : nFatias}
+            slices={isKit ? 1 : nFatias} cortePecas={isKit ? ratioQuadro : null}
             ratio={ratioQuadro || ratio || parseFloat(imagem.ratio) || 1}
             frameColor={molduraCor || 'preta'}
             width={1100}
