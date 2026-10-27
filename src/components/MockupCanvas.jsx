@@ -291,7 +291,7 @@ const CARD_INFO = {
   '/card_h_cama.jpg': { id: 'h-cama', label: 'Quarto', teto: 0.11, piso: 0.95 },
   '/card_h_sofa_curvo.jpg': { id: 'h-sofa-curvo', label: 'Sofá curvo', teto: 0.10, piso: 0.95 },
   // out/2026: cômodos e corporativos (recortes dos ambientes do site, mesma calibração pelo pé-direito)
-  '/card_v_lavabo.jpg': { id: 'v-lavabo', label: 'Lavabo', fotoCm: 158 },          // teto e piso fora da foto: escala pela cuba
+  '/card_v_lavabo.jpg': { id: 'v-lavabo', label: 'Lavabo', fotoCm: 158, maxCm: 65 },   // parede pequena: no card, até 65 cm          // teto e piso fora da foto: escala pela cuba
   '/card_v_hall.jpg': { id: 'v-hall', label: 'Hall de entrada', teto: 0.055, piso: 0.945 },
   '/card_h_varanda.jpg': { id: 'h-varanda', label: 'Varanda gourmet', teto: 0.07, piso: 0.931 },
   '/card_h_cozinha.jpg': { id: 'h-cozinha', label: 'Cozinha', teto: 0.141, piso: 0.859 },
@@ -376,11 +376,12 @@ export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 
       const livreH = base - topo
       // quadro grande: vertical ≈ 88% da parede livre (máx. 62% da largura); horizontal até 74% da largura
       const gGrande = vertical ? Math.min(livreH * 0.88, (W * 0.62) / grupoAsp) : Math.min(livreH * 0.80, (W * 0.74) / grupoAsp)
-      // ...mas do tamanho de um quadro comum de verdade na escala da sala (até 150 cm de altura no vertical, 100 cm no
-      // horizontal, 160 cm de largura do conjunto). Para o quadro seguir protagonista, a câmera chega mais perto (zoom).
-      // (sala de parede grande: até 180 / 130 / 220 cm; o vertical comum vai até 150 cm, o maior tamanho padrão)
+      // ...mas do tamanho de um quadro comum de verdade na escala da sala (até 150 cm de altura no vertical, 110 cm no
+      // horizontal, 200 cm de largura do conjunto). Para o quadro seguir protagonista, a câmera chega mais perto (zoom).
+      // (sala de parede grande: até 180 / 130 / 220 cm; sala pequena tem maxCm; o vertical comum vai até 150 cm)
       const pxCm = dw / fotoCmDe(sala.src)
-      const lim = CARD_INFO[sala.src]?.grande ? [180, 130, 220] : [150, 100, 160]
+      const info = CARD_INFO[sala.src] || {}
+      const lim = info.grande ? [180, 130, 220] : info.maxCm ? [info.maxCm, info.maxCm, info.maxCm] : [150, 110, 200]
       const gap = N > 1 ? (GAP_CM + 2 * MOLDURA_CM) * pxCm : 0   // vão real entre as peças (a moldura fica por fora)
       const somaR = ratios.reduce((a, b) => a + b, 0)
       const gH = Math.min(gGrande, (vertical ? lim[0] : lim[1]) * pxCm, (lim[2] * pxCm - gap * (N - 1)) / somaR)
@@ -393,7 +394,8 @@ export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 
       // zoom em volta do quadro, que fica no centro do card; a foto sempre cobre o card (sem borda vazia)
       const py = (gy + gH / 2 + base) / 2   // mira entre o quadro e o móvel: os dois aparecem
       const tx = Math.min(-ox * zoom, Math.max(W - (ox + dw) * zoom, W / 2 - (W / 2) * zoom))
-      const ty = Math.min(-oy * zoom, Math.max(H - (oy + dh) * zoom, py - py * zoom))
+      // sem cortar o quadro: o topo dele fica pelo menos 4% abaixo da borda do card
+      const ty = Math.min(-oy * zoom, Math.max(H - (oy + dh) * zoom, py - py * zoom, H * 0.04 - (gy - 3 * pxCm) * zoom))
       ctx.setTransform(zoom, 0, 0, zoom, tx, ty)
       ctx.drawImage(roomImg, ox, oy, dw, dh)
       // mesma moldura da miniatura do card (preta, branca ou madeira, escolhida pela obra)
