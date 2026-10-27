@@ -192,7 +192,7 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
     cidade: !f.cidade.trim(),
     uf: f.uf.trim().length !== 2,
     usuario: !USUARIO_RE.test(usuario),
-    senha: senha.length < 6,
+    senha: senha.length < 10,
   }
   const marca = (k) => (tentou && invalido[k] ? { borderColor: colors.danger, boxShadow: `inset 0 0 0 1px ${colors.danger}` } : {})
   const ast = <span style={{ color: colors.danger }} aria-hidden="true"> *</span>
@@ -206,7 +206,7 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
     if (digitos(f.whatsapp).length < 10) faltando.push('WhatsApp')
     if (!f.endereco.trim() || !f.numero.trim() || !f.cidade.trim() || f.uf.trim().length !== 2) faltando.push('endereço')
     if (!USUARIO_RE.test(usuario)) faltando.push('usuário')
-    if (senha.length < 6) faltando.push('senha (mínimo 6)')
+    if (senha.length < 10) faltando.push('senha (mínimo 10)')
     if (faltando.length) { setErro(`Confira: ${faltando.join(', ')}.`); return }
     setErro(''); setSalvando(true)
     try {
@@ -312,7 +312,7 @@ function CadastroLoja({ colors, fonts, isMobile, inp, lbl, sec, btn, onVoltar, o
         </div>
         <div style={{ minWidth: 0 }}>
           <label style={lbl} htmlFor="cad-senha">Senha{ast}</label>
-          <input id="cad-senha" style={{ ...inp, ...marca('senha') }} aria-required value={senha} onChange={e => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" autoComplete="new-password" />
+          <input id="cad-senha" style={{ ...inp, ...marca('senha') }} aria-required value={senha} onChange={e => setSenha(e.target.value)} placeholder="Mínimo 10 caracteres" autoComplete="new-password" />
         </div>
       </div>
       <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 8px', lineHeight: 1.5 }}>
