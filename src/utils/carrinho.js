@@ -3,7 +3,8 @@
 
 export const CARRINHO_VAZIO = {
   itens: [],
-  cliente: { nome: '', contato: '', formaEntrega: '', endereco: '', obs: '' },
+  // email, pagamento e obsCliente saem no orçamento do cliente; obs é só para o estúdio
+  cliente: { nome: '', contato: '', email: '', formaEntrega: '', endereco: '', obs: '', pagamento: '', obsCliente: '' },
 }
 
 const chave = (userId) => `carrinho:${userId || 'anon'}`

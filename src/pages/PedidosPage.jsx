@@ -3,7 +3,8 @@ import { callFunction } from '../services/supabase'
 import { useTheme } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { Spinner, EmptyState } from '../components/UI'
-import { infoMoldura } from '../utils/molduras'
+import { infoMoldura, CORES_MOLDURA } from '../utils/molduras'
+import { mockupDataUrl, MOLDURA_CM, MOLDURA_CM_ACABAMENTO } from '../components/MockupCanvas'
 import { useEquipe } from '../contexts/EquipeContext'
 
 const fmt = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -34,54 +35,116 @@ function acabamentoTexto(it, p) {
   return [base, v].filter(Boolean).join(', ')
 }
 
-function abrirOrcamentoCliente(p, lojaNome) {
+// Cor da moldura salva no pedido ("Madeira escura"…) → id do estilo do mockup
+const corId = (label) => CORES_MOLDURA.find(c => c.label === label)?.id || 'preta'
+
+// Imagem do quadro na parede (tamanho real) para o orçamento; sem a imagem, o PDF mostra só a obra
+async function mockupDoItem(it, p) {
+  const pecas = pecasDe(it)
+  const kit = it.modo === 'kit' && pecas?.every(pc => pc.imagem_url)
+  const urls = kit ? pecas.map(pc => pc.imagem_url) : it.imagem_url ? [it.imagem_url] : []
+  if (!urls.length) return null
+  const w = Number(it.largura_cm), h = Number(it.altura_cm)
+  const pecaW = kit ? Number(pecas[0].largura_cm) : w
+  try {
+    return await mockupDataUrl({
+      urls, chave: it.imagem_id || urls[0], frameColor: corId(it.moldura_cor),
+      alturaCm: h, larguraCm: kit ? pecas.reduce((t, pc) => t + Number(pc.largura_cm), 0) : w,
+      slices: it.modo === 'fatiado' && pecas ? pecas.length : 1,
+      proporcao: kit || it.modo === 'fatiado' ? null : w / h,
+      cortePecas: kit && pecas.some(pc => pc.corte) ? pecaW / h : null,
+      molduraCm: MOLDURA_CM_ACABAMENTO[it.tipo_montagem ?? p.tipo_montagem] ?? MOLDURA_CM,
+      ratios: kit ? pecas.map(pc => Number(pc.largura_cm) / Number(pc.altura_cm)) : [w / h],
+    })
+  } catch { return null }
+}
+
+// Orçamento para o cliente: abre numa janela própria (salvar em PDF / imprimir). Lojista e cliente com contato,
+// cada quadro no ambiente em tamanho real, total, forma de pagamento e observações escritas no carrinho.
+async function abrirOrcamentoCliente(p, loja) {
   const w = window.open('', '_blank')
   if (!w) { alert('Permita pop-ups para abrir o orçamento.'); return }
+  w.document.write('<!doctype html><meta charset="utf-8"><title>Gerando orçamento…</title><p style="font-family:system-ui;padding:40px;color:#777">Gerando o orçamento…</p>')
+  const itensSrc = p.itens ?? []
+  const mockups = await Promise.all(itensSrc.map(it => mockupDoItem(it, p)))
+  const orc = p.quotes_data?.orcamento || {}
+  const lojaNome = loja?.store_name || 'Orçamento'
+  const cidade = [loja?.city, loja?.state].filter(Boolean).join('/')
+  const contatoLoja = [loja?.whatsapp, loja?.email, cidade].filter(Boolean)
   const hoje = new Date(p.created_at)
   const validade = new Date(hoje); validade.setDate(validade.getDate() + 7)
   const data = (d) => d.toLocaleDateString('pt-BR')
-  const itens = (p.itens ?? []).map(it => `
-    <div class="item">
-      ${it.modo === 'kit' && pecasDe(it)?.every(pc => pc.imagem_url)
-        ? `<div class="kit">${pecasDe(it).map(pc => `<img src="${esc(pc.imagem_url)}" alt="">`).join('')}</div>`
-        : it.imagem_url ? `<img src="${esc(it.imagem_url)}" alt="">` : ''}
-      <div>
-        <h2>${esc(it.imagem_titulo || 'Quadro sob medida')}</h2>
-        <dl>
-          ${tamanhoTexto(it) ? `<dt>Tamanho</dt><dd>${esc(tamanhoTexto(it))}</dd>` : ''}
-          ${acabamentoTexto(it, p) ? `<dt>Acabamento</dt><dd>${esc(acabamentoTexto(it, p))}</dd>` : ''}
-          ${it.moldura_nome ? `<dt>Moldura</dt><dd>${esc(infoMoldura(it.moldura_nome).rotulo)}</dd>` : ''}
-          <dt>${pecasDe(it) ? 'Conjuntos' : 'Quantidade'}</dt><dd>${esc(it.quantidade || 1)}</dd>
-          ${(p.itens?.length > 1 && it.preco_total) ? `<dt>Valor</dt><dd>${esc(fmt(it.preco_total))}</dd>` : ''}
-        </dl>
+  const varios = itensSrc.length > 1
+  const itens = itensSrc.map((it, i) => {
+    const pecas = pecasDe(it)
+    const cor = CORES_MOLDURA.find(c => c.label === it.moldura_cor)
+    const obra = it.modo === 'kit' && pecas?.every(pc => pc.imagem_url)
+      ? `<div class="kit">${pecas.map(pc => `<img src="${esc(pc.imagem_url)}" alt="" style="border-color:${cor?.hex || '#1c1c1e'}">`).join('')}</div>`
+      : it.imagem_url ? `<img class="obra" src="${esc(it.imagem_url)}" alt="" style="border-color:${cor?.hex || '#1c1c1e'}">` : ''
+    return `
+    <section class="item">
+      ${mockups[i] ? `<img class="amb" src="${mockups[i]}" alt="O quadro na parede, em tamanho real">` : ''}
+      <div class="ficha">
+        <div class="obra-box">${obra}</div>
+        <div class="dados">
+          ${varios ? `<div class="mono">Quadro ${i + 1}</div>` : ''}
+          <h2>${esc(it.imagem_titulo || 'Quadro sob medida')}</h2>
+          <dl>
+            ${tamanhoTexto(it) ? `<dt>Tamanho</dt><dd>${esc(tamanhoTexto(it))}</dd>` : ''}
+            ${acabamentoTexto(it, p) ? `<dt>Acabamento</dt><dd>${esc(acabamentoTexto(it, p))}</dd>` : ''}
+            ${it.moldura_cor ? `<dt>Moldura</dt><dd>${esc(it.moldura_cor)}</dd>` : it.moldura_nome ? `<dt>Moldura</dt><dd>${esc(infoMoldura(it.moldura_nome).rotulo)}</dd>` : ''}
+            <dt>${pecas ? 'Conjuntos' : 'Quantidade'}</dt><dd>${esc(it.quantidade || 1)}</dd>
+          </dl>
+          ${varios && it.preco_total ? `<div class="valor">${esc(fmt(it.preco_total))}</div>` : ''}
+        </div>
       </div>
-    </div>`).join('')
+    </section>`
+  }).join('')
+  const entrega = p.forma_entrega === 'retirada' ? 'Retirada na loja'
+    : p.forma_entrega === 'entrega' ? `Entrega${p.endereco_entrega ? ': ' + esc(p.endereco_entrega) : ' no endereço combinado'}` : ''
+  const bloco = (titulo, texto) => texto ? `<div class="bloco"><div class="mono">${titulo}</div><p>${esc(texto).replace(/\n/g, '<br>')}</p></div>` : ''
+  w.document.open()
   w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600&family=Figtree:wght@400;600&display=swap">
 <title>Orçamento ${esc(p.numero ?? '')} — ${esc(lojaNome)}</title>
 <style>
-  body{font-family:Figtree,system-ui,sans-serif;color:#222;max-width:720px;margin:0 auto;padding:32px 20px;background:#fff}
-  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:12px;margin-bottom:24px;gap:12px;flex-wrap:wrap}
-  h1{font-family:Archivo,Arial,sans-serif;font-size:28px;font-weight:600;letter-spacing:-0.5px;margin:0} .muted{color:#777;font-size:13px}
-  .item{display:flex;gap:20px;padding:16px 0;border-bottom:1px solid #eee;flex-wrap:wrap}
-  .item img{width:180px;max-width:100%;object-fit:contain;border:6px solid #1a1a1a;box-shadow:0 4px 12px rgba(0,0,0,.15)}
-  .kit{display:flex;gap:8px;align-items:center;max-width:100%}
-  .kit img{width:auto;height:110px;max-width:none}
-  h2{font-family:Archivo,Arial,sans-serif;font-size:19px;font-weight:600;margin:0 0 10px} dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:14px} dt{color:#777} dd{margin:0}
-  .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:20px;font-size:15px}
-  .total strong{font-family:Archivo,Arial,sans-serif;font-size:30px;font-weight:600}
-  .acoes{margin-top:28px;display:flex;gap:10px} button{padding:12px 22px;font-size:14px;border-radius:999px;border:1px solid #222;background:#222;color:#fff;cursor:pointer}
-  @media print{.acoes{display:none} body{padding:0}}
+  *{box-sizing:border-box} body{font-family:Figtree,system-ui,sans-serif;color:#1f1d1a;max-width:780px;margin:0 auto;padding:40px 24px;background:#fff;font-size:14px;line-height:1.5}
+  .mono{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#8a857d;font-weight:600}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;padding-bottom:18px;border-bottom:2px solid #1f1d1a}
+  h1{font-family:Archivo,Arial,sans-serif;font-size:30px;font-weight:600;letter-spacing:-.5px;margin:0 0 4px}
+  .contato{color:#6b665e;font-size:13px} .num{text-align:right} .num strong{display:block;font-family:Archivo,Arial,sans-serif;font-size:18px;font-weight:600;margin:4px 0}
+  .partes{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:20px 0;border-bottom:1px solid #e8e4dd}
+  .partes p{margin:6px 0 0}
+  .item{padding:26px 0;border-bottom:1px solid #e8e4dd;break-inside:avoid}
+  .amb{display:block;width:100%;aspect-ratio:1088/1024;object-fit:cover;border-radius:2px;margin-bottom:18px}
+  .ficha{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+  .obra-box{flex:0 0 auto} .obra{width:120px;border:4px solid #1c1c1e;box-shadow:0 3px 10px rgba(0,0,0,.14);display:block}
+  .kit{display:flex;gap:6px} .kit img{height:96px;border:3px solid #1c1c1e;box-shadow:0 3px 10px rgba(0,0,0,.14)}
+  .dados{flex:1;min-width:220px} h2{font-family:Archivo,Arial,sans-serif;font-size:20px;font-weight:600;margin:4px 0 10px;letter-spacing:-.2px}
+  dl{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;margin:0} dt{color:#8a857d} dd{margin:0}
+  .valor{margin-top:10px;font-weight:600}
+  .total{display:flex;justify-content:space-between;align-items:baseline;padding:22px 0;border-bottom:2px solid #1f1d1a}
+  .total strong{font-family:Archivo,Arial,sans-serif;font-size:34px;font-weight:600;letter-spacing:-.5px}
+  .blocos{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px} .bloco{background:#f6f3ee;padding:16px 18px;border-radius:2px} .bloco p{margin:6px 0 0}
+  .blocos .bloco:only-child{grid-column:1/-1}
+  footer{margin-top:28px;color:#8a857d;font-size:12px}
+  .acoes{margin-top:28px} button{padding:12px 24px;font-size:14px;border-radius:999px;border:0;background:#1f1d1a;color:#fff;cursor:pointer;font-family:inherit}
+  @media (max-width:560px){.partes,.blocos{grid-template-columns:1fr}.num{text-align:left}}
+  @media print{.acoes{display:none} body{padding:0} .item{padding:18px 0}}
 </style></head><body>
 <header>
-  <div><h1>${esc(lojaNome)}</h1><div class="muted">Orçamento${p.numero ? ' nº ' + esc(p.numero) : ''}</div></div>
-  <div class="muted">Emitido em ${data(hoje)}<br>Válido até ${data(validade)}</div>
+  <div><h1>${esc(lojaNome)}</h1>${contatoLoja.length ? `<div class="contato">${contatoLoja.map(esc).join(' · ')}</div>` : ''}</div>
+  <div class="num"><div class="mono">Orçamento</div><strong>${p.numero ? 'nº ' + esc(p.numero) : ''}</strong><div class="contato">Emitido em ${data(hoje)}<br>Válido até ${data(validade)}</div></div>
 </header>
-${p.cliente_nome ? `<p><span class="muted">Cliente:</span> ${esc(p.cliente_nome)}</p>` : ''}
+<div class="partes">
+  <div><div class="mono">Cliente</div><p><strong>${esc(p.cliente_nome || '')}</strong>${p.cliente_contato ? '<br>' + esc(p.cliente_contato) : ''}${orc.cliente_email ? '<br>' + esc(orc.cliente_email) : ''}</p></div>
+  ${entrega ? `<div><div class="mono">Entrega</div><p>${entrega}</p></div>` : ''}
+</div>
 ${itens}
-<div class="total"><span>Total</span><strong>${esc(fmt(p.revenda_total))}</strong></div>
-${p.forma_entrega ? `<p class="muted">${p.forma_entrega === 'retirada' ? 'Retirada na loja' : 'Entrega no endereço combinado'}</p>` : ''}
+<div class="total"><span class="mono">Total</span><strong>${esc(fmt(p.revenda_total))}</strong></div>
+${orc.forma_pagamento || orc.observacoes ? `<div class="blocos">${bloco('Forma de pagamento', orc.forma_pagamento)}${bloco('Observações', orc.observacoes)}</div>` : ''}
+<footer>Orçamento válido até ${data(validade)}. Imagens de ambiente ilustrativas, com o quadro em tamanho real.</footer>
 <div class="acoes"><button id="imprimir">Salvar PDF / Imprimir</button></div>
 </body></html>`)
   w.document.close()
@@ -403,7 +466,7 @@ export default function PedidosPage({ onNovoPedido }) {
 
                   {p.revenda_total > 0 && (
                     <button
-                      onClick={() => abrirOrcamentoCliente(p, lojista?.store_name || profile?.name || 'Orçamento')}
+                      onClick={() => abrirOrcamentoCliente(p, lojista || { store_name: profile?.name })}
                       style={{ marginTop: 20, width: '100%', background: 'transparent', color: colors.text, border: `1px solid ${colors.text}`, borderRadius: 999, padding: '13px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: fonts.body }}
                     >
                       Orçamento para o cliente (PDF)

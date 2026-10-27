@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
 
     const { data: l } = await supabase
       .from('lojistas')
-      .select('id, store_name, discount_pct, markup_pct, allowed_mount_types, allowed_frames, allowed_substrates, allowed_glass_types')
+      .select('id, store_name, email, whatsapp, city, state, discount_pct, markup_pct, allowed_mount_types, allowed_frames, allowed_substrates, allowed_glass_types')
       .eq('user_id', userId)
       .eq('tenant_id', p.tenant_id)
       .maybeSingle()
@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
     if (!profile) return
     const { data: l } = await supabase
       .from('lojistas')
-      .select('id, store_name, discount_pct, markup_pct, allowed_mount_types, allowed_frames, allowed_substrates, allowed_glass_types')
+      .select('id, store_name, email, whatsapp, city, state, discount_pct, markup_pct, allowed_mount_types, allowed_frames, allowed_substrates, allowed_glass_types')
       .eq('user_id', session.user.id)
       .eq('tenant_id', profile.tenant_id)
       .maybeSingle()

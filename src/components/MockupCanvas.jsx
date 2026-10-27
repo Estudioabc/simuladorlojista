@@ -333,6 +333,20 @@ export function cabeNaSala(room, alturaCm, larguraCm) {
   const z = room.zone, cmPorPx = room.paredeCm / ((z.right - z.left) * room.w)
   return alturaCm + 2 * MOLDURA_CM <= (z.bottom - z.top) * room.h * cmPorPx && !(larguraCm + 2 * MOLDURA_CM > room.paredeCm)
 }
+// Imagem (JPEG em data URL) do quadro na parede, no tamanho real, para o orçamento do cliente.
+// Usa a sala da obra; se o quadro não couber nela, a primeira sala da orientação em que cabe.
+export async function mockupDataUrl({ urls, chave, frameColor = 'preta', alturaCm, larguraCm, slices = 1, proporcao = null,
+  cortePecas = null, molduraCm = MOLDURA_CM, ratios, width = 1000 }) {
+  const orient = orientacaoDe(ratios)
+  const lista = PEDIDO_ROOMS[orient]
+  let room = salaDaObra(chave, orient)
+  if (!cabeNaSala(room, alturaCm, larguraCm)) room = lista.find(r => cabeNaSala(r, alturaCm, larguraCm)) || room
+  const canvas = document.createElement('canvas')
+  canvas.width = width; canvas.height = Math.round(width * room.h / room.w)
+  await drawKitOnCanvas(canvas, urls, frameColor, room, false, slices, alturaCm > 0 ? { altura: alturaCm } : null, proporcao, cortePecas, molduraCm)
+  return canvas.toDataURL('image/jpeg', 0.86)
+}
+
 // Mesma escolha do card: orientação pelo conjunto e sala pelo hash da obra
 export function orientacaoDe(ratios) {
   return ratios.reduce((a, b) => a + b, 0) + (ratios.length > 1 ? 0.06 * (ratios.length - 1) : 0) <= 1.05 ? 'vertical' : 'horizontal'

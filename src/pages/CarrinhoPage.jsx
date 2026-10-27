@@ -56,6 +56,12 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
           forma_entrega: cliente.formaEntrega,
           endereco_entrega: cliente.formaEntrega === 'entrega' ? cliente.endereco.trim() : null,
           obs: cliente.obs.trim() || null,
+          // vai para o orçamento do cliente (PDF)
+          orcamento: {
+            cliente_email: cliente.email?.trim() || null,
+            forma_pagamento: cliente.pagamento?.trim() || null,
+            observacoes: cliente.obsCliente?.trim() || null,
+          },
         },
         headers: assinatura && assinatura !== 'dono' ? { 'x-vendedor-token': assinatura.token } : undefined,
       })
@@ -194,6 +200,10 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
               <input id="cli-contato" style={{ ...inp, ...marca('contato') }} inputMode="tel" placeholder="(11) 99999-9999" aria-required value={cliente.contato} onChange={e => setCliente('contato', e.target.value)} />
             </div>
           </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={rotulo} htmlFor="cli-email">E-mail</label>
+            <input id="cli-email" style={inp} type="email" inputMode="email" placeholder="opcional" value={cliente.email || ''} onChange={e => setCliente('email', e.target.value)} />
+          </div>
           <span style={{ ...rotulo, color: tentou && falta.entrega ? colors.danger : colors.textMuted }}>Entrega{ast}</span>
           <div role="group" aria-label="Forma de entrega" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: cliente.formaEntrega === 'entrega' ? 12 : 0 }}>
             {[{ id: 'retirada', label: 'Retira na loja' }, { id: 'entrega', label: 'Entrega no endereço' }].map(f => (
@@ -206,6 +216,14 @@ export default function CarrinhoPage({ carrinho, onAlterar, onEditar, onLimpar, 
               <input id="cli-endereco" style={{ ...inp, ...marca('endereco') }} placeholder="Rua, número, bairro, cidade..." aria-required value={cliente.endereco} onChange={e => setCliente('endereco', e.target.value)} />
             </div>
           )}
+          <div style={{ ...lbl, marginTop: 22 }}>No orçamento do cliente</div>
+          <label style={rotulo} htmlFor="cli-pagamento">Forma de pagamento</label>
+          <input id="cli-pagamento" style={{ ...inp, marginBottom: 12 }} placeholder="Ex.: PIX à vista com 5% de desconto ou 3x no cartão"
+            value={cliente.pagamento || ''} onChange={e => setCliente('pagamento', e.target.value)} />
+          <label style={rotulo} htmlFor="cli-obs-cliente">Observações</label>
+          <textarea id="cli-obs-cliente" style={{ ...inp, resize: 'vertical', minHeight: 64 }}
+            placeholder="Ex.: prazo de produção, instalação inclusa, frete..."
+            value={cliente.obsCliente || ''} onChange={e => setCliente('obsCliente', e.target.value)} />
           {obsAberta ? (
             <textarea style={{ ...inp, resize: 'vertical', minHeight: 64, marginTop: 14 }} aria-label="Observações para o estúdio"
               placeholder="Observações para o estúdio: prazo, acabamento especial..."
