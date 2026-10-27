@@ -88,11 +88,13 @@ export const PRECO_TAMANHO_PADRAO = {
 // sair mais barato que o tamanho padrão. Só o preço; o custo de cada linha não muda. Espelho do sim-pedido.
 const ACRESCIMO_PERSONALIZADO = 0.15
 
+// Várias peças iguais num tamanho da tabela (ex.: obra em 3 peças de 60 × 90) = preço da tabela × peças (Pedro, 27/10)
 export function precoTabela(pecas, tipoMontagem, tipoVidro) {
-  if (pecas?.length !== 1) return null
+  if (!pecas?.length || pecas.some(p => p.largura_cm !== pecas[0].largura_cm || p.altura_cm !== pecas[0].altura_cm)) return null
   const [a, b] = [pecas[0].largura_cm, pecas[0].altura_cm].map(Number).sort((x, y) => x - y)
   const acab = tipoMontagem === 'canvas' ? 'canvas' : tipoMontagem === 'convencional' ? tipoVidro : null
-  return PRECO_TAMANHO_PADRAO[`${a}x${b}`]?.[acab] ?? null
+  const preco = PRECO_TAMANHO_PADRAO[`${a}x${b}`]?.[acab]
+  return preco ? preco * pecas.length : null
 }
 
 // Soma o preço de cada peça (kit ou obra fatiada). Linhas iguais são agrupadas.
@@ -711,6 +713,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                 </div>
                 {hasDims && <span style={{ fontSize: 12, color: colors.textMuted }}>
                   {porPeca ? `Conjunto: ${cm(parseFloat(largura))} × ${cm(parseFloat(altura))} cm` : `${pecas.length} peças de ${cm(pecas[0].largura_cm)} × ${cm(pecas[0].altura_cm)} cm`}
+                  {PRECO_TAMANHO_PADRAO[[pecas[0].largura_cm, pecas[0].altura_cm].sort((x, y) => x - y).join('x')] && ' · preço de tamanho padrão'}
                 </span>}
               </div>
             )}
