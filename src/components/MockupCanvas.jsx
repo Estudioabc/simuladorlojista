@@ -295,7 +295,7 @@ const CARD_INFO = {
   '/card_v_hall.jpg': { id: 'v-hall', label: 'Hall de entrada', teto: 0.055, piso: 0.945 },
   '/card_h_varanda.jpg': { id: 'h-varanda', label: 'Varanda gourmet', teto: 0.07, piso: 0.931 },
   '/card_h_cozinha.jpg': { id: 'h-cozinha', label: 'Cozinha', teto: 0.141, piso: 0.859 },
-  '/card_h_recepcao.jpg': { id: 'h-recepcao', label: 'Recepção', teto: -0.028, piso: 1.028, peDireito: 540 },  // pé-direito duplo
+  '/card_h_recepcao.jpg': { id: 'h-recepcao', label: 'Recepção', teto: -0.028, piso: 1.028, peDireito: 400, grande: true },  // pé-direito alto: parede pede quadro maior
   '/card_h_consultorio.jpg': { id: 'h-consultorio', label: 'Consultório', teto: -0.018, piso: 1.018 },
   '/card_h_hall_predio.jpg': { id: 'h-hall-predio', label: 'Hall do prédio', teto: 0.059, piso: 0.942 },
   '/card_c_bar.jpg': { id: 'c-bar', label: 'Bar', teto: 0.03, piso: 0.90 },
@@ -357,7 +357,7 @@ export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 
     const desenhar = () => Promise.all(lista.map(u => loadImg(u))).then(async arts => {
       const ratios = arts.map(a => a.naturalWidth / a.naturalHeight)
       const N = arts.length
-      const gapRel = N > 1 ? 0.06 : 0
+      const gapRel = N > 1 ? 0.06 : 0   // só para decidir a orientação; o vão de verdade é em cm, mais abaixo
       const grupoAsp = ratios.reduce((a, b) => a + b, 0) + gapRel * (N - 1)
       const vertical = grupoAsp <= 1.05
       const salas = vertical ? CARD_ROOMS.vertical : CARD_ROOMS.horizontal
@@ -372,25 +372,27 @@ export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 
       const dw = rA > cA ? H * rA : W, dh = rA > cA ? H : W / rA
       const ox = (W - dw) / 2, oy = (H - dh) / 2
       // faixa livre da parede no card
-      const topo = oy + sala.top * dh, base = oy + sala.bottom * dh, cx = ox + sala.cx * dw
+      const topo = oy + sala.top * dh, base = oy + sala.bottom * dh
       const livreH = base - topo
       // quadro grande: vertical ≈ 88% da parede livre (máx. 62% da largura); horizontal até 74% da largura
       const gGrande = vertical ? Math.min(livreH * 0.88, (W * 0.62) / grupoAsp) : Math.min(livreH * 0.80, (W * 0.74) / grupoAsp)
-      // ...mas do tamanho de um quadro comum de verdade na escala da sala (até 130 cm de altura no vertical, 100 cm no
+      // ...mas do tamanho de um quadro comum de verdade na escala da sala (até 150 cm de altura no vertical, 100 cm no
       // horizontal, 160 cm de largura do conjunto). Para o quadro seguir protagonista, a câmera chega mais perto (zoom).
+      // (sala de parede grande: até 180 / 130 / 220 cm; o vertical comum vai até 150 cm, o maior tamanho padrão)
       const pxCm = dw / fotoCmDe(sala.src)
-      const gH = Math.min(gGrande, (vertical ? 130 : 100) * pxCm, (160 * pxCm) / grupoAsp)
-      const zoom = Math.min(gGrande / gH, 1.3)
-      const gW = gH * grupoAsp
+      const lim = CARD_INFO[sala.src]?.grande ? [180, 130, 220] : [150, 100, 160]
+      const gap = N > 1 ? (GAP_CM + 2 * MOLDURA_CM) * pxCm : 0   // vão real entre as peças (a moldura fica por fora)
+      const somaR = ratios.reduce((a, b) => a + b, 0)
+      const gH = Math.min(gGrande, (vertical ? lim[0] : lim[1]) * pxCm, (lim[2] * pxCm - gap * (N - 1)) / somaR)
+      const gW = gH * somaR + gap * (N - 1)
+      const zoom = Math.max(1.12, Math.min(gGrande / gH, 1.3))
       const gy = base - Math.max(livreH * 0.06, (livreH - gH) * 0.5) - gH  // centrado na parede livre (no mínimo 6% acima do móvel)
-      let x = Math.min(Math.max(cx - gW / 2, W * 0.04), W * 0.96 - gW)
-      const gap = gapRel * gH
+      let x = W / 2 - gW / 2   // card: quadro sempre no centro
       const frames = []
       ratios.forEach(r => { frames.push({ fx: x, fy: gy, fw: gH * r, fh: gH }); x += gH * r + gap })
-      // zoom em volta do quadro, sem deixar borda vazia (a foto sempre cobre o card)
+      // zoom em volta do quadro, que fica no centro do card; a foto sempre cobre o card (sem borda vazia)
       const py = (gy + gH / 2 + base) / 2   // mira entre o quadro e o móvel: os dois aparecem
-      const pivoX = frames[0].fx + gW / 2
-      const tx = Math.min(-ox * zoom, Math.max(W - (ox + dw) * zoom, pivoX - pivoX * zoom))
+      const tx = Math.min(-ox * zoom, Math.max(W - (ox + dw) * zoom, W / 2 - (W / 2) * zoom))
       const ty = Math.min(-oy * zoom, Math.max(H - (oy + dh) * zoom, py - py * zoom))
       ctx.setTransform(zoom, 0, 0, zoom, tx, ty)
       ctx.drawImage(roomImg, ox, oy, dw, dh)
