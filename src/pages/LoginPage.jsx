@@ -23,8 +23,8 @@ export default function LoginPage() {
     // Foto: obra do acervo na parede (public/login-ambiente.jpg). Degradês garantem a leitura do texto por cima.
     side: {
       backgroundColor: colors.text, color: '#fff',
-      backgroundImage: 'linear-gradient(to bottom, rgba(14,13,10,0.45) 0%, rgba(14,13,10,0) 22%, rgba(14,13,10,0) 45%, rgba(14,13,10,0.88) 82%), url(/login-ambiente.jpg)',
-      backgroundSize: 'cover', backgroundPosition: 'center 12%',
+      backgroundImage: 'linear-gradient(to bottom, rgba(14,13,10,0.45) 0%, rgba(14,13,10,0) 22%, rgba(14,13,10,0) 45%, rgba(14,13,10,0.88) 82%), url(/login-ambiente.jpg?v=2)',
+      backgroundSize: 'cover', backgroundPosition: 'center 78%',
       padding: 'clamp(32px, 6vw, 72px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 40, minHeight: 420,
     },
     sideBrand: { fontSize: 11, fontWeight: 600, letterSpacing: 1.8, textTransform: 'uppercase', opacity: 0.9 },
@@ -45,15 +45,15 @@ export default function LoginPage() {
       <aside style={S.side}>
         <div style={S.sideBrand}>Casa Quadro Trade · Portal do lojista</div>
         <div>
-          <div style={S.sideTitle}>Seu cliente escolhe.<br />A gente produz.</div>
-          <p style={S.sideText}>Mais de mil obras, simulação na parede e preço na hora. O Casa Quadro Trade imprime e emoldura.</p>
+          <div style={S.sideTitle}>A obra certa<br />para cada parede.</div>
+          <p style={S.sideText}>Mais de 1.600 obras, simulação no ambiente do seu cliente e orçamento com a sua margem. A Casa Quadro Trade imprime e emoldura cada pedido.</p>
         </div>
       </aside>
 
       <main style={S.main}>
         <form onSubmit={handleSubmit} style={S.form}>
           <h1 style={S.title}>Entrar</h1>
-          <p style={S.subtitle}>Entre com o usuário e a senha que o Casa Quadro Trade passou para você.</p>
+          <p style={S.subtitle}>Entre com o usuário e a senha que a Casa Quadro Trade passou para você.</p>
 
           {error && (
             <div style={S.error} role="alert">
@@ -97,7 +97,7 @@ export default function LoginPage() {
           </div>
 
           <p style={{ fontSize: 13, color: colors.textMuted, marginTop: 24, lineHeight: 1.5 }}>
-            Esqueceu a senha? Fale com o Casa Quadro Trade.
+            Esqueceu a senha? Fale com a Casa Quadro Trade.
           </p>
         </form>
       </main>
