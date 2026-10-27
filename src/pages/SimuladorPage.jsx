@@ -3,7 +3,7 @@ import { useTheme, useIsMobile, formatCurrency } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
-import MockupCanvas, { PEDIDO_ROOMS, orientacaoDe, salaDaObra, cabeNaSala } from '../components/MockupCanvas'
+import MockupCanvas, { PEDIDO_ROOMS, orientacaoDe, salaDaObra, cabeNaSala, GAP_CM, MOLDURA_CM } from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
 import { infoMoldura, CORES_MOLDURA } from '../utils/molduras'
 
@@ -172,6 +172,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const [altura, setAltura] = useState('')
   const [quantidade, setQuantidade] = useState('1')
   const [fatias, setFatias] = useState(1)
+  const [tamPorPeca, setTamPorPeca] = useState(false) // obra dividida: medidas digitadas por peça (senão, do conjunto)
   const [tipoMontagem, setTipoMontagem] = useState('') // 'canvas' | 'convencional'
   const [montagemId, setMontagemId] = useState('')
   const [tipoVidro, setTipoVidro] = useState('')
@@ -198,7 +199,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   // Ambientes do pedido = os do card do acervo (mesma sala e calibração); a lista acompanha a orientação da obra
   const orientacao = imagem ? orientacaoDe(isKit ? imagem.kitParts.map(p => parseFloat(p.ratio) || 1) : [parseFloat(ratio) || parseFloat(imagem.ratio) || 1]) : 'vertical'
   // só as salas em que o quadro cabe no tamanho real (130 × 200 não passa do teto); se nenhuma couber, mostra todas
-  const salasQueCabem = PEDIDO_ROOMS[orientacao].filter(r => cabeNaSala(r, parseFloat(altura), parseFloat(largura)))
+  const larguraNaParede = parseFloat(largura) + (isKit ? 0 : (Math.min(fatias, maxFatias(imagem, ratio)) - 1) * (GAP_CM + 2 * MOLDURA_CM))
+  const salasQueCabem = PEDIDO_ROOMS[orientacao].filter(r => cabeNaSala(r, parseFloat(altura), larguraNaParede))
   const salas = salasQueCabem.length ? salasQueCabem : PEDIDO_ROOMS[orientacao]
   useEffect(() => {
     if (imagem) setMockupRoom(salaDaObra(imagem.cardChave || imagem.id || imagem.img_url, orientacao))
@@ -294,6 +296,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     return [{ largura_cm: w, altura_cm: h }]
   }, [largura, altura, isKit, imagem, nFatias])
   const multiPeca = pecas.length > 1
+  const fatiado = !isKit && nFatias > 1
+  const porPeca = fatiado && tamPorPeca
   // tamanhos padrão (quadro único de obra não quadrada); cada um na orientação da obra
   const temPadrao = !isKit && nFatias === 1 && temTamanhoPadrao(parseFloat(ratio))
   const opcoesPadrao = temPadrao ? TAMANHOS_23.map(([a, b]) => (parseFloat(ratio) >= 1 ? [b, a] : [a, b])) : []
@@ -334,13 +338,13 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const handleLargura = (val) => {
     setLargura(val)
     if ((travarRatio || isKit) && ratio && val) {
-      setAltura((parseFloat(val) / ratio).toFixed(1))
+      setAltura(String(um(parseFloat(val) / ratio)))
     }
   }
   const handleAltura = (val) => {
     setAltura(val)
     if ((travarRatio || isKit) && ratio && val) {
-      setLargura((parseFloat(val) * ratio).toFixed(1))
+      setLargura(String(um(parseFloat(val) * ratio)))
     }
   }
 
@@ -630,7 +634,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
           {/* Tamanho */}
           <div style={grupo}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-              {grupoLbl(multiPeca ? 'Tamanho total (cm)' : 'Tamanho (cm)', null, { obrig: true, falta: falta.tamanho && !(parseFloat(largura) > 0 && parseFloat(altura) > 0) })}
+              {grupoLbl(porPeca ? 'Tamanho de cada peça (cm)' : multiPeca ? 'Tamanho total (cm)' : 'Tamanho (cm)', null, { obrig: true, falta: falta.tamanho && !(parseFloat(largura) > 0 && parseFloat(altura) > 0) })}
               {ratio && !isKit && (
                 <button onClick={() => setTravarRatio(t => !t)} style={{ ...linkBtn, fontSize: 12, color: colors.textMuted, marginBottom: 8 }}>
                   {travarRatio ? 'Destravar proporção' : 'Travar proporção'}
@@ -640,7 +644,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
             {fatiasMax > 1 && (
               <div style={{ ...gradeOpcoes, marginBottom: 12 }}>
                 {[1, 2, 3].filter(n => n <= fatiasMax).map(n => (
-                  <button key={n} onClick={() => { setFatias(n); setTravarRatio(true); if (ratio && largura) setAltura((parseFloat(largura) / ratio).toFixed(1)) }} style={chipBtn(nFatias === n)}>
+                  <button key={n} onClick={() => { setFatias(n); setTravarRatio(true); if (n === 1) setTamPorPeca(false); if (ratio && largura) setAltura(String(um(parseFloat(largura) / ratio))) }} style={chipBtn(nFatias === n)}>
                     {n === 1 ? 'Quadro único' : `${n} peças`}
                   </button>
                 ))}
@@ -675,8 +679,16 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
             {modoPadrao && tipoMontagem === 'convencional' && padraoAtual && !cabeVidro(...padraoAtual) && (
               <div style={{ fontSize: 12, color: '#B4312A', marginBottom: 10 }}>Em papel, o maior tamanho é 100 × 150. Escolha outro tamanho ou canvas.</div>
             )}
+            {fatiado && (
+              <div style={{ ...gradeOpcoes, marginBottom: 12 }}>
+                <button onClick={() => setTamPorPeca(false)} style={chipBtn(!tamPorPeca)} aria-pressed={!tamPorPeca}>Tamanho total</button>
+                <button onClick={() => setTamPorPeca(true)} style={chipBtn(tamPorPeca)} aria-pressed={tamPorPeca}>Tamanho de cada peça</button>
+              </div>
+            )}
             <div style={{ display: modoPadrao ? 'none' : 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: colors.textMuted }}>
-              <input style={inpTam} type="number" min="1" step="0.5" placeholder="larg." aria-label="Largura em cm" value={largura} onChange={e => handleLargura(e.target.value)} />
+              <input style={inpTam} type="number" min="1" step="0.5" placeholder="larg." aria-label={porPeca ? 'Largura de cada peça em cm' : 'Largura em cm'}
+                value={porPeca && largura ? String(um(parseFloat(largura) / nFatias)) : largura}
+                onChange={e => handleLargura(porPeca && e.target.value ? String(um(parseFloat(e.target.value) * nFatias)) : e.target.value)} />
               ×
               <input style={inpTam} type="number" min="1" step="0.5" placeholder="alt." aria-label="Altura em cm" value={altura} onChange={e => handleAltura(e.target.value)} />
               <span style={{ marginLeft: 'auto', fontSize: 13 }}>{multiPeca ? 'Conj.' : 'Qtd.'}</span>
@@ -693,7 +705,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
             )}
             {hasDims && multiPeca && (
               <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 8, lineHeight: 1.5 }}>
-                {descPecas} · {isKit ? 'mesma altura, cada peça na proporção original' : 'a obra dividida em faixas iguais'}
+                {descPecas} · {isKit ? 'mesma altura, cada peça na proporção original' : 'a obra dividida em faixas iguais'} · {GAP_CM} cm entre as peças
+                {fatiado && ` · conjunto na parede: ${cm(pecas.reduce((s, p) => s + p.largura_cm + 2 * MOLDURA_CM, 0) + GAP_CM * (pecas.length - 1))} × ${cm(pecas[0].altura_cm + 2 * MOLDURA_CM)} cm com moldura`}
               </div>
             )}
           </div>

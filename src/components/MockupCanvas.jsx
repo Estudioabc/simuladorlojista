@@ -72,8 +72,8 @@ function loadRoomImg(src) {
 }
 
 const PAD_RATIO = 0.018  // espessura da moldura como fração da altura do quadro
-const GAP_CM = 5         // espaço real entre quadros de uma composição
-const MOLDURA_CM = 2.5   // largura real da moldura: igual em qualquer tamanho de quadro (no tamanho real)
+export const GAP_CM = 5  // espaço real entre quadros de uma composição (de moldura a moldura)
+export const MOLDURA_CM = 2.5   // largura real da moldura: igual em qualquer tamanho de quadro (no tamanho real)
 
 // Escala real: px por cm na parede do ambiente (null quando não há medida)
 function pxPorCm(room, zW, tamanhoCm) {
@@ -143,7 +143,7 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = fa
   const ratios = artImgs.map(artRatio)
   const N = artImgs.length
   const escala = thumbMode ? null : pxPorCm(room, zW, tamanhoCm)
-  const gap = N > 1 ? Math.round(escala ? GAP_CM * escala : W * 0.03) : 0
+  const gap = N > 1 ? Math.round(escala ? (GAP_CM + 2 * MOLDURA_CM) * escala : W * 0.03) : 0  // a moldura é desenhada por fora da arte
 
   let fh = escala ? tamanhoCm.altura * escala : zH * 0.55
   let fws = ratios.map(r => fh * r)
@@ -506,7 +506,7 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     const zH = (FRAME_ZONE.bottom - FRAME_ZONE.top) * H
     const zW = (FRAME_ZONE.right - FRAME_ZONE.left) * W
     const escala = pxPorCm(roomCfg, zW, tamanhoCm)
-    const gap = N > 1 ? Math.round(escala ? GAP_CM * escala : W * 0.03) : 0
+    const gap = N > 1 ? Math.round(escala ? (GAP_CM + 2 * MOLDURA_CM) * escala : W * 0.03) : 0  // a moldura é desenhada por fora da arte
 
     // tamanho real: altura fixa pelo pedido, sem redimensionar
     let fh = escala ? tamanhoCm.altura * escala : zH * 0.55 * scale
