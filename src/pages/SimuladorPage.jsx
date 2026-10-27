@@ -3,7 +3,7 @@ import { useTheme, useIsMobile, formatCurrency } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
-import MockupCanvas, { PEDIDO_ROOMS, orientacaoDe, salaDaObra, cabeNaSala, GAP_CM, MOLDURA_CM } from '../components/MockupCanvas'
+import MockupCanvas, { PEDIDO_ROOMS, orientacaoDe, salaDaObra, cabeNaSala, GAP_CM, MOLDURA_CM, MOLDURA_CM_ACABAMENTO } from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
 import { infoMoldura, CORES_MOLDURA } from '../utils/molduras'
 
@@ -206,7 +206,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   // Ambientes do pedido = os do card do acervo (mesma sala e calibração); a lista acompanha a orientação da obra
   const orientacao = imagem ? orientacaoDe(isKit ? imagem.kitParts.map(p => parseFloat(p.ratio) || 1) : [parseFloat(ratio) || parseFloat(imagem.ratio) || 1]) : 'vertical'
   // só as salas em que o quadro cabe no tamanho real (130 × 200 não passa do teto); se nenhuma couber, mostra todas
-  const larguraNaParede = parseFloat(largura) + (isKit ? 0 : (Math.min(fatias, maxFatias(imagem, ratio)) - 1) * (GAP_CM + 2 * MOLDURA_CM))
+  const larguraNaParede = parseFloat(largura) + (isKit ? 0 : (Math.min(fatias, maxFatias(imagem, ratio)) - 1) * (GAP_CM + 2 * (MOLDURA_CM_ACABAMENTO[tipoMontagem] ?? MOLDURA_CM)))
   const salasQueCabem = PEDIDO_ROOMS[orientacao].filter(r => cabeNaSala(r, parseFloat(altura), larguraNaParede))
   const salas = salasQueCabem.length ? salasQueCabem : PEDIDO_ROOMS[orientacao]
   useEffect(() => {
@@ -326,6 +326,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   }, [largura, altura, isKit, imagem, nFatias, ratioQuadro])
   const multiPeca = pecas.length > 1
   const fatiado = !isKit && nFatias > 1
+  const molduraCm = MOLDURA_CM_ACABAMENTO[tipoMontagem] ?? MOLDURA_CM   // espessura real da moldura no mockup
   const porPeca = fatiado && tamPorPeca
   const cabeVidro = (w, h) => Math.min(w, h) <= VIDRO_MAX[0] && Math.max(w, h) <= VIDRO_MAX[1]
 
@@ -597,7 +598,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                   <MockupCanvas inline
                     imgUrl={isKit ? null : imagem.img_url}
                     kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : null}
-                    slices={isKit ? 1 : nFatias} cortePecas={isKit ? ratioQuadro : null}
+                    slices={isKit ? 1 : nFatias} cortePecas={isKit ? ratioQuadro : null} molduraCm={molduraCm}
                     ratio={ratioQuadro || ratio || parseFloat(imagem.ratio) || 1}
                     frameColor={molduraCor || 'preta'} room={mockupRoom} width={900}
                     tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null} />
@@ -606,7 +607,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                 <MockupCanvas inline interactive
                   imgUrl={isKit ? null : imagem.img_url}
                   kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
-                  slices={isKit ? 1 : nFatias} cortePecas={isKit ? ratioQuadro : null}
+                  slices={isKit ? 1 : nFatias} cortePecas={isKit ? ratioQuadro : null} molduraCm={molduraCm}
                   ratio={ratioQuadro || ratio || parseFloat(imagem.ratio) || 1}
                   frameColor={molduraCor || 'preta'} room={mockupRoom} width={1200}
                   tamanhoCm={parseFloat(altura) > 0 ? { altura: parseFloat(altura) } : null}
@@ -906,7 +907,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
           <MockupCanvas
             imgUrl={isKit ? null : imagem.img_url}
             kitUrls={isKit ? imagem.kitParts.map(p => p.img_url) : [imagem.img_url]}
-            slices={isKit ? 1 : nFatias} cortePecas={isKit ? ratioQuadro : null}
+            slices={isKit ? 1 : nFatias} cortePecas={isKit ? ratioQuadro : null} molduraCm={molduraCm}
             ratio={ratioQuadro || ratio || parseFloat(imagem.ratio) || 1}
             frameColor={molduraCor || 'preta'}
             width={1100}

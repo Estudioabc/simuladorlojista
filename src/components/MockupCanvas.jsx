@@ -73,7 +73,10 @@ function loadRoomImg(src) {
 
 const PAD_RATIO = 0.018  // espessura da moldura como fração da altura do quadro
 export const GAP_CM = 5  // espaço real entre quadros de uma composição (de moldura a moldura)
-export const MOLDURA_CM = 2.5   // largura real da moldura: igual em qualquer tamanho de quadro (no tamanho real)
+// largura real da face da moldura, igual em qualquer tamanho de quadro: canaleta do canvas ≈ 1,2 cm, caixa do papel ≈ 2 cm;
+// sem acabamento escolhido (e no card do acervo), o meio-termo
+export const MOLDURA_CM = 1.5
+export const MOLDURA_CM_ACABAMENTO = { canvas: 1.2, convencional: 2 }
 
 // Escala real: px por cm na parede do ambiente (null quando não há medida)
 function pxPorCm(room, zW, tamanhoCm) {
@@ -109,7 +112,7 @@ function artRatio(a) {
   return a.naturalWidth / a.naturalHeight
 }
 
-async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = false, slices = 1, tamanhoCm = null, proporcao = null, cortePecas = null) {
+async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = false, slices = 1, tamanhoCm = null, proporcao = null, cortePecas = null, molduraCm = MOLDURA_CM) {
   const fs = FRAME_STYLES[frameColor] || FRAME_STYLES.branco
   const W = canvas.width
   const H = canvas.height
@@ -148,7 +151,7 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = fa
   const ratios = artImgs.map(artRatio)
   const N = artImgs.length
   const escala = thumbMode ? null : pxPorCm(room, zW, tamanhoCm)
-  const gap = N > 1 ? Math.round(escala ? (GAP_CM + 2 * MOLDURA_CM) * escala : W * 0.03) : 0  // a moldura é desenhada por fora da arte
+  const gap = N > 1 ? Math.round(escala ? (GAP_CM + 2 * molduraCm) * escala : W * 0.03) : 0  // a moldura é desenhada por fora da arte
 
   let fh = escala ? tamanhoCm.altura * escala : zH * 0.55
   let fws = ratios.map(r => fh * r)
@@ -158,7 +161,7 @@ async function drawKitOnCanvas(canvas, kitUrls, frameColor, room, thumbMode = fa
     fh *= scale
     fws = fws.map(w => w * scale)
   }
-  const pad = thumbMode ? 2 : Math.max(2, Math.round(escala ? MOLDURA_CM * escala : fh * PAD_RATIO))
+  const pad = thumbMode ? 2 : Math.max(2, Math.round(escala ? molduraCm * escala : fh * PAD_RATIO))
 
   const totalKitW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
   let startX = zL + (zW - totalKitW) / 2
@@ -400,7 +403,7 @@ export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 
       ctx.drawImage(roomImg, ox, oy, dw, dh)
       // mesma moldura da miniatura do card (preta, branca ou madeira, escolhida pela obra)
       const fs = frameColor ? FRAME_STYLES[frameColor] : { ...GRID_FRAME_PALETTE[hashStr(lista[0]) % 3], inner: 'rgba(0,0,0,0.06)' }
-      drawFrames(ctx, frames, arts, fs, Math.max(2, Math.round(2.5 * pxCm)), false)
+      drawFrames(ctx, frames, arts, fs, Math.max(2, Math.round(MOLDURA_CM * pxCm)), false)
       ctx.setTransform(1, 0, 0, 1, 0, 0)
     }).catch(() => {})
     return () => { vivo = false; io.disconnect() }
@@ -523,7 +526,7 @@ export function FramedArtThumb({ src, srcs }) {
 // MockupCanvas: modo normal (interactive=false) ou interativo (drag + resize)
 // tamanhoCm = { altura }: desenha o quadro no tamanho real em relação à parede (ambientes com paredeCm)
 // onTamanhoChange(alturaCm): com tamanho real, puxar um canto muda o tamanho do pedido
-export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null, onTamanhoChange = null, inline = false, aspect = null, cortePecas = null }) {
+export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 'branco', width = 600, room, interactive = false, slices = 1, tamanhoCm = null, onTamanhoChange = null, inline = false, aspect = null, cortePecas = null, molduraCm = MOLDURA_CM }) {
   const canvasRef = useRef()
   const roomCfg = room || ROOMS[0]
 
@@ -539,8 +542,8 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     if (!urls.length) return
     canvas.width = W
     canvas.height = H
-    drawKitOnCanvas(canvas, urls, frameColor, roomCfg, false, slices, tamanhoCm, ratio, cortePecas).catch(() => {})
-  }, [imgUrl, kitUrls, ratio, frameColor, W, H, roomCfg, interactive, slices, tamanhoCm?.altura, cortePecas])
+    drawKitOnCanvas(canvas, urls, frameColor, roomCfg, false, slices, tamanhoCm, ratio, cortePecas, molduraCm).catch(() => {})
+  }, [imgUrl, kitUrls, ratio, frameColor, W, H, roomCfg, interactive, slices, tamanhoCm?.altura, cortePecas, molduraCm])
 
   // ── Modo interativo ───────────────────────────────────────────────────────
   // cx, cy = centro do kit como fração do canvas; scale = fator de escala
@@ -564,7 +567,7 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     const zH = (FRAME_ZONE.bottom - FRAME_ZONE.top) * H
     const zW = (FRAME_ZONE.right - FRAME_ZONE.left) * W
     const escala = pxPorCm(roomCfg, zW, tamanhoCm)
-    const gap = N > 1 ? Math.round(escala ? (GAP_CM + 2 * MOLDURA_CM) * escala : W * 0.03) : 0  // a moldura é desenhada por fora da arte
+    const gap = N > 1 ? Math.round(escala ? (GAP_CM + 2 * molduraCm) * escala : W * 0.03) : 0  // a moldura é desenhada por fora da arte
 
     // tamanho real: altura fixa pelo pedido, sem redimensionar
     let fh = escala ? tamanhoCm.altura * escala : zH * 0.55 * scale
@@ -574,7 +577,7 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
       const sc = (zW * 0.9) / totalW
       fh *= sc; fws = fws.map(w => w * sc)
     }
-    const pad = Math.max(2, Math.round(escala ? MOLDURA_CM * escala : fh * PAD_RATIO))
+    const pad = Math.max(2, Math.round(escala ? molduraCm * escala : fh * PAD_RATIO))
 
     const kitW = fws.reduce((s, w) => s + w, 0) + gap * (N - 1)
     const kitH = fh
@@ -637,11 +640,11 @@ export default function MockupCanvas({ imgUrl, kitUrls, ratio = 1, frameColor = 
     })
   }, [imgUrl, JSON.stringify(kitUrls), roomCfg.id, interactive, W, H, slices, ratio, cortePecas])
 
-  // Redesenha quando a cor da moldura ou o tamanho do pedido mudam
+  // Redesenha quando a cor ou a espessura da moldura ou o tamanho do pedido mudam
   useEffect(() => {
     if (!interactive || !loadedRef.current.roomImg) return
     redraw()
-  }, [frameColor, tamanhoCm?.altura])
+  }, [frameColor, tamanhoCm?.altura, molduraCm])
 
   // Converte evento de mouse/touch para coordenadas internas do canvas
   const getCanvasPt = (e) => {
