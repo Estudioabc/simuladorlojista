@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
 
     // Portal: lojistas e representantes (vendedores do estúdio). Desativado não entra.
     if (!p || !['lojista', 'representante'].includes(p.role) || p.active === false) {
-      setError(p?.active === false ? 'Este acesso foi desativado. Fale com o Casa Quadro Trade.' : 'Acesso restrito a lojistas cadastrados.')
+      setError(p?.active === false ? 'Este acesso foi desativado. Fale com a Casa Quadro Trade.' : 'Acesso restrito a lojistas cadastrados.')
       await supabase.auth.signOut()
       return
     }

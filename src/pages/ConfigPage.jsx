@@ -120,7 +120,7 @@ export default function ConfigPage() {
             <div style={S.inputSuffix}>%</div>
           </div>
           <div style={S.hint}>
-            É somado ao preço do Casa Quadro Trade para chegar no preço que o seu cliente paga. Vale para os próximos pedidos.
+            É somado ao preço da Casa Quadro Trade para chegar no preço que o seu cliente paga. Vale para os próximos pedidos.
           </div>
           {markup > 0 && (
             <div style={S.previewBox}>
