@@ -3,7 +3,7 @@ import { useTheme, useIsMobile, formatCurrency } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
-import MockupCanvas, { PEDIDO_ROOMS, orientacaoDe, salaDaObra } from '../components/MockupCanvas'
+import MockupCanvas, { PEDIDO_ROOMS, orientacaoDe, salaDaObra, cabeNaSala } from '../components/MockupCanvas'
 import BancoImagensPage from './BancoImagensPage'
 import { infoMoldura, CORES_MOLDURA } from '../utils/molduras'
 
@@ -193,10 +193,16 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const isKit = imagem?.kitCount > 1 && imagem?.kitParts?.length > 1
   // Ambientes do pedido = os do card do acervo (mesma sala e calibração); a lista acompanha a orientação da obra
   const orientacao = imagem ? orientacaoDe(isKit ? imagem.kitParts.map(p => parseFloat(p.ratio) || 1) : [parseFloat(ratio) || parseFloat(imagem.ratio) || 1]) : 'vertical'
-  const salas = PEDIDO_ROOMS[orientacao]
+  // só as salas em que o quadro cabe no tamanho real (130 × 200 não passa do teto); se nenhuma couber, mostra todas
+  const salasQueCabem = PEDIDO_ROOMS[orientacao].filter(r => cabeNaSala(r, parseFloat(altura), parseFloat(largura)))
+  const salas = salasQueCabem.length ? salasQueCabem : PEDIDO_ROOMS[orientacao]
   useEffect(() => {
     if (imagem) setMockupRoom(salaDaObra(imagem.cardChave || imagem.id || imagem.img_url, orientacao))
   }, [imagem?.img_url, imagem?.cardChave, orientacao])
+  // tamanho mudou e o quadro não cabe mais na sala escolhida: troca para a primeira em que cabe
+  useEffect(() => {
+    if (imagem && !salas.some(r => r.id === mockupRoom.id)) setMockupRoom(salas[0])
+  }, [salas.map(r => r.id).join(), mockupRoom.id])
 
   useEffect(() => {
     if (!ratio || largura || altura) return

@@ -252,28 +252,41 @@ export const CARD_ROOMS = {
 }
 
 // Salas do pedido = as mesmas do card, no formato de ROOMS (zone + paredeCm para o tamanho real).
-// largura real da foto inteira estimada pelo móvel de referência de cada ambiente.
+// Escala pelo pé-direito: do piso ao teto = 270 cm (Pedro: 250 a 280 cm), medido em cada foto (teto/piso = fração da
+// altura; sem linha de teto visível, o topo da foto). fotoCm = largura real da foto inteira = 270 × 1088 / altura da parede em px.
+// Assim o quadro nunca passa do teto. (Antes a escala vinha do móvel e dava pé-direito de 2,00 a 2,34 m.)
+const PE_DIREITO_CM = 270
 const CARD_INFO = {
-  '/card_v_aparador.jpg': { id: 'v-aparador', label: 'Aparador', fotoCm: 268 },   // console ≈ 150 cm
-  '/card_v_banco.jpg': { id: 'v-banco', label: 'Banco', fotoCm: 300 },
-  '/card_v_corredor.jpg': { id: 'v-corredor', label: 'Corredor', fotoCm: 269 },    // banco ≈ 140 cm
-  '/card_v_poltrona.jpg': { id: 'v-poltrona', label: 'Poltrona', fotoCm: 267 },    // poltrona ≈ 80 cm
-  '/card_v_quarto.jpg': { id: 'v-quarto', label: 'Quarto', fotoCm: 239 },          // banco ≈ 160 cm
-  '/card_v_sala_bege.jpg': { id: 'v-sala', label: 'Sala', fotoCm: 247 },           // aparador ≈ 200 cm
-  '/card_h_aparador.jpg': { id: 'h-aparador', label: 'Aparador', fotoCm: 277 },   // aparador ≈ 180 cm
-  '/card_h_cama.jpg': { id: 'h-cama', label: 'Quarto', fotoCm: 296 },              // cama queen ≈ 160 cm
-  '/card_h_sofa_creme.jpg': { id: 'h-sofa', label: 'Sala com sofá', fotoCm: 262 }, // sofá ≈ 220 cm
-  '/card_h_sofa_curvo.jpg': { id: 'h-sofa-curvo', label: 'Sofá curvo', fotoCm: 289 }, // sofá ≈ 240 cm
+  '/card_v_aparador.jpg': { id: 'v-aparador', label: 'Aparador', teto: 0.095, piso: 0.90 },
+  '/card_v_banco.jpg': { id: 'v-banco', label: 'Banco', teto: 0.09, piso: 0.915 },
+  '/card_v_corredor.jpg': { id: 'v-corredor', label: 'Corredor', teto: 0.045, piso: 0.925 },
+  '/card_v_poltrona.jpg': { id: 'v-poltrona', label: 'Poltrona', teto: 0.07, piso: 0.895 },
+  '/card_v_quarto.jpg': { id: 'v-quarto', label: 'Quarto', teto: 0.07, piso: 0.955 },
+  '/card_v_sala_bege.jpg': { id: 'v-sala', label: 'Sala', teto: 0.04, piso: 0.955 },
+  '/card_h_aparador.jpg': { id: 'h-aparador', label: 'Aparador', teto: 0.08, piso: 0.94 },
+  '/card_h_cama.jpg': { id: 'h-cama', label: 'Quarto', teto: 0.11, piso: 0.95 },
+  '/card_h_sofa_creme.jpg': { id: 'h-sofa', label: 'Sala com sofá', teto: 0.065, piso: 0.935 },
+  '/card_h_sofa_curvo.jpg': { id: 'h-sofa-curvo', label: 'Sofá curvo', teto: 0.10, piso: 0.95 },
 }
+const FOLGA_TETO_CM = 5   // o quadro (com moldura) para pelo menos 5 cm abaixo do teto
 function salaDoPedido(c) {
-  const info = CARD_INFO[c.src]
+  const { teto, piso, ...info } = CARD_INFO[c.src]
+  const w = 1088, h = 1024
+  const fotoCm = PE_DIREITO_CM * w / ((piso - teto) * h)
+  const top = teto + FOLGA_TETO_CM * (w / fotoCm) / h
   const left = Math.max(0.06, c.cx - 0.42), right = Math.min(0.94, c.cx + 0.42)
-  return { ...info, src: c.src, w: 1088, h: 1024, zone: { top: c.top, bottom: c.bottom, left, right },
-    paredeCm: Math.round((right - left) * info.fotoCm), thumb: { top: 0, bottom: 1, left: 0, right: 1 } }
+  return { ...info, src: c.src, w, h, zone: { top, bottom: c.bottom, left, right },
+    paredeCm: Math.round((right - left) * fotoCm), thumb: { top: 0, bottom: 1, left: 0, right: 1 } }
 }
 export const PEDIDO_ROOMS = {
   vertical: CARD_ROOMS.vertical.map(salaDoPedido),
   horizontal: CARD_ROOMS.horizontal.map(salaDoPedido),
+}
+// O quadro (com moldura) cabe na parede livre da sala no tamanho real? Parede livre = entre o móvel e o teto (menos a folga).
+export function cabeNaSala(room, alturaCm, larguraCm) {
+  if (!room?.paredeCm || !(alturaCm > 0)) return true
+  const z = room.zone, cmPorPx = room.paredeCm / ((z.right - z.left) * room.w)
+  return alturaCm + 2 * MOLDURA_CM <= (z.bottom - z.top) * room.h * cmPorPx && !(larguraCm + 2 * MOLDURA_CM > room.paredeCm)
 }
 // Mesma escolha do card: orientação pelo conjunto e sala pelo hash da obra
 export function orientacaoDe(ratios) {
