@@ -247,18 +247,37 @@ export const CARD_ROOMS = {
     { src: '/card_v_poltrona.jpg', top: 0.05, bottom: 0.78, cx: 0.60 },
     { src: '/card_v_quarto.jpg', top: 0.04, bottom: 0.80, cx: 0.48 },
     { src: '/card_v_sala_bege.jpg', top: 0.04, bottom: 0.72, cx: 0.49 },
+    { src: '/card_v_lavabo.jpg', top: 0.0, bottom: 0.68, cx: 0.50 },
+    { src: '/card_v_hall.jpg', top: 0.075, bottom: 0.68, cx: 0.45 },
+    // corporativos (bar, restaurante, descompressão, reunião, recepção): servem para obra vertical e horizontal
+    { src: '/card_c_bar.jpg', top: 0.05, bottom: 0.60, cx: 0.50 },
+    { src: '/card_c_restaurante.jpg', top: 0.12, bottom: 0.64, cx: 0.50 },
+    { src: '/card_c_descompressao.jpg', top: 0.14, bottom: 0.64, cx: 0.50 },
+    { src: '/card_c_reuniao.jpg', top: 0.05, bottom: 0.60, cx: 0.50 },
+    { src: '/card_c_recepcao.jpg', top: 0.06, bottom: 0.58, cx: 0.50 },
   ],
   horizontal: [
     { src: '/card_h_aparador.jpg', top: 0.06, bottom: 0.76, cx: 0.50 },
     { src: '/card_h_cama.jpg', top: 0.06, bottom: 0.67, cx: 0.49 },
-    { src: '/card_h_sofa_creme.jpg', top: 0.06, bottom: 0.65, cx: 0.50 },
     { src: '/card_h_sofa_curvo.jpg', top: 0.06, bottom: 0.71, cx: 0.51 },
+    { src: '/card_h_varanda.jpg', top: 0.09, bottom: 0.69, cx: 0.46 },
+    { src: '/card_h_cozinha.jpg', top: 0.40, bottom: 0.68, cx: 0.51, livreDe: 0.40 },   // abaixo do pendente
+    { src: '/card_h_recepcao.jpg', top: 0.0, bottom: 0.69, cx: 0.50 },
+    { src: '/card_h_consultorio.jpg', top: 0.0, bottom: 0.72, cx: 0.50 },
+    { src: '/card_h_hall_predio.jpg', top: 0.08, bottom: 0.83, cx: 0.52 },
+    // corporativos (bar, restaurante, descompressão, reunião, recepção): servem para obra vertical e horizontal
+    { src: '/card_c_bar.jpg', top: 0.05, bottom: 0.60, cx: 0.50 },
+    { src: '/card_c_restaurante.jpg', top: 0.12, bottom: 0.64, cx: 0.50 },
+    { src: '/card_c_descompressao.jpg', top: 0.14, bottom: 0.64, cx: 0.50 },
+    { src: '/card_c_reuniao.jpg', top: 0.05, bottom: 0.60, cx: 0.50 },
+    { src: '/card_c_recepcao.jpg', top: 0.06, bottom: 0.58, cx: 0.50 },
   ],
 }
 
 // Salas do pedido = as mesmas do card, no formato de ROOMS (zone + paredeCm para o tamanho real).
 // Escala pelo pé-direito: do piso ao teto = 270 cm (Pedro: 250 a 280 cm), medido em cada foto (teto/piso = fração da
-// altura; sem linha de teto visível, o topo da foto). fotoCm = largura real da foto inteira = 270 × 1088 / altura da parede em px.
+// altura; teto fora da foto = valor fora de 0..1). fotoCm = largura real da foto inteira = 270 × 1088 / altura da parede em px,
+// ou fixo quando teto e piso não aparecem (lavabo).
 // Assim o quadro nunca passa do teto. (Antes a escala vinha do móvel e dava pé-direito de 2,00 a 2,34 m.)
 const PE_DIREITO_CM = 270
 const CARD_INFO = {
@@ -270,15 +289,28 @@ const CARD_INFO = {
   '/card_v_sala_bege.jpg': { id: 'v-sala', label: 'Sala', teto: 0.04, piso: 0.955 },
   '/card_h_aparador.jpg': { id: 'h-aparador', label: 'Aparador', teto: 0.08, piso: 0.94 },
   '/card_h_cama.jpg': { id: 'h-cama', label: 'Quarto', teto: 0.11, piso: 0.95 },
-  '/card_h_sofa_creme.jpg': { id: 'h-sofa', label: 'Sala com sofá', teto: 0.065, piso: 0.935 },
   '/card_h_sofa_curvo.jpg': { id: 'h-sofa-curvo', label: 'Sofá curvo', teto: 0.10, piso: 0.95 },
+  // out/2026: cômodos e corporativos (recortes dos ambientes do site, mesma calibração pelo pé-direito)
+  '/card_v_lavabo.jpg': { id: 'v-lavabo', label: 'Lavabo', fotoCm: 158 },          // teto e piso fora da foto: escala pela cuba
+  '/card_v_hall.jpg': { id: 'v-hall', label: 'Hall de entrada', teto: 0.055, piso: 0.945 },
+  '/card_h_varanda.jpg': { id: 'h-varanda', label: 'Varanda gourmet', teto: 0.07, piso: 0.931 },
+  '/card_h_cozinha.jpg': { id: 'h-cozinha', label: 'Cozinha', teto: 0.141, piso: 0.859 },
+  '/card_h_recepcao.jpg': { id: 'h-recepcao', label: 'Recepção', teto: -0.028, piso: 1.028 },
+  '/card_h_consultorio.jpg': { id: 'h-consultorio', label: 'Consultório', teto: -0.018, piso: 1.018 },
+  '/card_h_hall_predio.jpg': { id: 'h-hall-predio', label: 'Hall do prédio', teto: 0.059, piso: 0.942 },
+  '/card_c_bar.jpg': { id: 'c-bar', label: 'Bar', teto: 0.03, piso: 0.90 },
+  '/card_c_restaurante.jpg': { id: 'c-restaurante', label: 'Restaurante', teto: 0.10, piso: 0.88 },
+  '/card_c_descompressao.jpg': { id: 'c-descompressao', label: 'Descompressão', teto: 0.12, piso: 0.80 },
+  '/card_c_reuniao.jpg': { id: 'c-reuniao', label: 'Sala de reunião', teto: 0.03, piso: 0.80 },
+  '/card_c_recepcao.jpg': { id: 'c-recepcao', label: 'Recepção corporativa', teto: 0.04, piso: 0.85 },
 }
 const FOLGA_TETO_CM = 5   // o quadro (com moldura) para pelo menos 5 cm abaixo do teto
 function salaDoPedido(c) {
-  const { teto, piso, ...info } = CARD_INFO[c.src]
+  const { teto, piso, fotoCm: fixo, ...info } = CARD_INFO[c.src]
   const w = 1088, h = 1024
-  const fotoCm = PE_DIREITO_CM * w / ((piso - teto) * h)
-  const top = teto + FOLGA_TETO_CM * (w / fotoCm) / h
+  const fotoCm = fixo ?? PE_DIREITO_CM * w / ((piso - teto) * h)
+  // parede livre começa abaixo do teto (com folga); livreDe empurra mais para baixo (ex.: abaixo do pendente)
+  const top = Math.max(c.livreDe ?? 0, teto != null ? teto + FOLGA_TETO_CM * (w / fotoCm) / h : c.top)
   const left = Math.max(0.06, c.cx - 0.42), right = Math.min(0.94, c.cx + 0.42)
   return { ...info, src: c.src, w, h, zone: { top, bottom: c.bottom, left, right },
     paredeCm: Math.round((right - left) * fotoCm), thumb: { top: 0, bottom: 1, left: 0, right: 1 } }
