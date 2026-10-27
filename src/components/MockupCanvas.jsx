@@ -403,7 +403,8 @@ export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 
       ctx.drawImage(roomImg, ox, oy, dw, dh)
       // mesma moldura da miniatura do card (preta, branca ou madeira, escolhida pela obra)
       const fs = frameColor ? FRAME_STYLES[frameColor] : { ...GRID_FRAME_PALETTE[hashStr(lista[0]) % 3], inner: 'rgba(0,0,0,0.06)' }
-      drawFrames(ctx, frames, arts, fs, Math.max(2, Math.round(MOLDURA_CM * pxCm)), false)
+      // card: perfil fino (1 cm), para o quadro pequeno (lavabo) não parecer de moldura grossa
+      drawFrames(ctx, frames, arts, fs, Math.max(2, Math.round(1 * pxCm)), false)
       ctx.setTransform(1, 0, 0, 1, 0, 0)
     }).catch(() => {})
     return () => { vivo = false; io.disconnect() }
