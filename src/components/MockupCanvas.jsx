@@ -261,7 +261,7 @@ export const CARD_ROOMS = {
     { src: '/card_h_cama.jpg', top: 0.06, bottom: 0.67, cx: 0.49 },
     { src: '/card_h_sofa_curvo.jpg', top: 0.06, bottom: 0.71, cx: 0.51 },
     { src: '/card_h_varanda.jpg', top: 0.09, bottom: 0.69, cx: 0.46 },
-    { src: '/card_h_cozinha.jpg', top: 0.40, bottom: 0.68, cx: 0.51, livreDe: 0.40 },   // abaixo do pendente
+    { src: '/card_h_cozinha.jpg', top: 0.30, bottom: 0.68, cx: 0.51, livreDe: 0.30 },   // abaixo do pendente (subido na foto)
     { src: '/card_h_recepcao.jpg', top: 0.0, bottom: 0.69, cx: 0.50 },
     { src: '/card_h_consultorio.jpg', top: 0.0, bottom: 0.72, cx: 0.50 },
     { src: '/card_h_hall_predio.jpg', top: 0.08, bottom: 0.83, cx: 0.52 },
@@ -295,7 +295,7 @@ const CARD_INFO = {
   '/card_v_hall.jpg': { id: 'v-hall', label: 'Hall de entrada', teto: 0.055, piso: 0.945 },
   '/card_h_varanda.jpg': { id: 'h-varanda', label: 'Varanda gourmet', teto: 0.07, piso: 0.931 },
   '/card_h_cozinha.jpg': { id: 'h-cozinha', label: 'Cozinha', teto: 0.141, piso: 0.859 },
-  '/card_h_recepcao.jpg': { id: 'h-recepcao', label: 'Recepção', teto: -0.028, piso: 1.028 },
+  '/card_h_recepcao.jpg': { id: 'h-recepcao', label: 'Recepção', teto: -0.028, piso: 1.028, peDireito: 540 },  // pé-direito duplo
   '/card_h_consultorio.jpg': { id: 'h-consultorio', label: 'Consultório', teto: -0.018, piso: 1.018 },
   '/card_h_hall_predio.jpg': { id: 'h-hall-predio', label: 'Hall do prédio', teto: 0.059, piso: 0.942 },
   '/card_c_bar.jpg': { id: 'c-bar', label: 'Bar', teto: 0.03, piso: 0.90 },
@@ -305,10 +305,15 @@ const CARD_INFO = {
   '/card_c_recepcao.jpg': { id: 'c-recepcao', label: 'Recepção corporativa', teto: 0.04, piso: 0.85 },
 }
 const FOLGA_TETO_CM = 5   // o quadro (com moldura) para pelo menos 5 cm abaixo do teto
+// largura real (cm) da foto inteira da sala; peDireito próprio quando a sala é de pé-direito duplo
+function fotoCmDe(src) {
+  const { teto, piso, fotoCm, peDireito = PE_DIREITO_CM } = CARD_INFO[src]
+  return fotoCm ?? peDireito * 1088 / ((piso - teto) * 1024)
+}
 function salaDoPedido(c) {
-  const { teto, piso, fotoCm: fixo, ...info } = CARD_INFO[c.src]
+  const { teto, piso, fotoCm: _f, peDireito: _p, ...info } = CARD_INFO[c.src]
   const w = 1088, h = 1024
-  const fotoCm = fixo ?? PE_DIREITO_CM * w / ((piso - teto) * h)
+  const fotoCm = fotoCmDe(c.src)
   // parede livre começa abaixo do teto (com folga); livreDe empurra mais para baixo (ex.: abaixo do pendente)
   const top = Math.max(c.livreDe ?? 0, teto != null ? teto + FOLGA_TETO_CM * (w / fotoCm) / h : c.top)
   const left = Math.max(0.06, c.cx - 0.42), right = Math.min(0.94, c.cx + 0.42)
@@ -366,21 +371,33 @@ export function CardMockup({ urls, chave = '', frameColor = null, aspect = 0.95 
       const rA = roomImg.naturalWidth / roomImg.naturalHeight, cA = W / H
       const dw = rA > cA ? H * rA : W, dh = rA > cA ? H : W / rA
       const ox = (W - dw) / 2, oy = (H - dh) / 2
-      ctx.drawImage(roomImg, ox, oy, dw, dh)
       // faixa livre da parede no card
       const topo = oy + sala.top * dh, base = oy + sala.bottom * dh, cx = ox + sala.cx * dw
       const livreH = base - topo
       // quadro grande: vertical ≈ 88% da parede livre (máx. 62% da largura); horizontal até 74% da largura
-      let gH = vertical ? Math.min(livreH * 0.88, (W * 0.62) / grupoAsp) : Math.min(livreH * 0.80, (W * 0.74) / grupoAsp)
+      const gGrande = vertical ? Math.min(livreH * 0.88, (W * 0.62) / grupoAsp) : Math.min(livreH * 0.80, (W * 0.74) / grupoAsp)
+      // ...mas do tamanho de um quadro comum de verdade na escala da sala (até 130 cm de altura no vertical, 100 cm no
+      // horizontal, 160 cm de largura do conjunto). Para o quadro seguir protagonista, a câmera chega mais perto (zoom).
+      const pxCm = dw / fotoCmDe(sala.src)
+      const gH = Math.min(gGrande, (vertical ? 130 : 100) * pxCm, (160 * pxCm) / grupoAsp)
+      const zoom = Math.min(gGrande / gH, 1.3)
       const gW = gH * grupoAsp
       const gy = base - Math.max(livreH * 0.06, (livreH - gH) * 0.5) - gH  // centrado na parede livre (no mínimo 6% acima do móvel)
       let x = Math.min(Math.max(cx - gW / 2, W * 0.04), W * 0.96 - gW)
       const gap = gapRel * gH
       const frames = []
       ratios.forEach(r => { frames.push({ fx: x, fy: gy, fw: gH * r, fh: gH }); x += gH * r + gap })
+      // zoom em volta do quadro, sem deixar borda vazia (a foto sempre cobre o card)
+      const py = (gy + gH / 2 + base) / 2   // mira entre o quadro e o móvel: os dois aparecem
+      const pivoX = frames[0].fx + gW / 2
+      const tx = Math.min(-ox * zoom, Math.max(W - (ox + dw) * zoom, pivoX - pivoX * zoom))
+      const ty = Math.min(-oy * zoom, Math.max(H - (oy + dh) * zoom, py - py * zoom))
+      ctx.setTransform(zoom, 0, 0, zoom, tx, ty)
+      ctx.drawImage(roomImg, ox, oy, dw, dh)
       // mesma moldura da miniatura do card (preta, branca ou madeira, escolhida pela obra)
       const fs = frameColor ? FRAME_STYLES[frameColor] : { ...GRID_FRAME_PALETTE[hashStr(lista[0]) % 3], inner: 'rgba(0,0,0,0.06)' }
-      drawFrames(ctx, frames, arts, fs, Math.max(3, Math.round(gH * 0.02)), false)
+      drawFrames(ctx, frames, arts, fs, Math.max(2, Math.round(2.5 * pxCm)), false)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
     }).catch(() => {})
     return () => { vivo = false; io.disconnect() }
   }, [lista.join('|'), chave, frameColor, aspect])
