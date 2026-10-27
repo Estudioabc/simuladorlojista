@@ -356,16 +356,45 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     if (!framesDoTipo.some(f => f.id === molduraId)) setMolduraId(framesDoTipo[0].id)
   }, [tipoMontagem, framesDoTipo.map(f => f.id).join(), molduraId])
 
+  // Nenhuma peça passa do rolo (lado menor até 150 cm) nem da barra (lado maior até 270 cm): o número digitado
+  // para no máximo possível. Proporção travada: os dois lados encolhem juntos; destravada, só o lado digitado.
+  const cabeProducao = (w, h) => {
+    const r = parseFloat(ratio) || 1
+    const pecasWH = isKit ? imagem.kitParts.map(p => [h * (parseFloat(p.ratio) || 1), h]) : [[w / Math.max(1, nFatias), h]]
+    return r > 0 && pecasWH.every(([a, b]) => Math.min(a, b) <= LIMITE_ROLO.canvas && Math.max(a, b) <= LIMITE_BARRA)
+  }
+  const maiorQueCabe = (f) => {  // maior fator t (0..1) com f(t) ainda cabendo
+    if (f(1)) return 1
+    let lo = 0, hi = 1
+    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (f(m)) lo = m; else hi = m }
+    return lo
+  }
+  const travado = () => (travarRatio || isKit) && ratio
+  const noLimite = (v) => Math.floor(v * 2 + 0.01) / 2   // arredonda para baixo em 0,5 cm (a busca para um fio abaixo do limite)
   const handleLargura = (val) => {
-    setLargura(val)
-    if ((travarRatio || isKit) && ratio && val) {
-      setAltura(String(um(parseFloat(val) / ratio)))
+    let w = parseFloat(val)
+    if (!(w > 0)) { setLargura(val); return }
+    if (travado()) {
+      const t = maiorQueCabe(k => cabeProducao(w * k, (w * k) / ratio))
+      if (t < 1) w = noLimite(w * t)
+      setLargura(t < 1 ? String(w) : val); setAltura(String(um(w / ratio)))
+    } else {
+      const h = parseFloat(altura) || 0
+      const t = maiorQueCabe(k => cabeProducao(w * k, h))
+      setLargura(t < 1 && t > 0 ? String(noLimite(w * t)) : val)
     }
   }
   const handleAltura = (val) => {
-    setAltura(val)
-    if ((travarRatio || isKit) && ratio && val) {
-      setLargura(String(um(parseFloat(val) * ratio)))
+    let h = parseFloat(val)
+    if (!(h > 0)) { setAltura(val); return }
+    if (travado()) {
+      const t = maiorQueCabe(k => cabeProducao((h * k) * ratio, h * k))
+      if (t < 1) h = noLimite(h * t)
+      setAltura(t < 1 ? String(h) : val); setLargura(String(um(h * ratio)))
+    } else {
+      const w = parseFloat(largura) || 0
+      const t = maiorQueCabe(k => cabeProducao(w, h * k))
+      setAltura(t < 1 && t > 0 ? String(noLimite(h * t)) : val)
     }
   }
 
