@@ -150,6 +150,10 @@ export function foraDoLimite(pecas, tipoMontagem) {
 const fracaoCorte = (r, alvo) => (r > 0 && alvo > 0 ? 1 - Math.min(r, alvo) / Math.max(r, alvo) : 1)
 const CORTE_MAX_PADRAO = 0.12
 const ehDoisTres = (r) => fracaoCorte(r, r >= 1 ? 1.5 : 2 / 3) <= CORTE_MAX_PADRAO
+// Tamanhos padrão para toda obra que não é quadrada (Pedro, 27/10): fora de 2:3 o quadro sai com corte central,
+// que o mockup mostra. Obra quadrada só em tamanho personalizado quadrado, sem corte.
+const ehQuadrada = (r) => fracaoCorte(r, 1) <= 0.05
+const temTamanhoPadrao = (r) => r > 0 && !ehQuadrada(r)
 
 export default function SimuladorPage({ imagemInicial, onImagemClear, onAdicionar, itemEditando, onCancelarEdicao, onVerCarrinho, nCarrinho = 0 }) {
   const { colors, fonts } = useTheme()
@@ -209,6 +213,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     // tamanho inicial de quadro de sala (o pedido abre com a obra bem visível na parede): horizontal 120 cm de largura,
     // vertical 90 cm de altura, composição 60 cm de altura por peça
     if (!isKit && ehDoisTres(ratio)) { const [a, b] = TAMANHOS_23[0]; setLargura(String(ratio >= 1 ? b : a)); setAltura(String(ratio >= 1 ? a : b)); return }
+    // fora de 2:3 abre no personalizado, na proporção original (sem corte); o tamanho padrão fica a um clique
+    if (!isKit) setTamPersonalizado(true)
     if (isKit) { setAltura('60'); setLargura(String(um(60 * ratio))) }
     else if (ratio >= 1) { setLargura('120'); setAltura(String(Math.round(120 / ratio))) }
     else { setAltura('90'); setLargura(String(Math.round(90 * ratio))) }
@@ -221,7 +227,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     setImagem(c.imagem ?? null); setRatio(c.ratio ?? null); setTravarRatio(c.travarRatio ?? true)
     setLargura(c.largura ?? ''); setAltura(c.altura ?? ''); setQuantidade(c.quantidade ?? '1'); setFatias(c.fatias ?? 1)
     setTipoMontagem(c.tipoMontagem ?? ''); setMontagemId(c.montagemId ?? ''); setTipoVidro(c.tipoVidro ?? '')
-    setMolduraId(c.molduraId ?? ''); setMolduraCor(c.molduraCor ?? '')
+    setMolduraId(c.molduraId ?? ''); setMolduraCor(c.molduraCor ?? ''); setTamPersonalizado(!c.tamanhoPadrao)
     setErro(''); setAdicionado(false)
   }, [itemEditando?.id])
 
@@ -288,8 +294,8 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
     return [{ largura_cm: w, altura_cm: h }]
   }, [largura, altura, isKit, imagem, nFatias])
   const multiPeca = pecas.length > 1
-  // tamanhos padrão (só obra 2:3 em quadro único); cada um na orientação da obra
-  const temPadrao = !isKit && nFatias === 1 && ehDoisTres(parseFloat(ratio))
+  // tamanhos padrão (quadro único de obra não quadrada); cada um na orientação da obra
+  const temPadrao = !isKit && nFatias === 1 && temTamanhoPadrao(parseFloat(ratio))
   const opcoesPadrao = temPadrao ? TAMANHOS_23.map(([a, b]) => (parseFloat(ratio) >= 1 ? [b, a] : [a, b])) : []
   const padraoAtual = opcoesPadrao.find(([w, h]) => parseFloat(largura) === w && parseFloat(altura) === h) || null
   const modoPadrao = temPadrao && !tamPersonalizado
@@ -660,6 +666,7 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
               <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>
                 A arte é ajustada ao tamanho {padraoAtual[0]} × {padraoAtual[1]}: corte de {Math.round(corteAtual * 100) || 1}% na {eixoCorte}, centralizado (como no ambiente ao lado).
                 {Math.max(...padraoAtual) === 200 ? ' Só em canvas.' : ''}
+                {corteAtual > CORTE_MAX_PADRAO ? ' Para a obra inteira, sem corte, use o tamanho personalizado.' : ''}
               </div>
             )}
             {modoPadrao && padraoAtual && corteAtual <= 0.01 && Math.max(...padraoAtual) === 200 && (
