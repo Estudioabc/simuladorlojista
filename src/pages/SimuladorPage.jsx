@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useTheme, useIsMobile, formatCurrency } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { callFunction } from '../services/supabase'
 import { Spinner } from '../components/UI'
 import MockupCanvas, { PEDIDO_ROOMS, orientacaoDe, salaDaObra, cabeNaSala, GAP_CM, MOLDURA_CM, MOLDURA_CM_ACABAMENTO } from '../components/MockupCanvas'
+import FotoParede, { lerFoto } from '../components/FotoParede'
 import BancoImagensPage from './BancoImagensPage'
 import { infoMoldura, CORES_MOLDURA } from '../utils/molduras'
 
@@ -185,6 +186,9 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   const [mockupAberto, setMockupAberto] = useState(false)
   const [mockupRoom, setMockupRoom] = useState(PEDIDO_ROOMS.vertical[0])
   const [molduraCor, setMolduraCor] = useState('') // id em CORES_MOLDURA; vai no pedido e pinta o mockup
+  const [fotoSala, setFotoSala] = useState(null)   // ambiente feito com a foto do cliente (fica só no aparelho)
+  const [fotoMedir, setFotoMedir] = useState(null) // foto lida, esperando a medida de referência
+  const fotoInput = useRef()
   const [adicionado, setAdicionado] = useState(false) // aviso "quadro no carrinho"
   const [erro, setErro] = useState('')
   const [falta, setFalta] = useState({}) // grupos obrigatórios que faltaram na última tentativa
@@ -208,10 +212,17 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
   // só as salas em que o quadro cabe no tamanho real (130 × 200 não passa do teto); se nenhuma couber, mostra todas
   const larguraNaParede = parseFloat(largura) + (isKit ? 0 : (Math.min(fatias, maxFatias(imagem, ratio)) - 1) * (GAP_CM + 2 * (MOLDURA_CM_ACABAMENTO[tipoMontagem] ?? MOLDURA_CM)))
   const salasQueCabem = PEDIDO_ROOMS[orientacao].filter(r => cabeNaSala(r, parseFloat(altura), larguraNaParede))
-  const salas = salasQueCabem.length ? salasQueCabem : PEDIDO_ROOMS[orientacao]
+  // a foto do cliente entra sempre na lista (o lojista posiciona o quadro nela)
+  const salas = [...(salasQueCabem.length ? salasQueCabem : PEDIDO_ROOMS[orientacao]), ...(fotoSala ? [fotoSala] : [])]
   useEffect(() => {
-    if (imagem) setMockupRoom(salaDaObra(imagem.cardChave || imagem.id || imagem.img_url, orientacao))
+    if (imagem && !mockupRoom.foto) setMockupRoom(salaDaObra(imagem.cardChave || imagem.id || imagem.img_url, orientacao))
   }, [imagem?.img_url, imagem?.cardChave, orientacao])
+  const escolherFoto = async (e) => {
+    const arq = e.target.files?.[0]
+    e.target.value = ''
+    if (!arq) return
+    try { setFotoMedir(await lerFoto(arq)) } catch { setErro('Não consegui abrir essa foto. Tente uma imagem JPG ou PNG.') }
+  }
   // tamanho mudou e o quadro não cabe mais na sala escolhida: troca para a primeira em que cabe
   useEffect(() => {
     if (imagem && !salas.some(r => r.id === mockupRoom.id)) setMockupRoom(salas[0])
@@ -670,9 +681,21 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
                     {room.label}
                   </button>
                 ))}
+                <button onClick={() => fotoInput.current?.click()}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, fontFamily: fonts.body, cursor: 'pointer', color: colors.text, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                  {fotoSala ? 'Trocar foto do cliente' : '+ Foto do cliente'}
+                </button>
               </div>
             </div>
           )}
+          {imagem && mockupRoom.foto && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+              {mockupRoom.foto ? (
+                <span style={{ fontSize: 12, color: colors.textMuted }}>Arraste o quadro para a parede do cliente. A foto fica só neste aparelho.</span>
+              ) : null}
+            </div>
+          )}
+          <input ref={fotoInput} type="file" accept="image/*" onChange={escolherFoto} style={{ display: 'none' }} />
         </div>
 
         {/* ─── Direita: as escolhas ─── */}
@@ -912,6 +935,11 @@ export default function SimuladorPage({ imagemInicial, onImagemClear, onAdiciona
           </div>
         ))}
       </section>
+
+      {fotoMedir && (
+        <FotoParede foto={fotoMedir} colors={colors} fonts={fonts} onCancelar={() => setFotoMedir(null)}
+          onPronto={(sala) => { setFotoSala(sala); setMockupRoom(sala); setFotoMedir(null) }} />
+      )}
 
       {mockupAberto && imagem && (
         <div role="dialog" aria-modal="true" aria-label="Quadro no ambiente" onClick={e => { if (e.target === e.currentTarget) setMockupAberto(false) }}
