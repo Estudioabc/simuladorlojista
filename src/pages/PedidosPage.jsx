@@ -4,7 +4,6 @@ import { useTheme } from '../styles/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { Spinner, EmptyState } from '../components/UI'
 import { infoMoldura, CORES_MOLDURA } from '../utils/molduras'
-import { mockupDataUrl, MOLDURA_CM, MOLDURA_CM_ACABAMENTO } from '../components/MockupCanvas'
 import { useEquipe } from '../contexts/EquipeContext'
 
 const fmt = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -35,38 +34,12 @@ function acabamentoTexto(it, p) {
   return [base, v].filter(Boolean).join(', ')
 }
 
-// Cor da moldura salva no pedido ("Madeira escura"…) → id do estilo do mockup
-const corId = (label) => CORES_MOLDURA.find(c => c.label === label)?.id || 'preta'
-
-// Imagem do quadro na parede (tamanho real) para o orçamento; sem a imagem, o PDF mostra só a obra
-async function mockupDoItem(it, p) {
-  const pecas = pecasDe(it)
-  const kit = it.modo === 'kit' && pecas?.every(pc => pc.imagem_url)
-  const urls = kit ? pecas.map(pc => pc.imagem_url) : it.imagem_url ? [it.imagem_url] : []
-  if (!urls.length) return null
-  const w = Number(it.largura_cm), h = Number(it.altura_cm)
-  const pecaW = kit ? Number(pecas[0].largura_cm) : w
-  try {
-    return await mockupDataUrl({
-      urls, chave: it.imagem_id || urls[0], frameColor: corId(it.moldura_cor),
-      alturaCm: h, larguraCm: kit ? pecas.reduce((t, pc) => t + Number(pc.largura_cm), 0) : w,
-      slices: it.modo === 'fatiado' && pecas ? pecas.length : 1,
-      proporcao: kit || it.modo === 'fatiado' ? null : w / h,
-      cortePecas: kit && pecas.some(pc => pc.corte) ? pecaW / h : null,
-      molduraCm: MOLDURA_CM_ACABAMENTO[it.tipo_montagem ?? p.tipo_montagem] ?? MOLDURA_CM,
-      ratios: kit ? pecas.map(pc => Number(pc.largura_cm) / Number(pc.altura_cm)) : [w / h],
-    })
-  } catch { return null }
-}
-
 // Orçamento para o cliente: abre numa janela própria (salvar em PDF / imprimir). Lojista e cliente com contato,
-// cada quadro no ambiente em tamanho real, total, forma de pagamento e observações escritas no carrinho.
-async function abrirOrcamentoCliente(p, loja) {
+// cada quadro com a ficha, total, forma de pagamento e observações escritas no carrinho.
+function abrirOrcamentoCliente(p, loja) {
   const w = window.open('', '_blank')
   if (!w) { alert('Permita pop-ups para abrir o orçamento.'); return }
-  w.document.write('<!doctype html><meta charset="utf-8"><title>Gerando orçamento…</title><p style="font-family:system-ui;padding:40px;color:#777">Gerando o orçamento…</p>')
   const itensSrc = p.itens ?? []
-  const mockups = await Promise.all(itensSrc.map(it => mockupDoItem(it, p)))
   const orc = p.quotes_data?.orcamento || {}
   const lojaNome = loja?.store_name || 'Orçamento'
   const cidade = [loja?.city, loja?.state].filter(Boolean).join('/')
@@ -83,7 +56,6 @@ async function abrirOrcamentoCliente(p, loja) {
       : it.imagem_url ? `<img class="obra" src="${esc(it.imagem_url)}" alt="" style="border-color:${cor?.hex || '#1c1c1e'}">` : ''
     return `
     <section class="item">
-      ${mockups[i] ? `<img class="amb" src="${mockups[i]}" alt="O quadro na parede, em tamanho real">` : ''}
       <div class="ficha">
         <div class="obra-box">${obra}</div>
         <div class="dados">
@@ -103,7 +75,6 @@ async function abrirOrcamentoCliente(p, loja) {
   const entrega = p.forma_entrega === 'retirada' ? 'Retirada na loja'
     : p.forma_entrega === 'entrega' ? `Entrega${p.endereco_entrega ? ': ' + esc(p.endereco_entrega) : ' no endereço combinado'}` : ''
   const bloco = (titulo, texto) => texto ? `<div class="bloco"><div class="mono">${titulo}</div><p>${esc(texto).replace(/\n/g, '<br>')}</p></div>` : ''
-  w.document.open()
   w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600&family=Figtree:wght@400;600&display=swap">
@@ -117,10 +88,9 @@ async function abrirOrcamentoCliente(p, loja) {
   .partes{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:20px 0;border-bottom:1px solid #e8e4dd}
   .partes p{margin:6px 0 0}
   .item{padding:26px 0;border-bottom:1px solid #e8e4dd;break-inside:avoid}
-  .amb{display:block;width:100%;aspect-ratio:1088/1024;object-fit:cover;border-radius:2px;margin-bottom:18px}
   .ficha{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
-  .obra-box{flex:0 0 auto} .obra{width:120px;border:4px solid #1c1c1e;box-shadow:0 3px 10px rgba(0,0,0,.14);display:block}
-  .kit{display:flex;gap:6px} .kit img{height:96px;border:3px solid #1c1c1e;box-shadow:0 3px 10px rgba(0,0,0,.14)}
+  .obra-box{flex:0 0 auto} .obra{width:180px;border:5px solid #1c1c1e;box-shadow:0 3px 10px rgba(0,0,0,.14);display:block}
+  .kit{display:flex;gap:6px} .kit img{height:140px;border:3px solid #1c1c1e;box-shadow:0 3px 10px rgba(0,0,0,.14)}
   .dados{flex:1;min-width:220px} h2{font-family:Archivo,Arial,sans-serif;font-size:20px;font-weight:600;margin:4px 0 10px;letter-spacing:-.2px}
   dl{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;margin:0} dt{color:#8a857d} dd{margin:0}
   .valor{margin-top:10px;font-weight:600}
@@ -144,7 +114,7 @@ async function abrirOrcamentoCliente(p, loja) {
 ${itens}
 <div class="total"><span class="mono">Total</span><strong>${esc(fmt(p.revenda_total))}</strong></div>
 ${orc.forma_pagamento || orc.observacoes ? `<div class="blocos">${bloco('Forma de pagamento', orc.forma_pagamento)}${bloco('Observações', orc.observacoes)}</div>` : ''}
-<footer>Orçamento válido até ${data(validade)}. Imagens de ambiente ilustrativas, com o quadro em tamanho real.</footer>
+<footer>Orçamento válido até ${data(validade)}.</footer>
 <div class="acoes"><button id="imprimir">Salvar PDF / Imprimir</button></div>
 </body></html>`)
   w.document.close()
