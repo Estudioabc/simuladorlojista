@@ -381,8 +381,8 @@ export default function BancoImagensPage({ onSelectImagem }) {
     lead: { fontSize: 15, color: colors.textMuted, maxWidth: 560, lineHeight: 1.55 },
     toolbar: { margin: '16px 0 0' },
     marca: { background: GRAFITE, color: '#F5F2EC', borderRadius: 14, padding: isMobile ? '24px 22px' : '30px 40px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.1fr) minmax(0, 1fr)', alignItems: 'center', gap: 28 },
-    marcaTexto: { display: 'flex', alignItems: 'center', gap: isMobile ? 18 : 30, minWidth: 0 },
-    marcaLogo: { height: isMobile ? 74 : 104, width: 'auto', flexShrink: 0 },
+    marcaTexto: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: isMobile ? 18 : 22, minWidth: 0 },
+    marcaLogo: { width: isMobile ? 190 : 230, maxWidth: '100%', height: 'auto', display: 'block' },
     marcaTitulo: { fontFamily: fonts.display, fontSize: isMobile ? 22 : 'clamp(24px, 2.6vw, 32px)', fontWeight: 600, lineHeight: 1.08, letterSpacing: -0.5, margin: 0 },
     marcaLead: { fontSize: 13, color: 'rgba(245,242,236,0.65)', margin: '10px 0 0', lineHeight: 1.5, maxWidth: 340 },
     marcaIlustra: { height: 190, display: 'flex', justifyContent: 'flex-end' },
@@ -438,7 +438,7 @@ export default function BancoImagensPage({ onSelectImagem }) {
     <div>
       <section style={S.marca} aria-label="Casa Quadro Trade">
         <div style={S.marcaTexto}>
-          <img src="/marca-casa-quadro-trade.png" alt="Casa Quadro Trade" style={S.marcaLogo} />
+          <img src="/marca-claro.svg" alt="Casa Quadro Trade" style={S.marcaLogo} />
           <div>
             <h1 style={S.marcaTitulo}>Seu cliente escolhe.<br /><span style={{ color: AREIA }}>A gente produz.</span></h1>
             <p style={S.marcaLead}>Abra uma obra para vê-la num ambiente, ou leve direto para um novo pedido.</p>

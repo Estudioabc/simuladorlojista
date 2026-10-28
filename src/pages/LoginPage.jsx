@@ -23,11 +23,13 @@ export default function LoginPage() {
     // Foto: obra do acervo na parede (public/login-ambiente.jpg). Degradês garantem a leitura do texto por cima.
     side: {
       backgroundColor: colors.text, color: '#fff',
-      backgroundImage: 'linear-gradient(to bottom, rgba(14,13,10,0.45) 0%, rgba(14,13,10,0) 22%, rgba(14,13,10,0) 45%, rgba(14,13,10,0.88) 82%), url(/login-ambiente.jpg?v=2)',
-      backgroundSize: 'cover', backgroundPosition: 'center 78%',
-      padding: 'clamp(32px, 6vw, 72px)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 40, minHeight: 420,
+      backgroundImage: 'linear-gradient(to bottom, rgba(14,13,10,0) 45%, rgba(14,13,10,0.88) 82%), url(/login-ambiente.jpg?v=2)',
+      backgroundSize: 'cover', backgroundPosition: 'center 12%',   // ancorado no alto: o topo do quadro nunca é cortado, em qualquer tela
+      padding: 'clamp(32px, 6vw, 72px)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 40, minHeight: 420,
     },
-    sideBrand: { fontSize: 11, fontWeight: 600, letterSpacing: 1.8, textTransform: 'uppercase', opacity: 0.9 },
+    // a marca fica do lado do formulário, sobre o fundo claro (em cima da foto ela brigava com a obra)
+    marca: { marginBottom: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' },
+    marcaSub: { fontSize: 11, fontWeight: 600, letterSpacing: 1.8, textTransform: 'uppercase', color: colors.textMuted, marginTop: 12 },
     sideTitle: { fontFamily: fonts.display, fontSize: 'clamp(31px, 4.7vw, 53px)', fontWeight: 600, lineHeight: 1, letterSpacing: -1, textWrap: 'balance' },
     sideText: { fontSize: 15, lineHeight: 1.55, opacity: 0.85, maxWidth: 380, marginTop: 18 },
     main: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(32px, 6vw, 72px) 24px' },
@@ -43,7 +45,6 @@ export default function LoginPage() {
   return (
     <div style={S.page}>
       <aside style={S.side}>
-        <div style={S.sideBrand}>Casa Quadro Trade · Portal do lojista</div>
         <div>
           <div style={S.sideTitle}>A obra certa<br />para cada parede.</div>
           <p style={S.sideText}>Mais de 1.600 obras, simulação no ambiente do seu cliente e orçamento com a sua margem. A Casa Quadro Trade imprime e emoldura cada pedido.</p>
@@ -52,6 +53,10 @@ export default function LoginPage() {
 
       <main style={S.main}>
         <form onSubmit={handleSubmit} style={S.form}>
+          <div style={S.marca}>
+            <img src="/marca-escuro.svg" alt="Casa Quadro Trade" style={{ width: 230, maxWidth: '100%', height: 'auto', display: 'block' }} />
+            <div style={S.marcaSub}>Portal do lojista</div>
+          </div>
           <h1 style={S.title}>Entrar</h1>
           <p style={S.subtitle}>Entre com o usuário e a senha que a Casa Quadro Trade passou para você.</p>
 
